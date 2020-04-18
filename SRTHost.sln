@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SRTHost", "SRTHost\SRTHost.csproj", "{170EA473-1680-488A-9017-E9100C5612D7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SRTPluginBase", "SRTPluginBase\SRTPluginBase.csproj", "{A9153A0E-DABA-4265-B9D6-A7E3A2A3393F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{170EA473-1680-488A-9017-E9100C5612D7}.Debug|x64.ActiveCfg = Debug|x64
+		{170EA473-1680-488A-9017-E9100C5612D7}.Debug|x64.Build.0 = Debug|x64
+		{170EA473-1680-488A-9017-E9100C5612D7}.Release|x64.ActiveCfg = Release|x64
+		{170EA473-1680-488A-9017-E9100C5612D7}.Release|x64.Build.0 = Release|x64
+		{A9153A0E-DABA-4265-B9D6-A7E3A2A3393F}.Debug|x64.ActiveCfg = Debug|x64
+		{A9153A0E-DABA-4265-B9D6-A7E3A2A3393F}.Debug|x64.Build.0 = Debug|x64
+		{A9153A0E-DABA-4265-B9D6-A7E3A2A3393F}.Release|x64.ActiveCfg = Release|x64
+		{A9153A0E-DABA-4265-B9D6-A7E3A2A3393F}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {24109552-9777-4189-B6FB-8B741BFB7A91}
+	EndGlobalSection
+EndGlobal

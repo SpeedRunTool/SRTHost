@@ -7,8 +7,11 @@ namespace SRTHost
     {
         public OutputMessageDelegate OutputMessage => Console.WriteLine;
 
-        public ReloadDelegate Reload => null;
+        public ReloadDelegate Reload => new ReloadDelegate(() => { });
 
-        public ExitDelegate Exit => null;
+        public ExitDelegate Exit => new ExitDelegate(() =>
+        {
+            Program.running = false;
+        });
     }
 }

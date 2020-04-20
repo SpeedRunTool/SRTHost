@@ -10,7 +10,7 @@ namespace SRTHost
 {
     public static class Program
     {
-        private static bool running = true;
+        public static bool running = true;
         private static PluginHostDelegates hostDelegates = new PluginHostDelegates();
 
         //[STAThread]

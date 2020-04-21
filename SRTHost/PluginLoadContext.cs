@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Security.Cryptography.X509Certificates;
 
 namespace SRTHost
 {
@@ -46,6 +47,29 @@ namespace SRTHost
                 return rootLocation.FullName;
             else
                 return null;
+        }
+
+        public X509Certificate GetSigningInfo(Assembly assembly)
+        {
+            try
+            {
+                return X509Certificate.CreateFromSignedFile(assembly.Location);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+        public X509Certificate2 GetSigningInfo2(Assembly assembly)
+        {
+            try
+            {
+                return new X509Certificate2(GetSigningInfo(assembly));
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
         }
 
         protected override Assembly Load(AssemblyName assemblyName)

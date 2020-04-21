@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace SRTHost
@@ -27,6 +28,7 @@ namespace SRTHost
             IPluginUI[] uiPlugins = null;
             try
             {
+                ShowSigningInfo(Assembly.GetExecutingAssembly(), false);
                 allPlugins = new DirectoryInfo("plugins")
                     .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                     .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).First())
@@ -34,8 +36,10 @@ namespace SRTHost
                     .SelectMany((string pluginPath) =>
                     {
                         Assembly pluginAssembly = LoadPlugin(pluginPath);
+                        ShowSigningInfo(pluginAssembly);
                         return CreatePlugins(pluginAssembly);
                     }).ToArray();
+                Console.WriteLine();
 
                 if (allPlugins.Count(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType())) > 1)
                     Environment.Exit(1); // Critical error. Handle better. Only one provider allowed.
@@ -124,7 +128,6 @@ namespace SRTHost
                                     Path.GetDirectoryName(typeof(Program).Assembly.Location)))))));
 
                 string pluginLocation = Path.GetFullPath(Path.Combine(root, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
-                Console.WriteLine($"Loading plugin: {pluginLocation}");
                 return loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation)));
             }
             catch (Exception ex)
@@ -177,14 +180,22 @@ namespace SRTHost
                     }
                 }
             }
+        }
 
-            //if (count == 0)
-            //{
-            //    string availableTypes = string.Join(",", assembly.GetTypes().Select(t => t.FullName));
-            //    throw new ApplicationException(
-            //        $"Can't find any type which implements ISRTPlugin in {assembly} from {assembly.Location}.\n" +
-            //        $"Available types: {availableTypes}");
-            //}
+        public static void ShowSigningInfo(Assembly assembly, bool isPlugin = true)
+        {
+            Console.WriteLine("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly.Location));
+
+            X509Certificate2 cert2;
+            if ((cert2 = loadContext.GetSigningInfo2(assembly)) != null)
+            {
+                if (cert2.Verify())
+                    Console.WriteLine("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+                else
+                    Console.WriteLine("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+            }
+            else
+                Console.WriteLine("\tNo digital signature found.");
         }
     }
 }

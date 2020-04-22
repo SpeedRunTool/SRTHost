@@ -147,36 +147,39 @@ namespace SRTHost
             }
             catch (Exception ex)
             {
-
+                yield break;
             }
 
-            foreach (Type type in typesInAssembly)
+            if (typesInAssembly != null)
             {
-                if (typeof(IPluginProvider).IsAssignableFrom(type))
+                foreach (Type type in typesInAssembly)
                 {
-                    IPluginProvider result = Activator.CreateInstance(type) as IPluginProvider;
-                    if (result != null)
+                    if (typeof(IPluginProvider).IsAssignableFrom(type))
                     {
-                        count++;
-                        yield return result;
+                        IPluginProvider result = Activator.CreateInstance(type) as IPluginProvider;
+                        if (result != null)
+                        {
+                            count++;
+                            yield return result;
+                        }
                     }
-                }
-                else if (typeof(IPluginUI).IsAssignableFrom(type))
-                {
-                    IPluginUI result = Activator.CreateInstance(type) as IPluginUI;
-                    if (result != null)
+                    else if (typeof(IPluginUI).IsAssignableFrom(type))
                     {
-                        count++;
-                        yield return result;
+                        IPluginUI result = Activator.CreateInstance(type) as IPluginUI;
+                        if (result != null)
+                        {
+                            count++;
+                            yield return result;
+                        }
                     }
-                }
-                else if (typeof(IPlugin).IsAssignableFrom(type))
-                {
-                    IPlugin result = Activator.CreateInstance(type) as IPlugin;
-                    if (result != null)
+                    else if (typeof(IPlugin).IsAssignableFrom(type))
                     {
-                        count++;
-                        yield return result;
+                        IPlugin result = Activator.CreateInstance(type) as IPlugin;
+                        if (result != null)
+                        {
+                            count++;
+                            yield return result;
+                        }
                     }
                 }
             }
@@ -184,7 +187,7 @@ namespace SRTHost
 
         public static void ShowSigningInfo(Assembly assembly, bool isPlugin = true)
         {
-            Console.WriteLine("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly.Location));
+            Console.WriteLine("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
 
             X509Certificate2 cert2;
             if ((cert2 = loadContext.GetSigningInfo2(assembly)) != null)

@@ -1,6 +1,7 @@
 ﻿using SRTPluginBase;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -14,8 +15,8 @@ namespace SRTHost
     {
         public static bool running = true;
         private static PluginHostDelegates hostDelegates = new PluginHostDelegates();
-        private static FileStream exceptionLogFileStream;
-        private static StreamWriter exceptionLogStreamWriter;
+        private static FileStream logFileStream;
+        private static StreamWriter logStreamWriter;
 
         //[STAThread]
         public static async Task Main()
@@ -26,9 +27,13 @@ namespace SRTHost
                 running = false;
             };
 
-            using (exceptionLogFileStream = new FileStream(@"SRTHost-Exceptions.log", FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
-            using (exceptionLogStreamWriter = new StreamWriter(exceptionLogFileStream, Encoding.UTF8))
+            using (logFileStream = new FileStream(@"SRTHost.log", FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            using (logStreamWriter = new StreamWriter(logFileStream, Encoding.UTF8))
             {
+                FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+                WriteToConsoleAndLog("{0} v{1}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion);
+                WriteToConsoleAndLog(new string('-', Console.WindowWidth));
+
                 IPlugin[] allPlugins = null;
                 IPluginProvider providerPlugin = null;
                 IPluginUI[] uiPlugins = null;
@@ -37,18 +42,28 @@ namespace SRTHost
                     ShowSigningInfo(Assembly.GetExecutingAssembly(), false);
                     allPlugins = new DirectoryInfo("plugins")
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
-                        .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).First())
-                        .Select(a => a.FullName)
-                        .SelectMany((string pluginPath) =>
+                        .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
+                        .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
+                        .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(pluginAssemblyFileInfo.FullName))
+                        .Where((Assembly pluginAssembly) => pluginAssembly != null)
+                        .SelectMany((Assembly pluginAssembly) =>
                         {
-                            Assembly pluginAssembly = LoadPlugin(pluginPath);
                             ShowSigningInfo(pluginAssembly);
                             return CreatePlugins(pluginAssembly);
                         }).ToArray();
-                    Console.WriteLine();
+                    WriteToConsoleAndLog();
+
+                    if (allPlugins.Length == 0)
+                    {
+                        HandleException(new ApplicationException("Unable to find any plugins located in the \"plugins\" folder that implement IPlugin"));
+                        Environment.Exit(1); // Critical error. Handle better. Only one provider allowed.
+                    }
 
                     if (allPlugins.Count(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType())) > 1)
-                        Environment.Exit(1); // Critical error. Handle better. Only one provider allowed.
+                    {
+                        HandleException(new ApplicationException("More than one (1) plugin located in the \"plugins\" folder that implements IPluginProvider"));
+                        Environment.Exit(2); // Critical error. Handle better. Only one provider allowed.
+                    }
 
                     providerPlugin = (IPluginProvider)allPlugins.First(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType()));
                     uiPlugins = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => (IPluginUI)a).ToArray();
@@ -62,9 +77,9 @@ namespace SRTHost
                             pluginStartupStatus = plugin.Startup(hostDelegates);
 
                             if (pluginStartupStatus == 0)
-                                Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] successfully started.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision);
+                                WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] successfully started.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision);
                             else
-                                Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] failed to start properly with status {5}.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision, pluginStartupStatus);
+                                WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] failed to start properly with status {5}.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision, pluginStartupStatus);
                         }
                         catch (Exception ex)
                         {
@@ -72,7 +87,7 @@ namespace SRTHost
                         }
                     }
 
-                    Console.WriteLine("Press CTRL+C in this console window to shutdown the SRT.");
+                    WriteToConsoleAndLog("Press CTRL+C in this console window to shutdown the SRT.");
                     while (running)
                     {
                         object gameMemory = providerPlugin.PullData();
@@ -101,20 +116,23 @@ namespace SRTHost
                 finally
                 {
                     // Shutdown.
-                    foreach (IPlugin plugin in allPlugins)
+                    if (allPlugins != null)
                     {
-                        int pluginShutdownStatus = 0;
-                        try
+                        foreach (IPlugin plugin in allPlugins)
                         {
-                            pluginShutdownStatus = plugin.Shutdown();
-                            if (pluginShutdownStatus == 0)
-                                Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] successfully shutdown.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision);
-                            else
-                                Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] failed to stop properly with status {5}.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision, pluginShutdownStatus);
-                        }
-                        catch (Exception ex)
-                        {
-                            HandleException(ex);
+                            int pluginShutdownStatus = 0;
+                            try
+                            {
+                                pluginShutdownStatus = plugin.Shutdown();
+                                if (pluginShutdownStatus == 0)
+                                    WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] successfully shutdown.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision);
+                                else
+                                    WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] failed to stop properly with status {5}.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision, pluginShutdownStatus);
+                            }
+                            catch (Exception ex)
+                            {
+                                HandleException(ex);
+                            }
                         }
                     }
                 }
@@ -122,20 +140,12 @@ namespace SRTHost
         }
 
         private static PluginLoadContext loadContext = new PluginLoadContext(Environment.CurrentDirectory + Path.DirectorySeparatorChar);
-        private static Assembly LoadPlugin(string relativePath)
+
+        private static Assembly LoadPlugin(string pluginPath)
         {
             try
             {
-                // Navigate up to the solution root
-                string root = Path.GetFullPath(Path.Combine(
-                    Path.GetDirectoryName(
-                        Path.GetDirectoryName(
-                            Path.GetDirectoryName(
-                                Path.GetDirectoryName(
-                                    Path.GetDirectoryName(typeof(Program).Assembly.Location)))))));
-
-                string pluginLocation = Path.GetFullPath(Path.Combine(root, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
-                return loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation)));
+                return loadContext.LoadFromAssemblyPath(pluginPath);
             }
             catch (Exception ex)
             {
@@ -143,6 +153,29 @@ namespace SRTHost
                 return null;
             }
         }
+
+        //private static Assembly LoadPlugin(string relativePath)
+        //{
+        //    try
+        //    {
+        //        // Navigate up to the solution root
+        //        string root = Path.GetFullPath(Path.Combine(
+        //            Path.GetDirectoryName(
+        //                Path.GetDirectoryName(
+        //                    Path.GetDirectoryName(
+        //                        Path.GetDirectoryName(
+        //                            Path.GetDirectoryName(typeof(Program).Assembly.Location)))))));
+
+        //        string pluginLocation = Path.GetFullPath(Path.Combine(root, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
+        //        AssemblyName pluginAssemblyName = new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation));
+        //        return loadContext.LoadFromAssemblyName(pluginAssemblyName);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        HandleException(ex);
+        //        return null;
+        //    }
+        //}
 
         private static IEnumerable<IPlugin> CreatePlugins(Assembly assembly)
         {
@@ -196,31 +229,41 @@ namespace SRTHost
 
         public static void ShowSigningInfo(Assembly assembly, bool isPlugin = true)
         {
-            Console.WriteLine("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
+            WriteToConsoleAndLog("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
 
             X509Certificate2 cert2;
             if ((cert2 = loadContext.GetSigningInfo2(assembly)) != null)
             {
                 if (cert2.Verify())
-                    Console.WriteLine("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+                    WriteToConsoleAndLog("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
                 else
-                    Console.WriteLine("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+                    WriteToConsoleAndLog("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
             }
             else
-                Console.WriteLine("\tNo digital signature found.");
+                WriteToConsoleAndLog("\tNo digital signature found.");
         }
 
         public static void HandleException(Exception exception)
         {
-            string exceptionMessage = string.Empty;
+            try
+            {
+                string exceptionMessage = string.Format("[{0}] {1}", exception?.GetType()?.Name, exception?.ToString());
+                WriteToConsoleAndLog(exceptionMessage);
+            }
+            catch
+            {
+                WriteToConsoleAndLog("FATAL ERROR IN HandleException(Exception exception);");
+            }
+        }
 
-            try { exceptionMessage = string.Format("[{0}] {1}", exception?.GetType()?.Name, exception?.ToString()); }
-            catch { exceptionMessage = "FATAL ERROR IN HandleException(Exception exception);"; }
-
-            try { Console.WriteLine(exceptionMessage); }
+        public static void WriteToConsoleAndLog() => WriteToConsoleAndLog(string.Empty);
+        public static void WriteToConsoleAndLog(string format, params object[] arg) => WriteToConsoleAndLog(string.Format(format, arg));
+        public static void WriteToConsoleAndLog(string message)
+        {
+            try { Console.WriteLine(message); }
             catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
 
-            try { exceptionLogStreamWriter.WriteLine(exceptionMessage); }
+            try { logStreamWriter.WriteLine(message); }
             catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
         }
     }

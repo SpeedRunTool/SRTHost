@@ -5,7 +5,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Platforms>x64</Platforms>
-    <Version>2.0.4</Version>
+    <Version>2.0.5</Version>
     <Company>Travis J Gutjahr</Company>
     <Authors>Travis J Gutjahr</Authors>
     <Product>SRT Host</Product>

@@ -21,6 +21,11 @@ namespace SRTHost
             this._rootResolver = new AssemblyDependencyResolver(this.rootDirectory.FullName);
 
             this.pluginDirectory = new DirectoryInfo(Path.Combine(this.rootDirectory.FullName, "plugins" + Path.DirectorySeparatorChar));
+            if (!this.pluginDirectory.Exists)
+            {
+                this.pluginDirectory.Create();
+                this.pluginDirectory.Refresh();
+            }
             this._pluginResolver = new AssemblyDependencyResolver(this.pluginDirectory.FullName);
 
             base.Resolving += PluginLoadContext_Resolving;

@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Platforms>x64</Platforms>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <Authors>Travis J Gutjahr</Authors>
     <Company>Travis J Gutjahr</Company>
     <Product>SRT Plugin Base</Product>
@@ -11,7 +11,7 @@
     <Description>The plugin interfaces required to develop plugins for the SRT Host.</Description>
   </PropertyGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(BuildingInsideVisualStudio)' == '' Or '$(BuildingInsideVisualStudio)' == 'true'">
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(BuildingInsideVisualStudio)' == 'true' And '$(TJGutjahr)' == 'true'">
     <Exec Command="&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA1 /n &quot;Travis J Gutjahr&quot; /sm /fd SHA1 &quot;$(TargetDir)\$(ProjectName).dll&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA256 /n &quot;Travis J Gutjahr&quot; /sm /fd SHA256 /as &quot;$(TargetDir)\$(ProjectName).dll&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA512 /n &quot;Travis J Gutjahr&quot; /sm /fd SHA512 /as &quot;$(TargetDir)\$(ProjectName).dll&quot;&#xD;&#xA;" />
   </Target>
   

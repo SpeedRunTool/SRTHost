@@ -16,7 +16,7 @@ namespace SRTHost
         public static bool running = true;
         private static PluginHostDelegates hostDelegates = new PluginHostDelegates();
         private static FileStream logFileStream;
-        private static StreamWriter logStreamWriter;
+        private static LogTextWriter logTextWriter;
 
         //[STAThread]
         public static async Task Main()
@@ -27,16 +27,21 @@ namespace SRTHost
                 running = false;
             };
 
+            TextWriter consoleTextWriter = Console.Out;
             using (logFileStream = new FileStream(@"SRTHost.log", FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
-            using (logStreamWriter = new StreamWriter(logFileStream, Encoding.UTF8))
+            using (logTextWriter = new LogTextWriter(logFileStream, Encoding.UTF8, consoleTextWriter))
             {
+                Console.SetOut(logTextWriter);
+                Console.SetError(logTextWriter);
+
                 FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-                WriteToConsoleAndLog("{0} v{1}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion);
-                WriteToConsoleAndLog(new string('-', Console.WindowWidth));
+                Console.WriteLine("{0} v{1}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion);
+                Console.WriteLine(new string('-', Console.WindowWidth));
 
                 IPlugin[] allPlugins = null;
-                IPluginProvider providerPlugin = null;
-                IPluginUI[] uiPlugins = null;
+                Dictionary<PluginProviderStateValue, PluginUIStateValue[]> pluginProvidersAndDependentUIs = null;
+                PluginUIStateValue[] pluginUIsAgnostic = null;
+
                 try
                 {
                     ShowSigningInfo(Assembly.GetExecutingAssembly(), false);
@@ -51,7 +56,7 @@ namespace SRTHost
                             ShowSigningInfo(pluginAssembly);
                             return CreatePlugins(pluginAssembly);
                         }).ToArray();
-                    WriteToConsoleAndLog();
+                    Console.WriteLine();
 
                     if (allPlugins.Length == 0)
                     {
@@ -59,51 +64,36 @@ namespace SRTHost
                         Environment.Exit(1); // Critical error. Handle better. Only one provider allowed.
                     }
 
-                    if (allPlugins.Count(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType())) > 1)
-                    {
-                        HandleException(new ApplicationException("More than one (1) plugin located in the \"plugins\" folder that implements IPluginProvider"));
-                        Environment.Exit(2); // Critical error. Handle better. Only one provider allowed.
-                    }
+                    pluginProvidersAndDependentUIs = new Dictionary<PluginProviderStateValue, PluginUIStateValue[]>();
+                    foreach (IPluginProvider pluginProvider in allPlugins.Where(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType())).Select(a => (IPluginProvider)a))
+                        pluginProvidersAndDependentUIs.Add(new PluginProviderStateValue() { Plugin = pluginProvider, Startup = false }, allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == pluginProvider.GetType().Name).ToArray());
+                    pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == null || a.Plugin.RequiredProvider == string.Empty).ToArray();
 
-                    providerPlugin = (IPluginProvider)allPlugins.First(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType()));
-                    uiPlugins = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => (IPluginUI)a).ToArray();
+                    // Startup providers.
+                    foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
+                        PluginStartup(pluginKeys.Key);
 
-                    // Startup.
-                    foreach (IPlugin plugin in allPlugins)
-                    {
-                        int pluginStartupStatus = 0;
-                        try
-                        {
-                            pluginStartupStatus = plugin.Startup(hostDelegates);
+                    // Startup agnotic UIs.
+                    foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
+                        PluginStartup(pluginUIStateValue);
 
-                            if (pluginStartupStatus == 0)
-                                WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] successfully started.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision);
-                            else
-                                WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] failed to start properly with status {5}.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision, pluginStartupStatus);
-                        }
-                        catch (Exception ex)
-                        {
-                            HandleException(ex);
-                        }
-                    }
-
-                    WriteToConsoleAndLog("Press CTRL+C in this console window to shutdown the SRT.");
+                    Console.WriteLine("Press CTRL+C in this console window to shutdown the SRT.");
                     while (running)
                     {
-                        object gameMemory = providerPlugin.PullData();
-                        if (gameMemory != null)
+                        foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
                         {
-                            foreach (IPluginUI uiPlugin in uiPlugins)
+                            if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is running.
                             {
-                                int uiPluginReceiveDataStatus = 0;
-                                try
-                                {
-                                    uiPluginReceiveDataStatus = uiPlugin.ReceiveData(gameMemory);
-                                }
-                                catch (Exception ex)
-                                {
-                                    HandleException(ex);
-                                }
+                                object gameMemory = pluginKeys.Key.Plugin.PullData();
+                                foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
+                                    PluginReceiveData(pluginUIStateValue, gameMemory);
+                            }
+                            else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is not running.
+                            {
+                                // Loop through this plugin's UIs and shut them down if they're running. Only shuts down dependent UIs. Agnostic UIs such as JSON shouldn't be touched.
+                                foreach (PluginUIStateValue pluginUIStateValue in pluginKeys.Value)
+                                    if (pluginUIStateValue.Startup)
+                                        PluginShutdown(pluginUIStateValue);
                             }
                         }
                         await Task.Delay(16).ConfigureAwait(false);
@@ -115,27 +105,84 @@ namespace SRTHost
                 }
                 finally
                 {
-                    // Shutdown.
+                    // Shutdown all.
                     if (allPlugins != null)
                     {
-                        foreach (IPlugin plugin in allPlugins)
+                        foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
+                            PluginShutdown(pluginUIStateValue);
+
+                        foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
                         {
-                            int pluginShutdownStatus = 0;
-                            try
-                            {
-                                pluginShutdownStatus = plugin.Shutdown();
-                                if (pluginShutdownStatus == 0)
-                                    WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] successfully shutdown.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision);
-                                else
-                                    WriteToConsoleAndLog("[{0} v{1}.{2}.{3}.{4}] failed to stop properly with status {5}.", plugin.Info.Name, plugin.Info.VersionMajor, plugin.Info.VersionMinor, plugin.Info.VersionBuild, plugin.Info.VersionRevision, pluginShutdownStatus);
-                            }
-                            catch (Exception ex)
-                            {
-                                HandleException(ex);
-                            }
+                            foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
+                                PluginShutdown(pluginUI);
+                            PluginShutdown(pluginKeys.Key);
                         }
                     }
                 }
+            }
+        }
+
+        public static void PluginStartup<T>(IPluginStateValue<T> plugin) where T : IPlugin
+        {
+            if (!plugin.Startup)
+            {
+                int pluginStatusResponse = 0;
+                try
+                {
+                    pluginStatusResponse = plugin.Plugin.Startup(hostDelegates);
+
+                    if (pluginStatusResponse == 0)
+                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] successfully started.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision);
+                    else
+                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] failed to startup properly with status {5}.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision, pluginStatusResponse);
+                }
+                catch (Exception ex)
+                {
+                    HandleException(ex);
+                }
+                plugin.Startup = true;
+            }
+        }
+
+        public static void PluginReceiveData<T>(IPluginStateValue<T> plugin, object gameMemory) where T : IPluginUI
+        {
+            // If the UI plugin isn't started, start it now.
+            if (!plugin.Startup)
+                PluginStartup(plugin);
+
+            if (gameMemory != null)
+            {
+                int uiPluginReceiveDataStatus = 0;
+                try
+                {
+                    uiPluginReceiveDataStatus = plugin.Plugin.ReceiveData(gameMemory);
+                }
+                catch (Exception ex)
+                {
+                    HandleException(ex);
+                }
+            }
+        }
+
+        public static void PluginShutdown<T>(IPluginStateValue<T> plugin) where T : IPlugin
+        {
+            if (plugin.Startup)
+            {
+                int pluginStatusResponse = 0;
+                try
+                {
+                    pluginStatusResponse = plugin.Plugin.Shutdown();
+
+                    if (pluginStatusResponse == 0)
+                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] successfully shutdown.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision);
+                    else
+                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] failed to shutdown properly with status {5}.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision, pluginStatusResponse);
+                }
+                catch (Exception ex)
+                {
+                    HandleException(ex);
+                }
+                plugin.Startup = false;
             }
         }
 
@@ -229,18 +276,18 @@ namespace SRTHost
 
         public static void ShowSigningInfo(Assembly assembly, bool isPlugin = true)
         {
-            WriteToConsoleAndLog("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
+            Console.WriteLine("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
 
             X509Certificate2 cert2;
             if ((cert2 = loadContext.GetSigningInfo2(assembly)) != null)
             {
                 if (cert2.Verify())
-                    WriteToConsoleAndLog("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+                    Console.WriteLine("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
                 else
-                    WriteToConsoleAndLog("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+                    Console.WriteLine("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
             }
             else
-                WriteToConsoleAndLog("\tNo digital signature found.");
+                Console.WriteLine("\tNo digital signature found.");
         }
 
         public static void HandleException(Exception exception)
@@ -248,23 +295,23 @@ namespace SRTHost
             try
             {
                 string exceptionMessage = string.Format("[{0}] {1}", exception?.GetType()?.Name, exception?.ToString());
-                WriteToConsoleAndLog(exceptionMessage);
+                Console.WriteLine(exceptionMessage);
             }
             catch
             {
-                WriteToConsoleAndLog("FATAL ERROR IN HandleException(Exception exception);");
+                Console.WriteLine("FATAL ERROR IN HandleException(Exception exception);");
             }
         }
 
-        public static void WriteToConsoleAndLog() => WriteToConsoleAndLog(string.Empty);
-        public static void WriteToConsoleAndLog(string format, params object[] arg) => WriteToConsoleAndLog(string.Format(format, arg));
-        public static void WriteToConsoleAndLog(string message)
-        {
-            try { Console.WriteLine(message); }
-            catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
+        //public static void WriteToConsoleAndLog() => WriteToConsoleAndLog(string.Empty);
+        //public static void WriteToConsoleAndLog(string format, params object[] arg) => WriteToConsoleAndLog(string.Format(format, arg));
+        //public static void WriteToConsoleAndLog(string message)
+        //{
+        //    try { Console.WriteLine(message); }
+        //    catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
 
-            try { logStreamWriter.WriteLine(message); }
-            catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
-        }
+        //    //try { logStreamWriter.WriteLine(message); }
+        //    //catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
+        //}
     }
 }

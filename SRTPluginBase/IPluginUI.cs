@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Text;
 
 namespace SRTPluginBase
@@ -12,5 +13,7 @@ namespace SRTPluginBase
         /// <param name="gameMemory"></param>
         /// <returns></returns>
         int ReceiveData(object gameMemory);
+
+        string RequiredProvider { get; }
     }
 }

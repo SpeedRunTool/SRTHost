@@ -11,5 +11,7 @@ namespace SRTPluginBase
         /// </summary>
         /// <returns>A game-specific </returns>
         object PullData(); // TODO: Make generic if possible without embedding game-specific info into SRTPluginBase... Probably not possible...
+
+        bool GameRunning { get; }
     }
 }

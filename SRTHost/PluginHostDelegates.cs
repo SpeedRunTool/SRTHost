@@ -7,7 +7,7 @@ namespace SRTHost
     {
         public ExceptionMessageDelegate ExceptionMessage => Program.HandleException;
 
-        public OutputMessageDelegate OutputMessage => Program.WriteToConsoleAndLog;
+        public OutputMessageDelegate OutputMessage => Console.WriteLine;
 
         public ReloadDelegate Reload => new ReloadDelegate(() => { });
 

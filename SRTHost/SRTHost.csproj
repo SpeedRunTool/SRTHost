@@ -5,12 +5,13 @@
     <UseWindowsForms>true</UseWindowsForms>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Platforms>x64</Platforms>
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
     <Company>Travis J Gutjahr</Company>
     <Authors>Travis J Gutjahr</Authors>
     <Product>SRT Host</Product>
     <Description>A plugin host for various informational SpeedRun Tools.</Description>
     <Copyright>Copyright © 2020 Travis J Gutjahr</Copyright>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>

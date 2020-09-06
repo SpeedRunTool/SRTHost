@@ -42,6 +42,7 @@ namespace SRTHost
                 Dictionary<PluginProviderStateValue, PluginUIStateValue[]> pluginProvidersAndDependentUIs = null;
                 PluginUIStateValue[] pluginUIsAgnostic = null;
 
+                bool criticalFailure = false; // Used if we should fail right past the finally clause.
                 try
                 {
                     ShowSigningInfo(Assembly.GetExecutingAssembly(), false);
@@ -99,14 +100,20 @@ namespace SRTHost
                         await Task.Delay(16).ConfigureAwait(false);
                     }
                 }
+                catch (FileLoadException ex)
+                {
+                    HandleException(ex);
+                    HandleIncorrectArchitecture(null, ex.Source, ex.FileName);
+                    criticalFailure = true;
+                }
                 catch (Exception ex)
                 {
                     HandleException(ex);
                 }
                 finally
                 {
-                    // Shutdown all.
-                    if (allPlugins != null)
+                    // Shutdown all if we haven't critically failed.
+                    if (!criticalFailure && allPlugins != null)
                     {
                         foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
                             PluginShutdown(pluginUIStateValue);
@@ -196,8 +203,7 @@ namespace SRTHost
             }
             catch (FileLoadException ex)
             {
-                Console.WriteLine("Failed plugin: {0}\r\n\tIncorrect architecture. {1}.", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath), (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL");
-                
+                HandleIncorrectArchitecture(pluginPath);
                 return null;
             }
             catch (Exception ex)
@@ -307,6 +313,14 @@ namespace SRTHost
             {
                 Console.WriteLine("FATAL ERROR IN HandleException(Exception exception);");
             }
+        }
+
+        public static void HandleIncorrectArchitecture(string? pluginPath = null, string? sourcePlugin = null, string? assemblyName = null)
+        {
+            if (pluginPath != null)
+                Console.WriteLine("Failed plugin: {0}\r\n\tIncorrect architecture. {1}.", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath), (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL");
+            else if (sourcePlugin != null && assemblyName != null)
+                Console.WriteLine("Failed plugin: plugins\\{0}\\{0}.dll\r\n\tIncorrect architecture in referenced assembly \"{2}\". {1}.", sourcePlugin, (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL", assemblyName);
         }
 
         //public static void WriteToConsoleAndLog() => WriteToConsoleAndLog(string.Empty);

@@ -288,7 +288,7 @@ namespace SRTHost
 
         public static void ShowSigningInfo(Assembly assembly, bool isPlugin = true)
         {
-            Console.WriteLine("Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
+            Console.WriteLine("  Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
 
             X509Certificate2 cert2;
             if ((cert2 = loadContext.GetSigningInfo2(assembly)) != null)
@@ -318,9 +318,9 @@ namespace SRTHost
         public static void HandleIncorrectArchitecture(string? pluginPath = null, string? sourcePlugin = null, string? assemblyName = null)
         {
             if (pluginPath != null)
-                Console.WriteLine("Failed plugin: {0}\r\n\tIncorrect architecture. {1}.", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath), (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL");
+                Console.WriteLine("! Failed plugin: {0}\r\n\tIncorrect architecture. {1}.", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath), (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL");
             else if (sourcePlugin != null && assemblyName != null)
-                Console.WriteLine("Failed plugin: plugins\\{0}\\{0}.dll\r\n\tIncorrect architecture in referenced assembly \"{2}\". {1}.", sourcePlugin, (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL", assemblyName);
+                Console.WriteLine("! Failed plugin: plugins\\{0}\\{0}.dll\r\n\tIncorrect architecture in referenced assembly \"{2}\". {1}.", sourcePlugin, (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL", assemblyName);
         }
 
         //public static void WriteToConsoleAndLog() => WriteToConsoleAndLog(string.Empty);

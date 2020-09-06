@@ -3,15 +3,15 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <Platforms>x64;x86</Platforms>
+    <Platforms>AnyCPU</Platforms>
     <Authors>Travis J Gutjahr</Authors>
     <Company>Travis J Gutjahr</Company>
     <Copyright>Copyright © 2020 Travis J Gutjahr</Copyright>
     <Product>SRT Plugin Base</Product>
     <Description>The plugin interfaces required to develop plugins for the SRT Host.</Description>
-    <Version>2.1.3</Version>
-    <FileVersion>2.1.3.0</FileVersion>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <Version>2.2.0</Version>
+    <FileVersion>2.2.0.0</FileVersion>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(BuildingInsideVisualStudio)' == 'true' And '$(TJGutjahr)' == 'true'">

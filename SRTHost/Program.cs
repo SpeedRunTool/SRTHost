@@ -35,7 +35,7 @@ namespace SRTHost
                 Console.SetError(logTextWriter);
 
                 FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-                Console.WriteLine("{0} v{1}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion);
+                Console.WriteLine("{0} v{1} {2}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
                 Console.WriteLine(new string('-', Console.WindowWidth));
 
                 IPlugin[] allPlugins = null;
@@ -193,6 +193,12 @@ namespace SRTHost
             try
             {
                 return loadContext.LoadFromAssemblyPath(pluginPath);
+            }
+            catch (FileLoadException ex)
+            {
+                Console.WriteLine("Failed plugin: {0}\r\n\tIncorrect architecture. {1}.", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath), (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL");
+                
+                return null;
             }
             catch (Exception ex)
             {

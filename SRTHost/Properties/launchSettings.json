@@ -2,7 +2,7 @@
   "profiles": {
     "SRTHost": {
       "commandName": "Project",
-      "commandLineArgs": "--UpdateRate=16",
+      "commandLineArgs": "--UpdateRate=100",
       "nativeDebugging": true
     }
   }

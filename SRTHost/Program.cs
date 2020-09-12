@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SRTHost
@@ -17,9 +18,12 @@ namespace SRTHost
         private static PluginHostDelegates hostDelegates = new PluginHostDelegates();
         private static FileStream logFileStream;
         private static LogTextWriter logTextWriter;
+        private static CommandLineProcessor commandLineProcessor;
+
+        private static int settingUpdateRate = 33; // Default to 33ms.
 
         //[STAThread]
-        public static async Task Main()
+        public static async Task Main(params string[] args)
         {
             Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) =>
             {
@@ -37,6 +41,44 @@ namespace SRTHost
                 FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
                 Console.WriteLine("{0} v{1} {2}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
                 Console.WriteLine(new string('-', Console.WindowWidth));
+
+                foreach (KeyValuePair<string, string?> kvp in (commandLineProcessor = new CommandLineProcessor(args)))
+                {
+                    Console.WriteLine("Command-line arguments:");
+                    if (kvp.Value != null)
+                        Console.WriteLine("{0}: {1}", kvp.Key, kvp.Value);
+                    else
+                        Console.WriteLine("{0}", kvp.Key);
+                    Console.WriteLine();
+
+                    switch (kvp.Key.ToUpperInvariant())
+                    {
+                        case "HELP":
+                            {
+                                string helpTemplate = "  --{0}=<Value>: {1}. Default: {2}\r\n    Example: --{0}={2}";
+                                Console.WriteLine("Arguments and examples");
+                                Console.WriteLine(helpTemplate, "UpdateRate", "Sets the time in milliseconds between memory value updates", "33");
+                                return;
+                            }
+                        case "UPDATERATE":
+                            {
+                                if (int.TryParse(kvp.Value, out settingUpdateRate))
+                                {
+                                    // If we successfully parsed the value, ensure it is within range. If not, reset it.
+                                    if (settingUpdateRate < 16 || settingUpdateRate > 2000)
+                                    {
+                                        Console.WriteLine("Error: {0} cannot be less than 16ms or greater than 2000ms. Resetting to default (33ms).", kvp.Key);
+                                        settingUpdateRate = 33;
+                                    }
+                                }
+                                break;
+                            }
+                        default:
+                            {
+                                break;
+                            }
+                    }
+                }
 
                 IPlugin[] allPlugins = null;
                 Dictionary<PluginProviderStateValue, PluginUIStateValue[]> pluginProvidersAndDependentUIs = null;
@@ -97,7 +139,8 @@ namespace SRTHost
                                         PluginShutdown(pluginUIStateValue);
                             }
                         }
-                        await Task.Delay(16).ConfigureAwait(false);
+                        //Thread.Sleep(settingUpdateRate);
+                        await Task.Delay(settingUpdateRate).ConfigureAwait(false);
                     }
                 }
                 catch (FileLoadException ex)

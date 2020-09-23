@@ -57,7 +57,7 @@ namespace SRTHost
                             {
                                 string helpTemplate = "  --{0}=<Value>: {1}. Default: {2}\r\n    Example: --{0}={2}";
                                 Console.WriteLine("Arguments and examples");
-                                Console.WriteLine(helpTemplate, "UpdateRate", "Sets the time in milliseconds between memory value updates", "100");
+                                Console.WriteLine(helpTemplate, "UpdateRate", "Sets the time in milliseconds between memory value updates", "66");
                                 return;
                             }
                         case "UPDATERATE":
@@ -67,8 +67,8 @@ namespace SRTHost
                                     // If we successfully parsed the value, ensure it is within range. If not, reset it.
                                     if (settingUpdateRate < 16 || settingUpdateRate > 2000)
                                     {
-                                        Console.WriteLine("Error: {0} cannot be less than 16ms or greater than 2000ms. Resetting to default (100ms).", kvp.Key);
-                                        settingUpdateRate = 100;
+                                        Console.WriteLine("Error: {0} cannot be less than 16ms or greater than 2000ms. Resetting to default (66ms).", kvp.Key);
+                                        settingUpdateRate = 66;
                                     }
                                 }
                                 break;

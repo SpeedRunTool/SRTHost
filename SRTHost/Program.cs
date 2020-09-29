@@ -32,7 +32,11 @@ namespace SRTHost
             };
 
             TextWriter consoleTextWriter = Console.Out;
-            using (logFileStream = new FileStream(@"SRTHost.log", FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+#if x64
+            using (logFileStream = new FileStream(@"SRTHost64.log", FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+#else
+            using (logFileStream = new FileStream(@"SRTHost32.log", FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+#endif
             using (logTextWriter = new LogTextWriter(logFileStream, Encoding.UTF8, consoleTextWriter))
             {
                 Console.SetOut(logTextWriter);

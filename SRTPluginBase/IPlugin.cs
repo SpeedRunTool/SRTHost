@@ -1,4 +1,6 @@
-﻿namespace SRTPluginBase
+﻿using System.Threading.Tasks;
+
+namespace SRTPluginBase
 {
     public interface IPlugin
     {

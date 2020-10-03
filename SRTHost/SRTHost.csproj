@@ -11,8 +11,8 @@
     <Copyright>Copyright © 2020 Travis J Gutjahr</Copyright>
     <Product>SRT Host</Product>
     <Description>A plugin host for various informational SpeedRun Tools.</Description>
-    <Version>2.4.1</Version>
-    <FileVersion>2.4.1.0</FileVersion>
+    <Version>2.4.2</Version>
+    <FileVersion>2.4.2.0</FileVersion>
     <AssemblyVersion>2.4.0.0</AssemblyVersion>
   </PropertyGroup>
 

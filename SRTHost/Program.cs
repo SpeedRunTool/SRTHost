@@ -44,7 +44,7 @@ namespace SRTHost
 
                 FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
                 Console.WriteLine("{0} v{1} {2}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
-                Console.WriteLine(new string('-', Console.WindowWidth));
+                Console.WriteLine(new string('-', 50));
 
                 foreach (KeyValuePair<string, string?> kvp in (commandLineProcessor = new CommandLineProcessor(args)))
                 {

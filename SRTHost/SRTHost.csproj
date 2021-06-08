@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0-windows</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Platforms>x64;x86</Platforms>
     <Authors>Travis J. Gutjahr</Authors>
@@ -12,9 +12,16 @@
     <Copyright>Copyright © 2021 Travis J. Gutjahr</Copyright>
     <Product>SRT Host</Product>
     <Description>A plugin host for various informational SpeedRun Tools.</Description>
-    <Version>2.4.4</Version>
-    <FileVersion>2.4.4.0</FileVersion>
-    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <Version>3.0.0.0</Version>
+    <FileVersion>3.0.0.0</FileVersion>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <DebugType>embedded</DebugType>
+    <PublishProtocol>FileSystem</PublishProtocol>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>True</PublishSingleFile>
+    <PublishReadyToRun>True</PublishReadyToRun>
+    <PublishTrimmed>False</PublishTrimmed>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -35,26 +42,37 @@
   
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <OutputPath>bin\Debug</OutputPath>
+    <PublishDir>bin\Debug\net5.0-windows\publish\</PublishDir>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <OutputPath>bin\Release</OutputPath>
+    <PublishDir>bin\Release\net5.0-windows\publish\</PublishDir>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <AssemblyName>SRTHost64</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)'=='x86'">
     <AssemblyName>SRTHost32</AssemblyName>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj" />
+    <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj">
+      <!--<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>-->
+    </ProjectReference>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(BuildingInsideVisualStudio)' == 'true' And '$(TJGutjahr)' == 'true'">
     <Exec Command="&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA1 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA1 &quot;$(TargetDir)\$(AssemblyName).dll&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA256 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA256 /as &quot;$(TargetDir)\$(AssemblyName).dll&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA512 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA512 /as &quot;$(TargetDir)\$(AssemblyName).dll&quot;&#xD;&#xA;" />
+    <Exec Command="&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA1 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA1 &quot;$(TargetDir)\$(AssemblyName).exe&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA256 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA256 /as &quot;$(TargetDir)\$(AssemblyName).exe&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA512 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA512 /as &quot;$(TargetDir)\$(AssemblyName).exe&quot;&#xD;&#xA;" />
+  </Target>
+
+  <Target Name="PostPublish" AfterTargets="PostPublishEvent" Condition="'$(BuildingInsideVisualStudio)' == 'true' And '$(TJGutjahr)' == 'true'">
     <Exec Command="&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA1 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA1 &quot;$(TargetDir)\$(AssemblyName).exe&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA256 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA256 /as &quot;$(TargetDir)\$(AssemblyName).exe&quot;&#xD;&#xA;&quot;C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe&quot; sign /tr &quot;http://timestamp.digicert.com&quot; /td SHA512 /sha1 &quot;027e4c2a016f695ab4adefda2d326199b571bf0a&quot; /fd SHA512 /as &quot;$(TargetDir)\$(AssemblyName).exe&quot;&#xD;&#xA;" />
   </Target>
   

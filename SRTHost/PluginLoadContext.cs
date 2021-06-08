@@ -54,22 +54,22 @@ namespace SRTHost
                 return null;
         }
 
-        public X509Certificate GetSigningInfo(Assembly assembly)
+        public X509Certificate GetSigningInfo(string location)
         {
             try
             {
-                return X509Certificate.CreateFromSignedFile(assembly.Location);
+                return X509Certificate.CreateFromSignedFile(location);
             }
             catch (Exception ex)
             {
                 return null;
             }
         }
-        public X509Certificate2 GetSigningInfo2(Assembly assembly)
+        public X509Certificate2 GetSigningInfo2(string location)
         {
             try
             {
-                return new X509Certificate2(GetSigningInfo(assembly));
+                return new X509Certificate2(GetSigningInfo(location));
             }
             catch (Exception ex)
             {

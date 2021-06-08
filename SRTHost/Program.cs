@@ -42,7 +42,13 @@ namespace SRTHost
                 Console.SetOut(logTextWriter);
                 Console.SetError(logTextWriter);
 
-                FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+
+                FileVersionInfo srtHostFileVersionInfo;
+#if x64
+                srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"));
+#else
+                srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"));
+#endif
                 Console.WriteLine("{0} v{1} {2}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
                 Console.WriteLine(new string('-', 50));
 
@@ -91,18 +97,20 @@ namespace SRTHost
                 bool criticalFailure = false; // Used if we should fail right past the finally clause.
                 try
                 {
-                    ShowSigningInfo(Assembly.GetExecutingAssembly(), false);
+#if x64
+                    Console.WriteLine("  Loaded host: {0}", Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost64.exe"));
+                    ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"), false);
+#else
+                    Console.WriteLine("  Loaded host: {0}", Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost32.exe"));
+                    ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"), false);
+#endif
                     allPlugins = new DirectoryInfo("plugins")
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
                         .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(pluginAssemblyFileInfo.FullName))
                         .Where((Assembly pluginAssembly) => pluginAssembly != null)
-                        .SelectMany((Assembly pluginAssembly) =>
-                        {
-                            ShowSigningInfo(pluginAssembly);
-                            return CreatePlugins(pluginAssembly);
-                        }).ToArray();
+                        .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
                     Console.WriteLine();
 
                     if (allPlugins.Length == 0)
@@ -244,44 +252,40 @@ namespace SRTHost
 
         private static Assembly LoadPlugin(string pluginPath)
         {
+            Assembly returnValue = null;
+
             try
             {
-                return loadContext.LoadFromAssemblyPath(pluginPath);
+                returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
+                Console.WriteLine("  Loaded plugin: {0}", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath));
+                ShowSigningInfo(pluginPath);
             }
             catch (FileLoadException ex)
             {
                 HandleIncorrectArchitecture(pluginPath);
-                return null;
+                ShowSigningInfo(pluginPath);
             }
             catch (Exception ex)
             {
                 HandleException(ex);
-                return null;
             }
+
+            return returnValue;
         }
 
-        //private static Assembly LoadPlugin(string relativePath)
-        //{
-        //    try
-        //    {
-        //        // Navigate up to the solution root
-        //        string root = Path.GetFullPath(Path.Combine(
-        //            Path.GetDirectoryName(
-        //                Path.GetDirectoryName(
-        //                    Path.GetDirectoryName(
-        //                        Path.GetDirectoryName(
-        //                            Path.GetDirectoryName(typeof(Program).Assembly.Location)))))));
-
-        //        string pluginLocation = Path.GetFullPath(Path.Combine(root, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
-        //        AssemblyName pluginAssemblyName = new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation));
-        //        return loadContext.LoadFromAssemblyName(pluginAssemblyName);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        HandleException(ex);
-        //        return null;
-        //    }
-        //}
+        public static void ShowSigningInfo(string location, bool isPlugin = true)
+        {
+            X509Certificate2 cert2;
+            if ((cert2 = loadContext.GetSigningInfo2(location)) != null)
+            {
+                if (cert2.Verify())
+                    Console.WriteLine("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+                else
+                    Console.WriteLine("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+            }
+            else
+                Console.WriteLine("\tNo digital signature found.");
+        }
 
         private static IEnumerable<IPlugin> CreatePlugins(Assembly assembly)
         {
@@ -331,22 +335,6 @@ namespace SRTHost
                     }
                 }
             }
-        }
-
-        public static void ShowSigningInfo(Assembly assembly, bool isPlugin = true)
-        {
-            Console.WriteLine("  Loaded {0}: {1}", (isPlugin) ? "plugin" : "host", Path.GetRelativePath(Environment.CurrentDirectory, assembly?.Location));
-
-            X509Certificate2 cert2;
-            if ((cert2 = loadContext.GetSigningInfo2(assembly)) != null)
-            {
-                if (cert2.Verify())
-                    Console.WriteLine("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
-                else
-                    Console.WriteLine("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
-            }
-            else
-                Console.WriteLine("\tNo digital signature found.");
         }
 
         public static void HandleException(Exception exception)

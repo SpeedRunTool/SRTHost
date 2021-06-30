@@ -2,6 +2,7 @@
   "profiles": {
     "SRTHost": {
       "commandName": "Project",
+      "commandLineArgs": "--Provider=SRTPluginProviderRE2",
       "nativeDebugging": true
     }
   }

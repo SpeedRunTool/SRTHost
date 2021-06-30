@@ -52,6 +52,7 @@ namespace SRTHost
                 Console.WriteLine("{0} v{1} {2}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
                 Console.WriteLine(new string('-', 50));
 
+                string loadSpecificProvider = string.Empty;
                 foreach (KeyValuePair<string, string?> kvp in (commandLineProcessor = new CommandLineProcessor(args)))
                 {
                     Console.WriteLine("Command-line arguments:");
@@ -83,6 +84,11 @@ namespace SRTHost
                                 }
                                 break;
                             }
+                        case "PROVIDER":
+                            {
+                                loadSpecificProvider = kvp.Value;
+                                break;
+                            }
                         default:
                             {
                                 break;
@@ -104,13 +110,27 @@ namespace SRTHost
                     Console.WriteLine("  Loaded host: {0}", Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost32.exe"));
                     ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"), false);
 #endif
-                    allPlugins = new DirectoryInfo("plugins")
-                        .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
-                        .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
-                        .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                        .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(pluginAssemblyFileInfo.FullName))
-                        .Where((Assembly pluginAssembly) => pluginAssembly != null)
-                        .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
+                    if (loadSpecificProvider == string.Empty)
+                    {
+                        allPlugins = new DirectoryInfo("plugins")
+                            .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
+                            .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
+                            .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
+                            .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(pluginAssemblyFileInfo.FullName))
+                            .Where((Assembly pluginAssembly) => pluginAssembly != null)
+                            .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
+                    }
+                    else
+                    {
+                        allPlugins = new DirectoryInfo("plugins")
+                            .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
+                            .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
+                            .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
+                            .Where((FileInfo pluginAssemblyFileInfo) => !pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo.Name.Equals(string.Format("{0}.dll", loadSpecificProvider), StringComparison.InvariantCultureIgnoreCase)))
+                            .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(pluginAssemblyFileInfo.FullName))
+                            .Where((Assembly pluginAssembly) => pluginAssembly != null)
+                            .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
+                    }
                     Console.WriteLine();
 
                     if (allPlugins.Length == 0)

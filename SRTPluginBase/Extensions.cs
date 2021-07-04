@@ -44,7 +44,7 @@ namespace SRTPluginBase
             {
                 if (File.Exists(configFile))
                     using (FileStream fs = new FileStream(configFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
-                        return JsonSerializer.DeserializeAsync<T>(fs, jso).Result;
+                        return JsonSerializer.DeserializeAsync<T>(fs, JSO).Result;
                 else
                     return new T(); // File did not exist, just return a new instance.
             }
@@ -71,7 +71,7 @@ namespace SRTPluginBase
                 try
                 {
                     using (FileStream fs = new FileStream(configFile, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
-                        JsonSerializer.SerializeAsync<T>(fs, configuration, jso).Wait();
+                        JsonSerializer.SerializeAsync<T>(fs, configuration, JSO).Wait();
                 }
                 catch (Exception ex)
                 {

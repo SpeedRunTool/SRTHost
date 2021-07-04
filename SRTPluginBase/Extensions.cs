@@ -30,7 +30,7 @@ namespace SRTPluginBase
             return true;
         }
 
-        private static readonly JsonSerializerOptions jso = new JsonSerializerOptions() { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip, WriteIndented = true };
+        public static readonly JsonSerializerOptions JSO = new JsonSerializerOptions() { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip, WriteIndented = true };
         public static string GetConfigFile(this Assembly a) => Path.Combine(new FileInfo(a.Location).DirectoryName, string.Format("{0}.cfg", Path.GetFileNameWithoutExtension(new FileInfo(a.Location).Name)));
 
         public static T LoadConfiguration<T>() where T : class, new() => LoadConfiguration<T>(null);

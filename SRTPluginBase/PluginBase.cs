@@ -2,7 +2,6 @@
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace SRTPluginBase
 {
@@ -18,13 +17,16 @@ namespace SRTPluginBase
         private JsonSerializerOptions jso = new JsonSerializerOptions() { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip, WriteIndented = true };
 
         public virtual T LoadConfiguration<T>() where T : class, new() => LoadConfiguration<T>(null);
-        private T LoadConfiguration<T>(IPluginHostDelegates hostDelegates) where T : class, new()
+        public virtual T LoadConfiguration<T>(IPluginHostDelegates hostDelegates = null) where T : class, new() => LoadConfiguration<T>(null, hostDelegates);
+        public T LoadConfiguration<T>(string? configFile = null, IPluginHostDelegates hostDelegates = null) where T : class, new()
         {
-            FileInfo configFile = new FileInfo(GetConfigFile(typeof(T).Assembly));
+            if (configFile == null)
+                configFile = GetConfigFile(typeof(T).Assembly);
+
             try
             {
-                if (configFile.Exists)
-                    using (FileStream fs = new FileStream(configFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                if (File.Exists(configFile))
+                    using (FileStream fs = new FileStream(configFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
                         return JsonSerializer.DeserializeAsync<T>(fs, jso).Result;
                 else
                     return new T(); // File did not exist, just return a new instance.
@@ -41,9 +43,12 @@ namespace SRTPluginBase
         }
 
         public virtual void SaveConfiguration<T>(T configuration) where T : class, new() => SaveConfiguration<T>(configuration, null);
-        private void SaveConfiguration<T>(T configuration, IPluginHostDelegates hostDelegates) where T : class, new()
+        public virtual void SaveConfiguration<T>(T configuration, IPluginHostDelegates hostDelegates = null) where T : class, new() => SaveConfiguration<T>(configuration, null, hostDelegates);
+        public void SaveConfiguration<T>(T configuration, string? configFile = null, IPluginHostDelegates hostDelegates = null) where T : class, new()
         {
-            string configFile = GetConfigFile(typeof(T).Assembly);
+            if (configFile == null)
+                configFile = GetConfigFile(typeof(T).Assembly);
+
             if (configuration != null) // Only save if configuration is not null.
             {
                 try

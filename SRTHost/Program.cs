@@ -328,30 +328,21 @@ namespace SRTHost
                 {
                     if (type.GetInterface(nameof(IPluginProvider)) != null)
                     {
-                        IPluginProvider result = Activator.CreateInstance(type) as IPluginProvider;
-                        if (result != null)
-                        {
-                            count++;
-                            yield return result;
-                        }
+                        IPluginProvider result = (IPluginProvider)Activator.CreateInstance(type); // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
+                        count++;
+                        yield return result;
                     }
                     else if (type.GetInterface(nameof(IPluginUI)) != null)
                     {
-                        IPluginUI result = Activator.CreateInstance(type) as IPluginUI;
-                        if (result != null)
-                        {
-                            count++;
-                            yield return result;
-                        }
+                        IPluginUI result = (IPluginUI)Activator.CreateInstance(type);
+                        count++;
+                        yield return result;
                     }
                     else if (type.GetInterface(nameof(IPlugin)) != null)
                     {
-                        IPlugin result = Activator.CreateInstance(type) as IPlugin;
-                        if (result != null)
-                        {
-                            count++;
-                            yield return result;
-                        }
+                        IPlugin result = (IPlugin)Activator.CreateInstance(type);
+                        count++;
+                        yield return result;
                     }
                 }
             }

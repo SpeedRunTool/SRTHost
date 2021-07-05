@@ -326,7 +326,7 @@ namespace SRTHost
             {
                 foreach (Type type in typesInAssembly)
                 {
-                    if (typeof(IPluginProvider).IsAssignableFrom(type))
+                    if (type.GetInterface(nameof(IPluginProvider)) != null)
                     {
                         IPluginProvider result = Activator.CreateInstance(type) as IPluginProvider;
                         if (result != null)
@@ -335,7 +335,7 @@ namespace SRTHost
                             yield return result;
                         }
                     }
-                    else if (typeof(IPluginUI).IsAssignableFrom(type))
+                    else if (type.GetInterface(nameof(IPluginUI)) != null)
                     {
                         IPluginUI result = Activator.CreateInstance(type) as IPluginUI;
                         if (result != null)
@@ -344,7 +344,7 @@ namespace SRTHost
                             yield return result;
                         }
                     }
-                    else if (typeof(IPlugin).IsAssignableFrom(type))
+                    else if (type.GetInterface(nameof(IPlugin)) != null)
                     {
                         IPlugin result = Activator.CreateInstance(type) as IPlugin;
                         if (result != null)

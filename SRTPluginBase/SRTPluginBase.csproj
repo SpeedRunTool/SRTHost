@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Platforms>AnyCPU</Platforms>
     <Authors>Travis J. Gutjahr</Authors>
@@ -10,9 +10,10 @@
     <Copyright>Copyright © 2021 Travis J. Gutjahr</Copyright>
     <Product>SRT Plugin Base</Product>
     <Description>The plugin interfaces required to develop plugins for the SRT Host.</Description>
-    <Version>2.4.4</Version>
-    <FileVersion>2.4.4.0</FileVersion>
-    <AssemblyVersion>2.4.1.0</AssemblyVersion>
+    <Version>3.0.0.0</Version>
+    <FileVersion>3.0.0.0</FileVersion>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(BuildingInsideVisualStudio)' == 'true' And '$(TJGutjahr)' == 'true'">
@@ -20,7 +21,7 @@
   </Target>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="4.7.2" />
+    <PackageReference Include="System.Text.Json" Version="5.0.2" />
   </ItemGroup>
   
 </Project>

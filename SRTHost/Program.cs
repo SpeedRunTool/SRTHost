@@ -105,11 +105,12 @@ namespace SRTHost
                 {
 #if x64
                     Console.WriteLine("  Loaded host: {0}", Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost64.exe"));
-                    ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"), false);
+                    ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"));
 #else
                     Console.WriteLine("  Loaded host: {0}", Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost32.exe"));
-                    ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"), false);
+                    ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"));
 #endif
+
                     if (loadSpecificProvider == string.Empty)
                     {
                         allPlugins = new DirectoryInfo("plugins")
@@ -214,9 +215,9 @@ namespace SRTHost
                     pluginStatusResponse = plugin.Plugin.Startup(hostDelegates);
 
                     if (pluginStatusResponse == 0)
-                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] successfully started.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision);
+                        Console.WriteLine("[{0}] successfully started.", plugin.Plugin.Info.Name);
                     else
-                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] failed to startup properly with status {5}.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision, pluginStatusResponse);
+                        Console.WriteLine("[{0}] failed to startup properly with status {1}.", plugin.Plugin.Info.Name, pluginStatusResponse);
                 }
                 catch (Exception ex)
                 {
@@ -256,9 +257,9 @@ namespace SRTHost
                     pluginStatusResponse = plugin.Plugin.Shutdown();
 
                     if (pluginStatusResponse == 0)
-                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] successfully shutdown.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision);
+                        Console.WriteLine("[{0}] successfully shutdown.", plugin.Plugin.Info.Name);
                     else
-                        Console.WriteLine("[{0} v{1}.{2}.{3}.{4}] failed to shutdown properly with status {5}.", plugin.Plugin.Info.Name, plugin.Plugin.Info.VersionMajor, plugin.Plugin.Info.VersionMinor, plugin.Plugin.Info.VersionBuild, plugin.Plugin.Info.VersionRevision, pluginStatusResponse);
+                        Console.WriteLine("[{0}] failed to shutdown properly with status {1}.", plugin.Plugin.Info.Name, pluginStatusResponse);
                 }
                 catch (Exception ex)
                 {
@@ -279,11 +280,13 @@ namespace SRTHost
                 returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
                 Console.WriteLine("  Loaded plugin: {0}", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath));
                 ShowSigningInfo(pluginPath);
+                ShowVersionInfo(pluginPath);
             }
             catch (FileLoadException ex)
             {
                 HandleIncorrectArchitecture(pluginPath);
                 ShowSigningInfo(pluginPath);
+                ShowVersionInfo(pluginPath);
             }
             catch (Exception ex)
             {
@@ -293,7 +296,7 @@ namespace SRTHost
             return returnValue;
         }
 
-        public static void ShowSigningInfo(string location, bool isPlugin = true)
+        public static void ShowSigningInfo(string location)
         {
             X509Certificate2 cert2;
             if ((cert2 = loadContext.GetSigningInfo2(location)) != null)
@@ -305,6 +308,12 @@ namespace SRTHost
             }
             else
                 Console.WriteLine("\tNo digital signature found.");
+        }
+
+        public static void ShowVersionInfo(string location)
+        {
+            FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(location);
+            Console.WriteLine("\tVersion v{0}.{1}.{2}.{3}", versionInfo.ProductMajorPart, versionInfo.ProductMinorPart, versionInfo.ProductBuildPart, versionInfo.ProductPrivatePart);
         }
 
         private static IEnumerable<IPlugin> CreatePlugins(Assembly assembly)

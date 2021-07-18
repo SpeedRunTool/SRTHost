@@ -1,0 +1,104 @@
+name: "Automated Release"
+
+on:
+  pull_request:
+    branches:
+      - "master"
+
+jobs:
+  publish:
+    name: "Publish"
+    runs-on: "windows-latest"
+    strategy:
+      matrix:
+        publish-profile-name: [x86, x64]
+    env:
+      working-directory: .
+      project-name: SRTHost
+    outputs:
+      solution: ${{steps.generated-variables-1.outputs.solution}}
+      project: ${{steps.generated-variables-1.outputs.project}}
+      publish-directory: ${{steps.generated-variables-1.outputs.publish-directory}}
+      zip-filename: ${{steps.generated-variables-2.outputs.zip-filename}}
+      version: ${{steps.get_version.outputs.RELEASE_VERSION}}
+
+    steps:
+    # Checkout latest code
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    # Set some output variables
+    - name: Set the main environment variables based on other environment variables
+      id: generated-variables-1
+      run: |
+        echo '::set-output name=solution::${{env.project-name}}.sln'
+        echo '::set-output name=project::${{env.project-name}}/${{env.project-name}}.csproj'
+        echo '::set-output name=publish-directory::${{env.project-name}}/bin/Release/net5.0-windows/publish/'
+
+    # Get the project's version number
+    - name: Get project version
+      id: get_version
+      uses: greenygh0st/net-proj-release-version@v1
+      with:
+        PROJ_FILE: ${{steps.generated-variables-1.outputs.project}}
+
+    # Sets the zip-filename output variable based on the project version
+    - name: Sets the zip-filename environment variable based on the project version
+      id: generated-variables-2
+      run: |
+        echo '::set-output name=zip-filename::${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.zip'
+
+    # Install .NET
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+
+    # Compiles the program and runs the publish profile
+    - name: Compile and run publish profile
+      run: |
+        dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:PublishProfile=${{matrix.publish-profile-name}}
+
+    - name: Upload publish artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        path: |
+          ${{steps.generated-variables-1.outputs.publish-directory}}SRTHost*.exe
+
+  release:
+    name: "Release"
+    runs-on: "windows-latest"
+    needs: publish
+    env:
+      working-directory: .
+      is-prerelease: true
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v2
+  
+    # Zip the publish artifacts
+    - name: Zip the publish artifacts
+      run: |
+        Add-Type -assembly 'System.IO.Compression'
+        Add-Type -assembly 'System.IO.Compression.FileSystem'
+        [System.IO.Compression.ZipArchive]$zipFile = [System.IO.Compression.ZipFile]::Open('${{needs.publish.outputs.zip-filename}}', ([System.IO.Compression.ZipArchiveMode]::Create))
+        $filesToZip = (Get-ChildItem -Path ${{needs.publish.outputs.publish-directory}} -Filter SRTHost*.exe).fullname
+        foreach ($fileToZip in $filesToZip) {
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, $fileToZip, (Split-Path $fileToZip -Leaf))
+        }
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, 'LICENSE', 'LICENSE')
+        $zipFile.Dispose()
+
+    # Pushes the release
+    - name: Publish release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: ${{needs.publish.outputs.version}}
+        prerelease: ${{env.is-prerelease}}
+        title: 'Automated Build - v${{needs.publish.outputs.version}}'
+        files: |
+          ${{needs.publish.outputs.zip-filename}}

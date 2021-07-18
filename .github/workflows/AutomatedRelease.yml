@@ -71,15 +71,15 @@ jobs:
 
     - name: Debug commands
       run: |
-        Get-ChildItem -Path 'C:/Program Files (x86)/Windows Kits/10/bin/'
+        Get-ChildItem -Path 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/'
         
     - name: Code sign the exes
       run: |
         $filesToZip = (Get-ChildItem -Path '${{steps.generated-variables-1.outputs.publish-directory}}' -Filter SRTHost*.exe).fullname
         foreach ($fileToZip in $filesToZip) {
-            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToZip"
-            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 "$fileToZip"
-            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 "$fileToZip"
+            "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToZip"
+            "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 "$fileToZip"
+            "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 "$fileToZip"
         }
 
     - name: Upload publish artifacts

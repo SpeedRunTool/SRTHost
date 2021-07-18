@@ -62,6 +62,22 @@ jobs:
       run: |
         dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:PublishProfile=${{matrix.publish-profile-name}}
 
+    # Decode the base 64 encoded pfx and save the code signing certificate
+    - name: Decode the pfx
+      run: |
+        $pfxCertBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE }}")
+        $pfxPath = Join-Path -Path ${{steps.generated-variables-1.outputs.publish-directory}} -ChildPath CodeSign.pfx
+        [IO.File]::WriteAllBytes("$pfxPath", $pfxCertBytes)
+        
+    - name: Code sign the exes
+      run: |
+        $filesToZip = (Get-ChildItem -Path ${{steps.generated-variables-1.outputs.publish-directory}} -Filter SRTHost*.exe).fullname
+        foreach ($fileToZip in $filesToZip) {
+            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "$pfxPath" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToZip"
+            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "$pfxPath" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 "$fileToZip"
+            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "$pfxPath" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 "$fileToZip"
+        }
+
     - name: Upload publish artifacts
       uses: actions/upload-artifact@v2
       with:

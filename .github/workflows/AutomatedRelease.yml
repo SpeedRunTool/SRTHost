@@ -65,17 +65,17 @@ jobs:
     # Decode the base 64 encoded pfx and save the code signing certificate
     - name: Decode the pfx
       run: |
-        $pfxCertBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE }}")
-        $pfxPath = Join-Path -Path ${{steps.generated-variables-1.outputs.publish-directory}} -ChildPath CodeSign.pfx
-        [IO.File]::WriteAllBytes("$pfxPath", $pfxCertBytes)
+        Set-Content -Path ${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt -Value '${{ secrets.CERTIFICATE }}'
+        certutil -decode ${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt ${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx
+        Remove-Item -Path ${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt
         
     - name: Code sign the exes
       run: |
         $filesToZip = (Get-ChildItem -Path ${{steps.generated-variables-1.outputs.publish-directory}} -Filter SRTHost*.exe).fullname
         foreach ($fileToZip in $filesToZip) {
-            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "$pfxPath" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToZip"
-            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "$pfxPath" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 "$fileToZip"
-            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "$pfxPath" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 "$fileToZip"
+            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToZip"
+            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 "$fileToZip"
+            signtool.exe sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 "$fileToZip"
         }
 
     - name: Upload publish artifacts

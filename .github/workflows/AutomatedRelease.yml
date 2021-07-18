@@ -15,6 +15,7 @@ jobs:
     env:
       working-directory: .
       project-name: SRTHost
+      platform: ${{matrix.publish-profile-name}}
     outputs:
       solution: ${{steps.generated-variables-1.outputs.solution}}
       project: ${{steps.generated-variables-1.outputs.project}}

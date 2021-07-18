@@ -85,11 +85,14 @@ jobs:
 
     - name: Download all artifacts
       uses: actions/download-artifact@v2
-  
+
+    - name: Get current location (Debug)
+      run: |
+        Get-Location
+
     # Zip the publish artifacts
     - name: Zip the publish artifacts
       run: |
-        Get-Location
         Add-Type -assembly 'System.IO.Compression'
         Add-Type -assembly 'System.IO.Compression.FileSystem'
         [System.IO.Compression.ZipArchive]$zipFile = [System.IO.Compression.ZipFile]::Open('${{needs.publish.outputs.zip-filename}}', ([System.IO.Compression.ZipArchiveMode]::Create))

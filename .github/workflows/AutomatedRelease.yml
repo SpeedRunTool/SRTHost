@@ -120,8 +120,8 @@ jobs:
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: ${{needs.publish.outputs.version}}
+        automatic_release_tag: "latest"
         prerelease: ${{env.is-prerelease}}
-        title: 'Automated Build - v${{needs.publish.outputs.version}}'
+        title: 'Automated Build - ${{needs.publish.outputs.version}}'
         files: |
           ${{needs.publish.outputs.zip-filename}}

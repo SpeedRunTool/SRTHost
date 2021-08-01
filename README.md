@@ -1,3 +1,4 @@
+![Automated Build](https://github.com/Squirrelies/SRTHost/actions/workflows/AutomatedRelease.yml/badge.svg)
 # SRTHost
 A plugin host for various informational SpeedRun Tools.
 

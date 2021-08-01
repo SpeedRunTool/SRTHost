@@ -1,5 +1,5 @@
 # SRTHost
-[![Automated Release](https://github.com/Squirrelies/SRTHost/actions/workflows/AutomatedRelease.yml/badge.svg)](https://github.com/Squirrelies/SRTHost/actions?query=workflow%3AAutomatedRelease)
+[![Automated Release](https://github.com/Squirrelies/SRTHost/actions/workflows/AutomatedRelease.yml/badge.svg)](https://github.com/Squirrelies/SRTHost/actions?query=workflow%3AAutomated%20Release)
 
 A plugin host for various informational SpeedRun Tools.
 

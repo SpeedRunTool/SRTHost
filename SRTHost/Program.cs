@@ -19,6 +19,7 @@ namespace SRTHost
         private static FileStream logFileStream;
         private static LogTextWriter logTextWriter;
         private static CommandLineProcessor commandLineProcessor;
+        public static string loadSpecificProvider = string.Empty;
 
         private static int settingUpdateRate = 33; // Default to 33ms.
 
@@ -52,7 +53,6 @@ namespace SRTHost
                 Console.WriteLine("{0} v{1} {2}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
                 Console.WriteLine(new string('-', 50));
 
-                string loadSpecificProvider = string.Empty;
                 foreach (KeyValuePair<string, string?> kvp in (commandLineProcessor = new CommandLineProcessor(args)))
                 {
                     Console.WriteLine("Command-line arguments:");

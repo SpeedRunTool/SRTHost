@@ -1,5 +1,6 @@
 ﻿using SRTPluginBase;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -38,15 +39,36 @@ namespace SRTHost
 
         private string? DetectAssemblyLocation(string assemblyName)
         {
-            FileInfo pluginLocation = this.pluginDirectory
+            FileInfo specificLocation = null;
+            FileInfo pluginLocation = null;
+            FileInfo rootLocation = null;
+
+            // If we're loading a specific provider, try their folder first.
+            if (Program.loadSpecificProvider != string.Empty)
+                specificLocation = this.pluginDirectory
+                    .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
+                    .FirstOrDefault(a => a.Directory.Name == Program.loadSpecificProvider && a.Directory.Parent.Name == "plugins");
+
+            // If we are not doing specific provider OR it was not found in that folder, check all plugin folders.
+            pluginLocation = this.pluginDirectory
                 .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
                 .FirstOrDefault(a => a.Directory.Name == assemblyName && a.Directory.Parent.Name == "plugins");
 
-            FileInfo rootLocation = this.rootDirectory
+            // If we STILL haven't found it, check any folder.
+            rootLocation = this.rootDirectory
                 .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
-                .FirstOrDefault();
+                .OrderByDescending(a =>
+                {
+                    FileVersionInfo productVersion = FileVersionInfo.GetVersionInfo(a.FullName);
+                    return productVersion.ProductMajorPart * 1000 +
+                    productVersion.ProductMinorPart * 100 +
+                    productVersion.ProductBuildPart * 10 +
+                    productVersion.ProductPrivatePart;
+                }).FirstOrDefault();
 
-            if (pluginLocation != null)
+            if (specificLocation != null)
+                return specificLocation.FullName;
+            else if (pluginLocation != null)
                 return pluginLocation.FullName;
             else if (rootLocation != null)
                 return rootLocation.FullName;

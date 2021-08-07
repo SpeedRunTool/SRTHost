@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace SRTHost
@@ -18,12 +17,9 @@ namespace SRTHost
         private static PluginHostDelegates hostDelegates = new PluginHostDelegates();
         private static FileStream logFileStream;
         private static LogTextWriter logTextWriter;
-        private static CommandLineProcessor commandLineProcessor;
         public static string loadSpecificProvider = string.Empty;
-
         private static int settingUpdateRate = 33; // Default to 33ms.
 
-        //[STAThread]
         public static async Task Main(params string[] args)
         {
             Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) =>
@@ -53,7 +49,7 @@ namespace SRTHost
                 Console.WriteLine("{0} v{1} {2}", srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
                 Console.WriteLine(new string('-', 50));
 
-                foreach (KeyValuePair<string, string?> kvp in (commandLineProcessor = new CommandLineProcessor(args)))
+                foreach (KeyValuePair<string, string?> kvp in new CommandLineProcessor(args))
                 {
                     Console.WriteLine("Command-line arguments:");
                     if (kvp.Value != null)
@@ -117,9 +113,9 @@ namespace SRTHost
                             .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                             .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                             .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                            .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(pluginAssemblyFileInfo.FullName))
+                            .Select((FileInfo pluginAssemblyFileInfo) => PluginLoadingStatics.LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory.FullName), pluginAssemblyFileInfo.FullName))
                             .Where((Assembly pluginAssembly) => pluginAssembly != null)
-                            .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
+                            .SelectMany((Assembly pluginAssembly) => PluginLoadingStatics.CreatePlugins(pluginAssembly)).ToArray();
                     }
                     else
                     {
@@ -128,9 +124,9 @@ namespace SRTHost
                             .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                             .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
                             .Where((FileInfo pluginAssemblyFileInfo) => !pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo.Name.Equals(string.Format("{0}.dll", loadSpecificProvider), StringComparison.InvariantCultureIgnoreCase)))
-                            .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(pluginAssemblyFileInfo.FullName))
+                            .Select((FileInfo pluginAssemblyFileInfo) => PluginLoadingStatics.LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory.FullName), pluginAssemblyFileInfo.FullName))
                             .Where((Assembly pluginAssembly) => pluginAssembly != null)
-                            .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
+                            .SelectMany((Assembly pluginAssembly) => PluginLoadingStatics.CreatePlugins(pluginAssembly)).ToArray();
                     }
                     Console.WriteLine();
 
@@ -269,37 +265,10 @@ namespace SRTHost
             }
         }
 
-        private static PluginLoadContext loadContext = new PluginLoadContext(Environment.CurrentDirectory + Path.DirectorySeparatorChar);
-
-        private static Assembly LoadPlugin(string pluginPath)
-        {
-            Assembly returnValue = null;
-
-            try
-            {
-                returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
-                Console.WriteLine("  Loaded plugin: {0}", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath));
-                ShowSigningInfo(pluginPath);
-                ShowVersionInfo(pluginPath);
-            }
-            catch (FileLoadException ex)
-            {
-                HandleIncorrectArchitecture(pluginPath);
-                ShowSigningInfo(pluginPath);
-                ShowVersionInfo(pluginPath);
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex);
-            }
-
-            return returnValue;
-        }
-
         public static void ShowSigningInfo(string location)
         {
             X509Certificate2 cert2;
-            if ((cert2 = loadContext.GetSigningInfo2(location)) != null)
+            if ((cert2 = SigningInfo.GetSigningInfo2(location)) != null)
             {
                 if (cert2.Verify())
                     Console.WriteLine("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
@@ -314,47 +283,6 @@ namespace SRTHost
         {
             FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(location);
             Console.WriteLine("\tVersion v{0}.{1}.{2}.{3}", versionInfo.ProductMajorPart, versionInfo.ProductMinorPart, versionInfo.ProductBuildPart, versionInfo.ProductPrivatePart);
-        }
-
-        private static IEnumerable<IPlugin> CreatePlugins(Assembly assembly)
-        {
-            int count = 0;
-            Type[] typesInAssembly = null;
-
-            try
-            {
-                typesInAssembly = assembly.GetTypes();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex);
-                yield break;
-            }
-
-            if (typesInAssembly != null)
-            {
-                foreach (Type type in typesInAssembly)
-                {
-                    if (type.GetInterface(nameof(IPluginProvider)) != null)
-                    {
-                        IPluginProvider result = (IPluginProvider)Activator.CreateInstance(type); // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
-                        count++;
-                        yield return result;
-                    }
-                    else if (type.GetInterface(nameof(IPluginUI)) != null)
-                    {
-                        IPluginUI result = (IPluginUI)Activator.CreateInstance(type);
-                        count++;
-                        yield return result;
-                    }
-                    else if (type.GetInterface(nameof(IPlugin)) != null)
-                    {
-                        IPlugin result = (IPlugin)Activator.CreateInstance(type);
-                        count++;
-                        yield return result;
-                    }
-                }
-            }
         }
 
         public static void HandleException(Exception exception)
@@ -377,16 +305,5 @@ namespace SRTHost
             else if (sourcePlugin != null && assemblyName != null)
                 Console.WriteLine("! Failed plugin: plugins\\{0}\\{0}.dll\r\n\tIncorrect architecture in referenced assembly \"{2}\". {1}.", sourcePlugin, (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL", assemblyName);
         }
-
-        //public static void WriteToConsoleAndLog() => WriteToConsoleAndLog(string.Empty);
-        //public static void WriteToConsoleAndLog(string format, params object[] arg) => WriteToConsoleAndLog(string.Format(format, arg));
-        //public static void WriteToConsoleAndLog(string message)
-        //{
-        //    try { Console.WriteLine(message); }
-        //    catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
-
-        //    //try { logStreamWriter.WriteLine(message); }
-        //    //catch { } // If we hit this, wtf are we really supposed to do short of break into it? Yikers.
-        //}
     }
 }

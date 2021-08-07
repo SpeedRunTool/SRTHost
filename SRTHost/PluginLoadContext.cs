@@ -10,13 +10,19 @@ namespace SRTHost
 {
     public class PluginLoadContext : AssemblyLoadContext
     {
-        private DirectoryInfo pluginDirectory;
-        private AssemblyDependencyResolver _pluginResolver;
+        private DirectoryInfo thisPluginDirectory;
+        private AssemblyDependencyResolver _thisPluginResolver;
 
-        public PluginLoadContext(string pluginDirectory)
+        private DirectoryInfo rootPluginDirectory;
+        private AssemblyDependencyResolver _rootPluginResolver;
+
+        public PluginLoadContext(string thisPluginDirectory, string rootPluginDirectory)
         {
-            this.pluginDirectory = new DirectoryInfo(pluginDirectory);
-            this._pluginResolver = new AssemblyDependencyResolver(this.pluginDirectory.FullName);
+            this.thisPluginDirectory = new DirectoryInfo(thisPluginDirectory);
+            this._thisPluginResolver = new AssemblyDependencyResolver(this.thisPluginDirectory.FullName);
+
+            this.rootPluginDirectory = new DirectoryInfo(rootPluginDirectory);
+            this._rootPluginResolver = new AssemblyDependencyResolver(this.rootPluginDirectory.FullName);
 
             base.Resolving += PluginLoadContext_Resolving;
         }
@@ -28,7 +34,8 @@ namespace SRTHost
 
         private string? DetectAssemblyLocation(string assemblyName)
         {
-            FileInfo pluginLocation = this.pluginDirectory
+            // This is typicvally the plugin itself or a dependency that is included from its folder.
+            FileInfo pluginLocation = this.thisPluginDirectory
                 .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
                 .OrderByDescending(a =>
                 {
@@ -39,9 +46,16 @@ namespace SRTHost
                     productVersion.ProductPrivatePart;
                 }).FirstOrDefault();
 
-            if (pluginLocation != null)
+            // This is typically the provider a dependent plugin is looking for which may be outside its own folder.
+            FileInfo rootPluginLocation = this.rootPluginDirectory
+                .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
+                .FirstOrDefault(a => a.Directory.Name == assemblyName);
+
+            if (pluginLocation != null) // Always prefer assemblies found in the plugin's folder first.
                 return pluginLocation.FullName;
-            else
+            else if (rootPluginLocation != null) // Fallback to an assembly from the root plugins folder.
+                return rootPluginLocation.FullName;
+            else // We did not find what we were looking for.
                 return null;
         }
 
@@ -50,7 +64,9 @@ namespace SRTHost
             if (assemblyName.FullName == typeof(IPlugin).Assembly.FullName)
                 return null;
 
-            string assemblyPath = _pluginResolver.ResolveAssemblyToPath(assemblyName);
+            string assemblyPath = _thisPluginResolver.ResolveAssemblyToPath(assemblyName);
+            if (assemblyPath == null)
+                assemblyPath = _rootPluginResolver.ResolveAssemblyToPath(assemblyName);
             if (assemblyPath == null)
                 assemblyPath = DetectAssemblyLocation(assemblyName.Name);
 
@@ -59,7 +75,9 @@ namespace SRTHost
 
         protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
         {
-            string libraryPath = _pluginResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            string libraryPath = _thisPluginResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            if (libraryPath == null)
+                libraryPath = _rootPluginResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
             if (libraryPath == null)
                 libraryPath = DetectAssemblyLocation(unmanagedDllName);
 

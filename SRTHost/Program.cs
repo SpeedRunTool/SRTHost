@@ -113,7 +113,7 @@ namespace SRTHost
                             .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                             .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                             .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                            .Select((FileInfo pluginAssemblyFileInfo) => PluginLoadingStatics.LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory.FullName), pluginAssemblyFileInfo.FullName))
+                            .Select((FileInfo pluginAssemblyFileInfo) => PluginLoadingStatics.LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory.FullName, pluginAssemblyFileInfo.Directory.Parent.FullName), pluginAssemblyFileInfo.FullName))
                             .Where((Assembly pluginAssembly) => pluginAssembly != null)
                             .SelectMany((Assembly pluginAssembly) => PluginLoadingStatics.CreatePlugins(pluginAssembly)).ToArray();
                     }
@@ -124,7 +124,7 @@ namespace SRTHost
                             .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                             .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
                             .Where((FileInfo pluginAssemblyFileInfo) => !pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo.Name.Equals(string.Format("{0}.dll", loadSpecificProvider), StringComparison.InvariantCultureIgnoreCase)))
-                            .Select((FileInfo pluginAssemblyFileInfo) => PluginLoadingStatics.LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory.FullName), pluginAssemblyFileInfo.FullName))
+                            .Select((FileInfo pluginAssemblyFileInfo) => PluginLoadingStatics.LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory.FullName, pluginAssemblyFileInfo.Directory.Parent.FullName), pluginAssemblyFileInfo.FullName))
                             .Where((Assembly pluginAssembly) => pluginAssembly != null)
                             .SelectMany((Assembly pluginAssembly) => PluginLoadingStatics.CreatePlugins(pluginAssembly)).ToArray();
                     }

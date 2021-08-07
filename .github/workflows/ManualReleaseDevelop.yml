@@ -1,9 +1,6 @@
-name: "Automated Release"
+name: "Manual Release - Develop"
 
-on:
-  push:
-    branches:
-      - master
+on: workflow_dispatch
 
 jobs:
   publish:
@@ -29,6 +26,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
+        ref: develop
 
     # Set some output variables
     - name: Set the main environment variables based on other environment variables
@@ -120,8 +118,8 @@ jobs:
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "latest"
+        automatic_release_tag: "develop"
         prerelease: ${{env.is-prerelease}}
-        title: 'Automated Build [master] - ${{needs.publish.outputs.version}} Release'
+        title: 'Manual Build [develop] - ${{needs.publish.outputs.version}} Release'
         files: |
           ${{needs.publish.outputs.zip-filename}}

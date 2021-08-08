@@ -13,18 +13,12 @@ namespace SRTHost
         private DirectoryInfo thisPluginDirectory;
         private AssemblyDependencyResolver _thisPluginResolver;
 
-        private DirectoryInfo rootPluginDirectory;
-        private AssemblyDependencyResolver _rootPluginResolver;
-
-        public PluginLoadContext(string thisPluginDirectory, string rootPluginDirectory)
+        public PluginLoadContext(DirectoryInfo thisPluginDirectory) : base(thisPluginDirectory.Name, false)
         {
-            this.thisPluginDirectory = new DirectoryInfo(thisPluginDirectory);
-            this._thisPluginResolver = new AssemblyDependencyResolver(this.thisPluginDirectory.FullName);
+            this.thisPluginDirectory = thisPluginDirectory;
+            _thisPluginResolver = new AssemblyDependencyResolver(this.thisPluginDirectory.FullName);
 
-            this.rootPluginDirectory = new DirectoryInfo(rootPluginDirectory);
-            this._rootPluginResolver = new AssemblyDependencyResolver(this.rootPluginDirectory.FullName);
-
-            base.Resolving += PluginLoadContext_Resolving;
+            Resolving += PluginLoadContext_Resolving;
         }
 
         private Assembly PluginLoadContext_Resolving(AssemblyLoadContext assemblyLoadContext, AssemblyName assemblyName)
@@ -35,7 +29,7 @@ namespace SRTHost
         private string? DetectAssemblyLocation(string assemblyName)
         {
             // This is typicvally the plugin itself or a dependency that is included from its folder.
-            FileInfo pluginLocation = this.thisPluginDirectory
+            FileInfo pluginLocation = thisPluginDirectory
                 .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
                 .OrderByDescending(a =>
                 {
@@ -46,15 +40,8 @@ namespace SRTHost
                     productVersion.ProductPrivatePart;
                 }).FirstOrDefault();
 
-            // This is typically the provider a dependent plugin is looking for which may be outside its own folder.
-            FileInfo rootPluginLocation = this.rootPluginDirectory
-                .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
-                .FirstOrDefault(a => a.Directory.Name == assemblyName);
-
             if (pluginLocation != null) // Always prefer assemblies found in the plugin's folder first.
                 return pluginLocation.FullName;
-            else if (rootPluginLocation != null) // Fallback to an assembly from the root plugins folder.
-                return rootPluginLocation.FullName;
             else // We did not find what we were looking for.
                 return null;
         }
@@ -66,22 +53,14 @@ namespace SRTHost
 
             string assemblyPath = _thisPluginResolver.ResolveAssemblyToPath(assemblyName);
             if (assemblyPath == null)
-                assemblyPath = _rootPluginResolver.ResolveAssemblyToPath(assemblyName);
-            if (assemblyPath == null)
                 assemblyPath = DetectAssemblyLocation(assemblyName.Name);
 
-            return (assemblyPath != null) ? LoadFromAssemblyPath(assemblyPath) : null;
-        }
-
-        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
-        {
-            string libraryPath = _thisPluginResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-            if (libraryPath == null)
-                libraryPath = _rootPluginResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-            if (libraryPath == null)
-                libraryPath = DetectAssemblyLocation(unmanagedDllName);
-
-            return (libraryPath != null) ? LoadUnmanagedDllFromPath(libraryPath) : IntPtr.Zero;
+            if (assemblyPath != null)
+                return LoadFromAssemblyPath(assemblyPath);
+            else if (All.Any(a => a.Name == assemblyName.Name)) // Are there any LoadContexts that match this AssemblyName? If so, maybe we can enlist their help!
+                return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName);
+            else
+                return Default.LoadFromAssemblyName(assemblyName);
         }
     }
 }

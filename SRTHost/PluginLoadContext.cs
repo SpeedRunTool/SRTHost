@@ -5,31 +5,20 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Security.Cryptography.X509Certificates;
 
 namespace SRTHost
 {
-    class PluginLoadContext : AssemblyLoadContext
+    public class PluginLoadContext : AssemblyLoadContext
     {
-        private DirectoryInfo rootDirectory;
-        private DirectoryInfo pluginDirectory;
-        private AssemblyDependencyResolver _rootResolver;
-        private AssemblyDependencyResolver _pluginResolver;
+        private DirectoryInfo thisPluginDirectory;
+        private AssemblyDependencyResolver _thisPluginResolver;
 
-        public PluginLoadContext(string rootDirectory)
+        public PluginLoadContext(DirectoryInfo thisPluginDirectory) : base(thisPluginDirectory.Name, false)
         {
-            this.rootDirectory = new DirectoryInfo(rootDirectory);
-            this._rootResolver = new AssemblyDependencyResolver(this.rootDirectory.FullName);
+            this.thisPluginDirectory = thisPluginDirectory;
+            _thisPluginResolver = new AssemblyDependencyResolver(this.thisPluginDirectory.FullName);
 
-            this.pluginDirectory = new DirectoryInfo(Path.Combine(this.rootDirectory.FullName, "plugins" + Path.DirectorySeparatorChar));
-            if (!this.pluginDirectory.Exists)
-            {
-                this.pluginDirectory.Create();
-                this.pluginDirectory.Refresh();
-            }
-            this._pluginResolver = new AssemblyDependencyResolver(this.pluginDirectory.FullName);
-
-            base.Resolving += PluginLoadContext_Resolving;
+            Resolving += PluginLoadContext_Resolving;
         }
 
         private Assembly PluginLoadContext_Resolving(AssemblyLoadContext assemblyLoadContext, AssemblyName assemblyName)
@@ -39,23 +28,8 @@ namespace SRTHost
 
         private string? DetectAssemblyLocation(string assemblyName)
         {
-            FileInfo specificLocation = null;
-            FileInfo pluginLocation = null;
-            FileInfo rootLocation = null;
-
-            // If we're loading a specific provider, try their folder first.
-            if (Program.loadSpecificProvider != string.Empty)
-                specificLocation = this.pluginDirectory
-                    .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
-                    .FirstOrDefault(a => a.Directory.Name == Program.loadSpecificProvider && a.Directory.Parent.Name == "plugins");
-
-            // If we are not doing specific provider OR it was not found in that folder, check all plugin folders.
-            pluginLocation = this.pluginDirectory
-                .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
-                .FirstOrDefault(a => a.Directory.Name == assemblyName && a.Directory.Parent.Name == "plugins");
-
-            // If we STILL haven't found it, check any folder.
-            rootLocation = this.rootDirectory
+            // This is typicvally the plugin itself or a dependency that is included from its folder.
+            FileInfo pluginLocation = thisPluginDirectory
                 .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
                 .OrderByDescending(a =>
                 {
@@ -66,37 +40,10 @@ namespace SRTHost
                     productVersion.ProductPrivatePart;
                 }).FirstOrDefault();
 
-            if (specificLocation != null)
-                return specificLocation.FullName;
-            else if (pluginLocation != null)
+            if (pluginLocation != null) // Always prefer assemblies found in the plugin's folder first.
                 return pluginLocation.FullName;
-            else if (rootLocation != null)
-                return rootLocation.FullName;
-            else
+            else // We did not find what we were looking for.
                 return null;
-        }
-
-        public X509Certificate GetSigningInfo(string location)
-        {
-            try
-            {
-                return X509Certificate.CreateFromSignedFile(location);
-            }
-            catch (Exception ex)
-            {
-                return null;
-            }
-        }
-        public X509Certificate2 GetSigningInfo2(string location)
-        {
-            try
-            {
-                return new X509Certificate2(GetSigningInfo(location));
-            }
-            catch (Exception ex)
-            {
-                return null;
-            }
         }
 
         protected override Assembly Load(AssemblyName assemblyName)
@@ -104,24 +51,16 @@ namespace SRTHost
             if (assemblyName.FullName == typeof(IPlugin).Assembly.FullName)
                 return null;
 
-            string assemblyPath = _pluginResolver.ResolveAssemblyToPath(assemblyName);
-            if (assemblyPath == null)
-                assemblyPath = _rootResolver.ResolveAssemblyToPath(assemblyName);
+            string assemblyPath = _thisPluginResolver.ResolveAssemblyToPath(assemblyName);
             if (assemblyPath == null)
                 assemblyPath = DetectAssemblyLocation(assemblyName.Name);
 
-            return (assemblyPath != null) ? LoadFromAssemblyPath(assemblyPath) : null;
-        }
-
-        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
-        {
-            string libraryPath = _pluginResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-            if (libraryPath == null)
-                libraryPath = _rootResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-            if (libraryPath == null)
-                libraryPath = DetectAssemblyLocation(unmanagedDllName);
-
-            return (libraryPath != null) ? LoadUnmanagedDllFromPath(libraryPath) : IntPtr.Zero;
+            if (assemblyPath != null)
+                return LoadFromAssemblyPath(assemblyPath);
+            else if (All.Any(a => a.Name == assemblyName.Name)) // Are there any LoadContexts that match this AssemblyName? If so, maybe we can enlist their help!
+                return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName);
+            else
+                return Default.LoadFromAssemblyName(assemblyName);
         }
     }
 }

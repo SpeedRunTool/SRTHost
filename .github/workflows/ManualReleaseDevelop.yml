@@ -118,7 +118,7 @@ jobs:
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "develop"
+        automatic_release_tag: "develop-build"
         prerelease: ${{env.is-prerelease}}
         title: 'Manual Build [develop] - ${{needs.publish.outputs.version}} Release'
         files: |

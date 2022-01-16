@@ -36,7 +36,7 @@ jobs:
       run: |
         echo '::set-output name=solution::${{env.project-name}}.sln'
         echo '::set-output name=project::${{env.project-name}}/${{env.project-name}}.csproj'
-        echo '::set-output name=publish-directory::${{env.project-name}}/bin/Release/net5.0-windows/publish/'
+        echo '::set-output name=publish-directory::${{env.project-name}}/bin/Release/net6.0-windows/publish/'
 
     # Get the project's version number
     - name: Get project version
@@ -52,10 +52,10 @@ jobs:
         echo '::set-output name=zip-filename::${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.zip'
 
     # Install .NET
-    - name: Install .NET Core
+    - name: Install .NET
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 5.0.x
+        dotnet-version: 6.0.x
 
     # Compiles the program and runs the publish profile
     - name: Compile and run publish profile

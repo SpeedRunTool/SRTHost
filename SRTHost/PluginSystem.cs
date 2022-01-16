@@ -16,6 +16,7 @@ namespace SRTHost
     public partial class PluginSystem : BackgroundService, IHostedService
     {
         // Constants
+        private const string APP_NAME = "SRT Host";
         private const string APP_ARCHITECTURE_x64 = "64-bit (x64)";
         private const string APP_ARCHITECTURE_x86 = "32-bit (x86)";
 #if x64
@@ -25,7 +26,7 @@ namespace SRTHost
         private const string APP_EXE_NAME = "SRTHost32.exe";
         private const string APP_ARCHITECTURE = APP_ARCHITECTURE_x86;
 #endif
-        private const string APP_DISPLAY_NAME = "SRT Host" + " " + APP_ARCHITECTURE;
+        private const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
         // Plugins
         private IPlugin[] allPlugins = null;

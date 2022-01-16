@@ -1,11 +1,9 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Diagnostics;
 
 namespace SRTHost
 {
-    public partial class PluginSystem : BackgroundService
+    public partial class PluginSystem : BackgroundService, IHostedService
     {
         private readonly ILogger<PluginSystem> logger;
 
@@ -71,15 +69,15 @@ namespace SRTHost
         private const int incorrectArchitectureEventId = 8;
         private const string incorrectArchitectureEventName = "Incorrect Architecture";
 #if x64
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x86 + " DLL", EventName = incorrectArchitectureEventName)]
 #else
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x64 + " DLL", EventName = incorrectArchitectureEventName)]
 #endif
         private partial void LogIncorrectArchitecturePlugin(string? pluginPath);
 #if x64
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x86 + " DLL", EventName = incorrectArchitectureEventName)]
 #else
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x64 + " DLL", EventName = incorrectArchitectureEventName)]
 #endif
         private partial void LogIncorrectArchitecturePluginReference(string? sourcePlugin, string? assemblyName);
 
@@ -107,10 +105,10 @@ namespace SRTHost
         [LoggerMessage(pluginShutdownEventId, LogLevel.Error, "[{pluginName}] failed to shutdown properly with status {statusCode}", EventName = pluginShutdownEventName)]
         private partial void LogPluginShutdownFailure(string? pluginName, int statusCode);
 
-        // Exit Helper events
-        private const int exitHelperEventId = 12;
-        private const string exitHelperEventName = "Exit Helper";
-        [LoggerMessage(exitHelperEventId, LogLevel.Information, "Press CTRL+C in this console window to shutdown the SRT", EventName = exitHelperEventName)]
-        private partial void LogExitHelper();
+        // Application Shutdown events
+        private const int appShutdownEventId = 12;
+        private const string appShutdownEventName = "Application Shutdown";
+        [LoggerMessage(appShutdownEventId, LogLevel.Information, "{appName} shutting down...", EventName = appShutdownEventName)]
+        private partial void LogAppShutdown(string? appName);
     }
 }

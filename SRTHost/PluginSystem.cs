@@ -13,30 +13,36 @@ using System.Threading.Tasks;
 
 namespace SRTHost
 {
-    public partial class PluginSystem : BackgroundService
+    public partial class PluginSystem : BackgroundService, IHostedService
     {
-        private bool running = true;
+        // Constants
+        private const string APP_ARCHITECTURE_x64 = "64-bit (x64)";
+        private const string APP_ARCHITECTURE_x86 = "32-bit (x86)";
+#if x64
+        private const string APP_EXE_NAME = "SRTHost64.exe";
+        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_x64;
+#else
+        private const string APP_EXE_NAME = "SRTHost32.exe";
+        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_x86;
+#endif
+        private const string APP_DISPLAY_NAME = "SRT Host" + " " + APP_ARCHITECTURE;
+
+        // Plugins
+        private IPlugin[] allPlugins = null;
+        private Dictionary<PluginProviderStateValue, PluginUIStateValue[]> pluginProvidersAndDependentUIs = null;
+        private PluginUIStateValue[] pluginUIsAgnostic = null;
+
+        // Misc. variables
         private PluginHostDelegates hostDelegates = new PluginHostDelegates();
-        private string loadSpecificProvider = string.Empty;
-        private int settingUpdateRate = 33; // Default to 33ms.
+        private string loadSpecificProvider = string.Empty; // TODO: Allow IConfiguration settings.
+        private int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
 
         public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
         {
             this.logger = logger;
 
-            Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) =>
-            {
-                e.Cancel = true;
-                running = false;
-            };
-
-            FileVersionInfo srtHostFileVersionInfo;
-#if x64
-            srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"));
-#else
-            srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"));
-#endif
-            LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, (Environment.Is64BitProcess) ? "64-bit (x64)" : "32-bit (x86)");
+            FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
+            LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
 
             foreach (KeyValuePair<string, string?> kvp in new CommandLineProcessor(args))
             {
@@ -81,26 +87,21 @@ namespace SRTHost
             }
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        public override async Task StartAsync(CancellationToken cancellationToken)
         {
-            IPlugin[] allPlugins = null;
-            Dictionary<PluginProviderStateValue, PluginUIStateValue[]> pluginProvidersAndDependentUIs = null;
-            PluginUIStateValue[] pluginUIsAgnostic = null;
-
-            bool criticalFailure = false; // Used if we should fail right past the finally clause.
-            try
+            await Task.Run(() =>
             {
-#if x64
-                LogLoadedHost(Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost64.exe"));
-                GetSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"));
-#else
-                LogLoadedHost(Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost32.exe"));
-                ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"));
-#endif
+                LogLoadedHost(Path.GetRelativePath(AppContext.BaseDirectory, APP_EXE_NAME));
+                GetSigningInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
+                DirectoryInfo pluginsDir = new DirectoryInfo("plugins");
+
+                // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
+                if (!pluginsDir.Exists)
+                    pluginsDir.Create();
 
                 if (loadSpecificProvider == string.Empty)
                 {
-                    allPlugins = new DirectoryInfo("plugins")
+                    allPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
@@ -110,7 +111,7 @@ namespace SRTHost
                 }
                 else
                 {
-                    allPlugins = new DirectoryInfo("plugins")
+                    allPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
@@ -124,7 +125,7 @@ namespace SRTHost
                 {
                     Exception ex = new ApplicationException("Unable to find any plugins located in the \"plugins\" folder that implement IPlugin");
                     LogException(ex?.GetType()?.Name, ex?.ToString());
-                    Environment.Exit(1); // Critical error. Handle better. Only one provider allowed.
+                    throw ex;
                 }
 
                 pluginProvidersAndDependentUIs = new Dictionary<PluginProviderStateValue, PluginUIStateValue[]>();
@@ -139,9 +140,34 @@ namespace SRTHost
                 // Startup agnotic UIs.
                 foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
                     PluginStartup(pluginUIStateValue);
+            }, cancellationToken);
 
-                LogExitHelper();
-                while (running)
+            await base.StartAsync(cancellationToken);
+        }
+
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
+                    PluginShutdown(pluginUIStateValue);
+
+                foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
+                {
+                    foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
+                        PluginShutdown(pluginUI);
+                    PluginShutdown(pluginKeys.Key);
+                }
+            }, cancellationToken);
+
+            await base.StopAsync(cancellationToken);
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            try
+            {
+                while (!stoppingToken.IsCancellationRequested)
                 {
                     foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
                     {
@@ -159,35 +185,22 @@ namespace SRTHost
                                     PluginShutdown(pluginUIStateValue);
                         }
                     }
-                    //Thread.Sleep(settingUpdateRate);
+
                     await Task.Delay(settingUpdateRate).ConfigureAwait(false);
                 }
+
+                LogAppShutdown(APP_DISPLAY_NAME);
             }
             catch (FileLoadException ex)
             {
                 LogException(ex?.GetType()?.Name, ex?.ToString());
                 LogIncorrectArchitecturePluginReference(ex.Source, ex.FileName);
-                criticalFailure = true;
+                throw ex;
             }
             catch (Exception ex)
             {
                 LogException(ex?.GetType()?.Name, ex?.ToString());
-            }
-            finally
-            {
-                // Shutdown all if we haven't critically failed.
-                if (!criticalFailure && allPlugins != null)
-                {
-                    foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
-                        PluginShutdown(pluginUIStateValue);
-
-                    foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
-                    {
-                        foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
-                            PluginShutdown(pluginUI);
-                        PluginShutdown(pluginKeys.Key);
-                    }
-                }
+                throw ex;
             }
         }
 

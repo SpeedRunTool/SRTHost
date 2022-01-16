@@ -5,7 +5,7 @@ namespace SRTHost
 {
     public class PluginHostDelegates : IPluginHostDelegates
     {
-        public ExceptionMessageDelegate ExceptionMessage => Program.HandleException;
+        public ExceptionMessageDelegate ExceptionMessage => new ExceptionMessageDelegate((Exception ex) => { });// Program.HandleException;
 
         public OutputMessageDelegate OutputMessage => Console.WriteLine;
 
@@ -13,7 +13,7 @@ namespace SRTHost
 
         public ExitDelegate Exit => new ExitDelegate(() =>
         {
-            Program.running = false;
+            //Program.running = false;
         });
     }
 }

@@ -20,11 +20,6 @@ namespace SRTHost
         private string loadSpecificProvider = string.Empty;
         private int settingUpdateRate = 33; // Default to 33ms.
 
-        private readonly ILogger<PluginSystem> logger;
-
-        [LoggerMessage((int)LogLevel.Information * 1000 + 0, LogLevel.Information, "{productName} v{productVersion} {productArchitecture}", EventName = "Version Banner")]
-        private partial void LogVersionBanner(string? productName, string? productVersion, string? productArchitecture);
-
         public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
         {
             this.logger = logger;
@@ -45,20 +40,19 @@ namespace SRTHost
 
             foreach (KeyValuePair<string, string?> kvp in new CommandLineProcessor(args))
             {
-                Console.WriteLine("Command-line arguments:");
+                LogCommandLineBanner();
                 if (kvp.Value != null)
-                    Console.WriteLine("{0}: {1}", kvp.Key, kvp.Value);
+                    LogCommandLineKeyValue(kvp.Key, kvp.Value);
                 else
-                    Console.WriteLine("{0}", kvp.Key);
-                Console.WriteLine();
+                    LogCommandLineKey(kvp.Key);
 
                 switch (kvp.Key.ToUpperInvariant())
                 {
                     case "HELP":
                         {
-                            string helpTemplate = "  --{0}=<Value>: {1}. Default: {2}\r\n    Example: --{0}={2}";
-                            Console.WriteLine("Arguments and examples");
-                            Console.WriteLine(helpTemplate, "UpdateRate", "Sets the time in milliseconds between memory value updates", "66");
+                            LogCommandLineHelpBanner();
+                            LogCommandLineHelpEntryValue("Provider", "Enables single provider mode where the given provider is the only one loaded", "SRTPluginProviderRE2");
+                            LogCommandLineHelpEntryValue("UpdateRate", "Sets the time in milliseconds between memory value updates", "66");
                             return;
                         }
                     case "UPDATERATE":
@@ -68,7 +62,7 @@ namespace SRTHost
                                 // If we successfully parsed the value, ensure it is within range. If not, reset it.
                                 if (settingUpdateRate < 16 || settingUpdateRate > 2000)
                                 {
-                                    Console.WriteLine("Error: {0} cannot be less than 16ms or greater than 2000ms. Resetting to default (66ms).", kvp.Key);
+                                    LogCommandLineHelpUpdateRateOutOfRange(kvp.Key);
                                     settingUpdateRate = 66;
                                 }
                             }
@@ -97,11 +91,11 @@ namespace SRTHost
             try
             {
 #if x64
-                Console.WriteLine("  Loaded host: {0}", Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost64.exe"));
-                ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"));
+                LogLoadedHost(Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost64.exe"));
+                GetSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost64.exe"));
 #else
-                    Console.WriteLine("  Loaded host: {0}", Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost32.exe"));
-                    ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"));
+                LogLoadedHost(Path.GetRelativePath(AppContext.BaseDirectory, "SRTHost32.exe"));
+                ShowSigningInfo(Path.Combine(AppContext.BaseDirectory, "SRTHost32.exe"));
 #endif
 
                 if (loadSpecificProvider == string.Empty)
@@ -125,11 +119,11 @@ namespace SRTHost
                         .Where((Assembly pluginAssembly) => pluginAssembly != null)
                         .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
                 }
-                Console.WriteLine();
 
                 if (allPlugins.Length == 0)
                 {
-                    HandleException(new ApplicationException("Unable to find any plugins located in the \"plugins\" folder that implement IPlugin"));
+                    Exception ex = new ApplicationException("Unable to find any plugins located in the \"plugins\" folder that implement IPlugin");
+                    LogException(ex?.GetType()?.Name, ex?.ToString());
                     Environment.Exit(1); // Critical error. Handle better. Only one provider allowed.
                 }
 
@@ -146,7 +140,7 @@ namespace SRTHost
                 foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
                     PluginStartup(pluginUIStateValue);
 
-                Console.WriteLine("Press CTRL+C in this console window to shutdown the SRT.");
+                LogExitHelper();
                 while (running)
                 {
                     foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
@@ -171,13 +165,13 @@ namespace SRTHost
             }
             catch (FileLoadException ex)
             {
-                HandleException(ex);
-                HandleIncorrectArchitecture(null, ex.Source, ex.FileName);
+                LogException(ex?.GetType()?.Name, ex?.ToString());
+                LogIncorrectArchitecturePluginReference(ex.Source, ex.FileName);
                 criticalFailure = true;
             }
             catch (Exception ex)
             {
-                HandleException(ex);
+                LogException(ex?.GetType()?.Name, ex?.ToString());
             }
             finally
             {
@@ -207,13 +201,13 @@ namespace SRTHost
                     pluginStatusResponse = plugin.Plugin.Startup(hostDelegates);
 
                     if (pluginStatusResponse == 0)
-                        Console.WriteLine("[{0}] successfully started.", plugin.Plugin.Info.Name);
+                        LogPluginStartupSuccess(plugin.Plugin.Info.Name);
                     else
-                        Console.WriteLine("[{0}] failed to startup properly with status {1}.", plugin.Plugin.Info.Name, pluginStatusResponse);
+                        LogPluginStartupFailure(plugin.Plugin.Info.Name, pluginStatusResponse);
                 }
                 catch (Exception ex)
                 {
-                    HandleException(ex);
+                    LogException(ex?.GetType()?.Name, ex?.ToString());
                 }
                 plugin.Startup = true;
             }
@@ -231,10 +225,15 @@ namespace SRTHost
                 try
                 {
                     uiPluginReceiveDataStatus = plugin.Plugin.ReceiveData(gameMemory);
+
+                    if (uiPluginReceiveDataStatus == 0)
+                        LogPluginReceiveDataSuccess(plugin.Plugin.Info.Name);
+                    else
+                        LogPluginReceiveDataFailure(plugin.Plugin.Info.Name, uiPluginReceiveDataStatus);
                 }
                 catch (Exception ex)
                 {
-                    HandleException(ex);
+                    LogException(ex?.GetType()?.Name, ex?.ToString());
                 }
             }
         }
@@ -249,36 +248,16 @@ namespace SRTHost
                     pluginStatusResponse = plugin.Plugin.Shutdown();
 
                     if (pluginStatusResponse == 0)
-                        Console.WriteLine("[{0}] successfully shutdown.", plugin.Plugin.Info.Name);
+                        LogPluginShutdownSuccess(plugin.Plugin.Info.Name);
                     else
-                        Console.WriteLine("[{0}] failed to shutdown properly with status {1}.", plugin.Plugin.Info.Name, pluginStatusResponse);
+                        LogPluginShutdownFailure(plugin.Plugin.Info.Name, pluginStatusResponse);
                 }
                 catch (Exception ex)
                 {
-                    HandleException(ex);
+                    LogException(ex?.GetType()?.Name, ex?.ToString());
                 }
                 plugin.Startup = false;
             }
-        }
-
-        private void ShowSigningInfo(string location)
-        {
-            X509Certificate2 cert2;
-            if ((cert2 = SigningInfo.GetSigningInfo2(location)) != null)
-            {
-                if (cert2.Verify())
-                    Console.WriteLine("\tDigitally signed and verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
-                else
-                    Console.WriteLine("\tDigitally signed but NOT verified: {0} [Thumbprint: {1}]", cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
-            }
-            else
-                Console.WriteLine("\tNo digital signature found.");
-        }
-
-        private void ShowVersionInfo(string location)
-        {
-            FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(location);
-            Console.WriteLine("\tVersion v{0}.{1}.{2}.{3}", versionInfo.ProductMajorPart, versionInfo.ProductMinorPart, versionInfo.ProductBuildPart, versionInfo.ProductPrivatePart);
         }
 
         private Assembly LoadPlugin(PluginLoadContext loadContext, string pluginPath)
@@ -288,19 +267,19 @@ namespace SRTHost
             try
             {
                 returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
-                Console.WriteLine("  Loaded plugin: {0}", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath));
-                ShowSigningInfo(pluginPath);
-                ShowVersionInfo(pluginPath);
+                LogLoadedPlugin(Path.GetRelativePath(Environment.CurrentDirectory, pluginPath));
+                GetSigningInfo(pluginPath);
+                LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
             }
             catch (FileLoadException ex)
             {
-                HandleIncorrectArchitecture(pluginPath);
-                ShowSigningInfo(pluginPath);
-                ShowVersionInfo(pluginPath);
+                LogIncorrectArchitecturePlugin(pluginPath);
+                GetSigningInfo(pluginPath);
+                LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
             }
             catch (Exception ex)
             {
-                HandleException(ex);
+                LogException(ex?.GetType()?.Name, ex?.ToString());
             }
 
             return returnValue;
@@ -317,7 +296,7 @@ namespace SRTHost
             }
             catch (Exception ex)
             {
-                HandleException(ex);
+                LogException(ex?.GetType()?.Name, ex?.ToString());
                 yield break;
             }
 
@@ -347,25 +326,18 @@ namespace SRTHost
             }
         }
 
-        private void HandleException(Exception exception)
+        private void GetSigningInfo(string location)
         {
-            try
+            X509Certificate2 cert2;
+            if ((cert2 = SigningInfo.GetSigningInfo2(location)) != null)
             {
-                string exceptionMessage = string.Format("[{0}] {1}", exception?.GetType()?.Name, exception?.ToString());
-                Console.WriteLine(exceptionMessage);
+                if (cert2.Verify())
+                    LogSigningInfoVerified(cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
+                else
+                    LogSigningInfoNotVerified(cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);
             }
-            catch
-            {
-                Console.WriteLine("FATAL ERROR IN HandleException(Exception exception);");
-            }
-        }
-
-        private void HandleIncorrectArchitecture(string? pluginPath = null, string? sourcePlugin = null, string? assemblyName = null)
-        {
-            if (pluginPath != null)
-                Console.WriteLine("! Failed plugin: {0}\r\n\tIncorrect architecture. {1}.", Path.GetRelativePath(Environment.CurrentDirectory, pluginPath), (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL");
-            else if (sourcePlugin != null && assemblyName != null)
-                Console.WriteLine("! Failed plugin: plugins\\{0}\\{0}.dll\r\n\tIncorrect architecture in referenced assembly \"{2}\". {1}.", sourcePlugin, (Environment.Is64BitProcess) ? "SRT Host 64-bit (x64) cannot load a 32-bit (x86) DLL" : "SRT Host 32-bit (x86) cannot load a 64-bit (x64) DLL", assemblyName);
+            else
+                LogSigningInfoNotFound();
         }
     }
 }

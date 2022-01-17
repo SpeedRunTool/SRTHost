@@ -28,14 +28,14 @@ namespace SRTHost.LoggerImplementations
             TimestampFormat = fileLoggerOptions.TimestampFormat;
             UtcTime = fileLoggerOptions.UtcTime;
 
-            this.logStreamWriter = new StreamWriter(new FileStream(string.Format("{0}.log", logName), Append ? FileMode.Append : FileMode.Create, FileAccess.Write), Encoding)
+            this.logStreamWriter = new StreamWriter(new FileStream(Path.Combine(AppContext.BaseDirectory, string.Format("{0}.log", logName)), Append ? FileMode.Append : FileMode.Create, FileAccess.Write), Encoding)
             {
                 AutoFlush = AutoFlush,
                 NewLine = Environment.NewLine,
             };
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(logName, this);
+        public ILogger CreateLogger(string categoryName) => new FileLogger(logName, categoryName, this);
 
         public void WriteLog(string message) => logStreamWriter.WriteLine(message);
 

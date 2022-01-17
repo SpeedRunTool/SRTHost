@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -33,10 +34,16 @@ namespace SRTHost
         private Dictionary<PluginProviderStateValue, PluginUIStateValue[]> pluginProvidersAndDependentUIs = null;
         private PluginUIStateValue[] pluginUIsAgnostic = null;
 
+        public IReadOnlyCollection<IPlugin> Plugins => new ReadOnlyCollection<IPlugin>(allPlugins);
+        public IReadOnlyDictionary<PluginProviderStateValue, PluginUIStateValue[]> PluginProvidersAndDependentUIs => new ReadOnlyDictionary<PluginProviderStateValue, PluginUIStateValue[]>(pluginProvidersAndDependentUIs);
+        public IReadOnlyCollection<PluginUIStateValue> PluginUIsAgnostic => new ReadOnlyCollection<PluginUIStateValue>(pluginUIsAgnostic);
+
         // Misc. variables
         private PluginHostDelegates hostDelegates = new PluginHostDelegates();
         private string loadSpecificProvider = string.Empty; // TODO: Allow IConfiguration settings.
         private int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
+
+        public string LoadSpecificProvider => loadSpecificProvider;
 
         public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
         {
@@ -92,9 +99,10 @@ namespace SRTHost
         {
             await Task.Run(() =>
             {
-                LogLoadedHost(Path.GetRelativePath(AppContext.BaseDirectory, APP_EXE_NAME));
-                GetSigningInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
-                DirectoryInfo pluginsDir = new DirectoryInfo("plugins");
+                string appExePath = Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME);
+                LogLoadedHost(appExePath.Replace(AppContext.BaseDirectory, string.Empty));
+                GetSigningInfo(appExePath);
+                DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
 
                 // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
                 if (!pluginsDir.Exists)
@@ -281,7 +289,7 @@ namespace SRTHost
             try
             {
                 returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
-                LogLoadedPlugin(Path.GetRelativePath(Environment.CurrentDirectory, pluginPath));
+                LogLoadedPlugin(pluginPath.Replace(AppContext.BaseDirectory, string.Empty));
                 GetSigningInfo(pluginPath);
                 LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
             }

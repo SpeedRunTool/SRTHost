@@ -7,20 +7,56 @@ namespace SRTHost.LoggerImplementations
     public partial class FileLogger : ILogger
     {
         private string logName;
+        private string categoryName;
         private FileLoggerProvider fileLoggerProvider;
 
-        public FileLogger(string logName, FileLoggerProvider fileLoggerProvider)
+        public FileLogger(string logName, string categoryName, FileLoggerProvider fileLoggerProvider)
         {
             this.logName = logName;
+            this.categoryName = categoryName;
             this.fileLoggerProvider = fileLoggerProvider;
         }
 
         public IDisposable BeginScope<TState>(TState state)
         {
-            throw new NotImplementedException();
+            return new NoopDisposable();
         }
 
-        public bool IsEnabled(LogLevel logLevel) => logLevel >= fileLoggerProvider.LoggingLevel;
+        private class NoopDisposable : IDisposable
+        {
+            public void Dispose()
+            {
+            }
+        }
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None && logLevel >= fileLoggerProvider.LoggingLevel;
+
+        private string GetShortLogLevel(LogLevel logLevel)
+        {
+            switch (logLevel)
+            {
+                case LogLevel.Trace:
+                    return "trce";
+
+                case LogLevel.Debug:
+                    return "dbug";
+
+                case LogLevel.Information:
+                    return "info";
+
+                case LogLevel.Warning:
+                    return "warn";
+
+                case LogLevel.Error:
+                    return "fail";
+
+                case LogLevel.Critical:
+                    return "crit";
+
+                default:
+                    return string.Empty;
+            }
+        }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
@@ -38,12 +74,12 @@ namespace SRTHost.LoggerImplementations
 
             StringBuilder logMessage = new StringBuilder();
             logMessage.AppendFormat("[{0}]", (fileLoggerProvider.UtcTime ? DateTime.UtcNow : DateTime.Now).ToString(fileLoggerProvider.TimestampFormat));
-            logMessage.AppendFormat("\t{0}", logLevel);
-            logMessage.AppendFormat("\t[{0}]", logName);
-            logMessage.AppendFormat("\t[{0}]", eventId);
+            logMessage.AppendFormat("\x00A0{0}:", GetShortLogLevel(logLevel));
+            logMessage.AppendFormat("\x00A0{0}[", categoryName);
+            logMessage.AppendFormat("{0}]\r\n      ", eventId.Id);
 
             if (!string.IsNullOrWhiteSpace(message))
-                logMessage.AppendFormat("\t{0}", message);
+                logMessage.AppendFormat("{0}", message);
             
             if (exception != null)
                 logMessage.AppendFormat("{0}{1}", Environment.NewLine, exception);

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Hosting;
 using SRTHost.LoggerImplementations;
 using System;
 using System.Linq;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore;
 
 namespace SRTHost
 {
@@ -15,37 +17,40 @@ namespace SRTHost
 
         public static async Task Main(params string[] args)
         {
-            IHost host = CreateHostBuilder(args).Build();
+            IWebHost host = CreateHostBuilder(args).Build();
             await host.RunAsync();
         }
 
-        private static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args).ConfigureServices(ConfigureServices);
+        private static IWebHostBuilder CreateHostBuilder(string[] args) =>
+            WebHost
+            .CreateDefaultBuilder(args)
+            .UseContentRoot(AppContext.BaseDirectory) // For some reason this gets set incorrectly sometimes? So reset it after Default Builder.
+            .ConfigureLogging(ConfigureLogging)
+            .UseStartup<Startup>();
 
-        private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
+        private static void ConfigureLogging(WebHostBuilderContext context, ILoggingBuilder logging)
         {
-            services.AddLogging((ILoggingBuilder c) =>
+            logging.ClearProviders();
+            logging.AddSimpleConsole(options =>
             {
-                c.AddSimpleConsole(o =>
-                {
-                    o.IncludeScopes = true;
-                    o.TimestampFormat = string.Format("[{0}] ", TIMESTAMP_FORMAT);
-                    o.UseUtcTimestamp = UTC_TIMESTAMP;
-                });
-                c.AddDebug();
-                c.AddEventSourceLogger();
-#if x64
-                c.AddFile(@"SRTHost64.log",
-#else
-                c.AddFile(@"SRTHost32.log",
-#endif
-                    (FileLoggerOptions o) =>
-                    {
-                        o.UtcTime = UTC_TIMESTAMP;
-                        o.TimestampFormat = TIMESTAMP_FORMAT;
-                        o.LoggingLevel = LogLevel.Information;
-                    });
+                options.IncludeScopes = true;
+                options.TimestampFormat = string.Format("[{0}] ", TIMESTAMP_FORMAT);
+                options.UseUtcTimestamp = UTC_TIMESTAMP;
             });
-            services.AddHostedService(s => ActivatorUtilities.CreateInstance<PluginSystem>(s, s.GetRequiredService<ILogger<PluginSystem>>(), Environment.GetCommandLineArgs().Skip(1).ToArray()));
+            logging.AddDebug();
+            logging.AddEventSourceLogger();
+#if x64
+            logging.AddFile(@"SRTHost64",
+#else
+            logging.AddFile(@"SRTHost32",
+#endif
+                (FileLoggerOptions options) =>
+                {
+                    options.Append = false;
+                    options.UtcTime = UTC_TIMESTAMP;
+                    options.TimestampFormat = TIMESTAMP_FORMAT;
+                    options.LoggingLevel = LogLevel.Information;
+                });
         }
     }
 }

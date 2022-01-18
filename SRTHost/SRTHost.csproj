@@ -1,5 +1,37 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project>
+	
+	<!-- workaround for not using Microsoft.NET.Sdk.Web -->
+	<PropertyGroup>
+		<UsingMicrosoftNETSdkWeb>true</UsingMicrosoftNETSdkWeb>
+		<EnableRazorSdkContent>true</EnableRazorSdkContent>
+	</PropertyGroup>
 
+	<!-- Default properties that shouldn't be replaced by the microsoft.net.sdk.props -->
+	<PropertyGroup>
+		<DebugSymbols Condition="'$(DebugSymbols)' == ''">true</DebugSymbols>
+	</PropertyGroup>
+
+	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.props" />
+
+	<Import Sdk="Microsoft.NET.Sdk.Razor" Project="Sdk.props" />
+
+	<ItemGroup Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' >= '3.0'">
+		<FrameworkReference Include="Microsoft.AspNetCore.App" IsImplicitlyDefined="true" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(Language)' == 'C#' AND ('$(ImplicitUsings)' == 'true' or '$(ImplicitUsings)' == 'enable')">
+		<Using Include="System.Net.Http.Json" />
+		<Using Include="Microsoft.AspNetCore.Builder" />
+		<Using Include="Microsoft.AspNetCore.Hosting" />
+		<Using Include="Microsoft.AspNetCore.Http" />
+		<Using Include="Microsoft.AspNetCore.Routing" />
+		<Using Include="Microsoft.Extensions.Configuration" />
+		<Using Include="Microsoft.Extensions.DependencyInjection" />
+		<Using Include="Microsoft.Extensions.Hosting" />
+		<Using Include="Microsoft.Extensions.Logging" />
+	</ItemGroup>
+	<!-- end workaround -->
+	
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
@@ -50,7 +82,7 @@
     <AssemblyName>SRTHost32</AssemblyName>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <Content Include="appsettings.Development.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -60,15 +92,25 @@
     <Content Include="appsettings.Production.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-	  <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
+  </ItemGroup>-->
 
   <ItemGroup>
     <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj">
     </ProjectReference>
   </ItemGroup>
-  
+	
+	<!-- workaround -->
+	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" />
+
+	<PropertyGroup>
+		<!--
+      Configure the Razor SDK to add support for the MVC configuration unless the project configured it or the user opted out of the implicit reference to
+      Microsoft.AspNetCore.App. This needs to happen after the .NET SDK has evaluated TFMs.
+     -->
+		<AddRazorSupportForMvc Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(AddRazorSupportForMvc)' == '' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' >= '3.0'">true</AddRazorSupportForMvc>
+	</PropertyGroup>
+
+	<Import Sdk="Microsoft.NET.Sdk.Razor" Project="Sdk.targets" />
+	<!-- end workaround -->
+	
 </Project>

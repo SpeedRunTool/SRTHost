@@ -37,7 +37,7 @@ namespace SRTHost.LoggerImplementations
 
         public ILogger CreateLogger(string categoryName) => new FileLogger(logName, categoryName, this);
 
-        public void WriteLog(string message) => logStreamWriter.WriteLine(message);
+        public void WriteLog(string message) => logStreamWriter?.WriteLine(message);
 
         private bool disposedValue;
         protected virtual void Dispose(bool disposing)

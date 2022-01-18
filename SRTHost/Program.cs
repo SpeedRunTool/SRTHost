@@ -5,6 +5,11 @@ using SRTHost.LoggerImplementations;
 using System;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
+using System.IO;
+using System.Diagnostics;
 
 namespace SRTHost
 {
@@ -15,32 +20,22 @@ namespace SRTHost
 
         public static async Task Main(params string[] args)
         {
-            IWebHost host = CreateHostBuilder(args).Build();
-            await host.RunAsync();
-        }
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        private static IWebHostBuilder CreateHostBuilder(string[] args) =>
-            WebHost
-            .CreateDefaultBuilder(args)
-            .UseContentRoot(AppContext.BaseDirectory) // For some reason this gets set incorrectly sometimes? So reset it after Default Builder.
-            .ConfigureLogging(ConfigureLogging)
-            .UseStartup<Startup>();
-
-        private static void ConfigureLogging(WebHostBuilderContext context, ILoggingBuilder logging)
-        {
-            logging.ClearProviders();
-            logging.AddSimpleConsole(options =>
+            // Logging
+            builder.Logging.ClearProviders();
+            builder.Logging.AddSimpleConsole(options =>
             {
                 options.IncludeScopes = true;
                 options.TimestampFormat = string.Format("[{0}] ", TIMESTAMP_FORMAT);
                 options.UseUtcTimestamp = UTC_TIMESTAMP;
             });
-            logging.AddDebug();
-            logging.AddEventSourceLogger();
+            builder.Logging.AddDebug();
+            builder.Logging.AddEventSourceLogger();
 #if x64
-            logging.AddFile(@"SRTHost64",
+            builder.Logging.AddFile(@"SRTHost64",
 #else
-            logging.AddFile(@"SRTHost32",
+            builder.Logging.AddFile(@"SRTHost32",
 #endif
                 (FileLoggerOptions options) =>
                 {
@@ -49,6 +44,45 @@ namespace SRTHost
                     options.TimestampFormat = TIMESTAMP_FORMAT;
                     options.LoggingLevel = LogLevel.Information;
                 });
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("CORSPolicy", builder =>
+                {
+                    builder.AllowAnyMethod()
+                           .AllowAnyHeader()
+                           .AllowCredentials()
+                           .SetIsOriginAllowed((string host) => true);
+                });
+            });
+
+            builder.Services.AddRazorPages();
+            builder.Services.AddServerSideBlazor();
+
+            builder.Services.AddSingleton(s => ActivatorUtilities.CreateInstance<PluginSystem>(s, s.GetRequiredService<ILogger<PluginSystem>>(), Environment.GetCommandLineArgs().Skip(1).ToArray()));
+            builder.Services.AddHostedService(s => s.GetService<PluginSystem>());
+
+            WebApplication app = builder.Build();
+
+            if (app.Environment.IsDevelopment())
+                app.UseDeveloperExceptionPage();
+            else
+            {
+                app.UseExceptionHandler("/Error");
+                app.UseHsts();
+            }
+
+            app.UseStaticFiles();
+            app.UseRouting();
+            app.UseCors("CORSPolicy");
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapBlazorHub();
+                endpoints.MapFallbackToPage("/_Host");
+                endpoints.MapControllers();
+            });
+
+            await app.RunAsync();
         }
     }
 }

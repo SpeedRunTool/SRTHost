@@ -39,6 +39,7 @@ namespace SRTHost
         public IReadOnlyCollection<PluginUIStateValue> PluginUIsAgnostic => new ReadOnlyCollection<PluginUIStateValue>(pluginUIsAgnostic);
 
         // Misc. variables
+        private IList<PluginLoadContext> pluginLoadContexts;
         private ManualResetEventSlim pluginReinitializeEvent;
         private ManualResetEventSlim pluginReadEvent;
         private PluginHostDelegates hostDelegates = new PluginHostDelegates();
@@ -50,6 +51,7 @@ namespace SRTHost
         public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
         {
             this.logger = logger;
+            pluginLoadContexts = new List<PluginLoadContext>();
             pluginReinitializeEvent = new ManualResetEventSlim(true);
             pluginReadEvent = new ManualResetEventSlim(true);
 
@@ -149,6 +151,7 @@ namespace SRTHost
                                     PluginShutdown(pluginUIStateValue);
                         }
                     }
+
                     pluginReadEvent.Set();
 
                     await Task.Delay(settingUpdateRate).ConfigureAwait(false);
@@ -160,33 +163,35 @@ namespace SRTHost
             {
                 LogException(ex?.GetType()?.Name, ex?.ToString());
                 LogIncorrectArchitecturePluginReference(ex.Source, ex.FileName);
-                throw ex;
+                throw;
             }
             catch (Exception ex)
             {
                 LogException(ex?.GetType()?.Name, ex?.ToString());
-                throw ex;
+                throw;
             }
         }
 
         public async Task ReloadPlugins(CancellationToken cancellationToken)
         {
+            // Don't (re-)initialize the plugins until the read operation completes.
+            pluginReadEvent.Wait(cancellationToken);
+
+            // Signal that we're (re-)initializing plugins to block reads until we're done.
+            pluginReinitializeEvent.Reset();
+
             await StopPlugins(cancellationToken);
             await InitPlugins(cancellationToken);
             await StartPlugins(cancellationToken);
+
+            pluginReinitializeEvent.Set();
         }
 
 
         private async Task InitPlugins(CancellationToken cancellationToken)
         {
-            await Task.Run(async () =>
+            await Task.Run(() =>
             {
-                // Don't (re-)initialize the plugins until the read operation completes.
-                pluginReadEvent.Wait(cancellationToken);
-
-                // Signal that we're (re-)initializing plugins to block reads until we're done.
-                pluginReinitializeEvent.Reset();
-
                 DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
 
                 // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
@@ -200,7 +205,12 @@ namespace SRTHost
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                        .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory), pluginAssemblyFileInfo.FullName))
+                        .Select((FileInfo pluginAssemblyFileInfo) =>
+                        {
+                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory);
+                            pluginLoadContexts.Add(pluginLoadContext);
+                            return LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+                        })
                         .Where((Assembly pluginAssembly) => pluginAssembly != null)
                         .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
                 }
@@ -211,7 +221,12 @@ namespace SRTHost
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
                         .Where((FileInfo pluginAssemblyFileInfo) => !pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo.Name.Equals(string.Format("{0}.dll", loadSpecificProvider), StringComparison.InvariantCultureIgnoreCase)))
-                        .Select((FileInfo pluginAssemblyFileInfo) => LoadPlugin(new PluginLoadContext(pluginAssemblyFileInfo.Directory), pluginAssemblyFileInfo.FullName))
+                        .Select((FileInfo pluginAssemblyFileInfo) =>
+                        {
+                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory);
+                            pluginLoadContexts.Add(pluginLoadContext);
+                            return LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+                        })
                         .Where((Assembly pluginAssembly) => pluginAssembly != null)
                         .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
                 }
@@ -223,8 +238,6 @@ namespace SRTHost
                 foreach (IPluginProvider pluginProvider in allPlugins.Where(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType())).Select(a => (IPluginProvider)a))
                     pluginProvidersAndDependentUIs.Add(new PluginProviderStateValue() { Plugin = pluginProvider, Startup = false }, allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == pluginProvider.GetType().Name).ToArray());
                 pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == null || a.Plugin.RequiredProvider == string.Empty).ToArray();
-
-                pluginReinitializeEvent.Set();
             }, cancellationToken);
         }
 
@@ -246,9 +259,6 @@ namespace SRTHost
         {
             await Task.Run(() =>
             {
-                // Don't stop the plugin until the read operation completes.
-                pluginReadEvent.Wait(cancellationToken);
-
                 if (pluginUIsAgnostic != null)
                     foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
                         PluginShutdown(pluginUIStateValue);
@@ -262,6 +272,13 @@ namespace SRTHost
                         PluginShutdown(pluginKeys.Key);
                     }
                 }
+
+                // Unload the load contexts.
+                foreach (PluginLoadContext pluginLoadContext in pluginLoadContexts)
+                    pluginLoadContext.Unload();
+
+                // Clear the load contexts.
+                pluginLoadContexts.Clear();
             }, cancellationToken);
         }
 

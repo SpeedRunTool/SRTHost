@@ -13,7 +13,7 @@ namespace SRTHost
         private DirectoryInfo thisPluginDirectory;
         private AssemblyDependencyResolver _thisPluginResolver;
 
-        public PluginLoadContext(DirectoryInfo thisPluginDirectory) : base(thisPluginDirectory.Name, false)
+        public PluginLoadContext(DirectoryInfo thisPluginDirectory) : base(thisPluginDirectory.Name, true)
         {
             this.thisPluginDirectory = thisPluginDirectory;
             _thisPluginResolver = new AssemblyDependencyResolver(this.thisPluginDirectory.FullName);

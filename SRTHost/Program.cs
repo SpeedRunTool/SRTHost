@@ -1,15 +1,9 @@
-﻿using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Hosting;
-using SRTHost.LoggerImplementations;
-using System;
+﻿using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
-using System.IO;
-using System.Diagnostics;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SRTHost.LoggerImplementations;
+using System.Threading.Tasks;
 
 namespace SRTHost
 {
@@ -20,22 +14,31 @@ namespace SRTHost
 
         public static async Task Main(params string[] args)
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+            using (IWebHost host = CreateBuilder(args).Build())
+                await host.RunAsync();
+        }
 
-            // Logging
-            builder.Logging.ClearProviders();
-            builder.Logging.AddSimpleConsole(options =>
+        public static IWebHostBuilder CreateBuilder(string[] args) =>
+            WebHost
+            .CreateDefaultBuilder(args)
+            .ConfigureLogging(ConfigureLogging)
+            .UseStartup<Startup>();
+
+        public static void ConfigureLogging(WebHostBuilderContext ctx, ILoggingBuilder logging)
+        {
+            logging.ClearProviders();
+            logging.AddSimpleConsole(options =>
             {
                 options.IncludeScopes = true;
                 options.TimestampFormat = string.Format("[{0}] ", TIMESTAMP_FORMAT);
                 options.UseUtcTimestamp = UTC_TIMESTAMP;
             });
-            builder.Logging.AddDebug();
-            builder.Logging.AddEventSourceLogger();
+            logging.AddDebug();
+            logging.AddEventSourceLogger();
 #if x64
-            builder.Logging.AddFile(@"SRTHost64",
+            logging.AddFile(@"SRTHost64",
 #else
-            builder.Logging.AddFile(@"SRTHost32",
+            logging.AddFile(@"SRTHost32",
 #endif
                 (FileLoggerOptions options) =>
                 {
@@ -44,45 +47,6 @@ namespace SRTHost
                     options.TimestampFormat = TIMESTAMP_FORMAT;
                     options.LoggingLevel = LogLevel.Information;
                 });
-
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("CORSPolicy", builder =>
-                {
-                    builder.AllowAnyMethod()
-                           .AllowAnyHeader()
-                           .AllowCredentials()
-                           .SetIsOriginAllowed((string host) => true);
-                });
-            });
-
-            builder.Services.AddRazorPages();
-            builder.Services.AddServerSideBlazor();
-
-            builder.Services.AddSingleton(s => ActivatorUtilities.CreateInstance<PluginSystem>(s, s.GetRequiredService<ILogger<PluginSystem>>(), Environment.GetCommandLineArgs().Skip(1).ToArray()));
-            builder.Services.AddHostedService(s => s.GetService<PluginSystem>());
-
-            WebApplication app = builder.Build();
-
-            if (app.Environment.IsDevelopment())
-                app.UseDeveloperExceptionPage();
-            else
-            {
-                app.UseExceptionHandler("/Error");
-                app.UseHsts();
-            }
-
-            app.UseStaticFiles();
-            app.UseRouting();
-            app.UseCors("CORSPolicy");
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapBlazorHub();
-                endpoints.MapFallbackToPage("/_Host");
-                endpoints.MapControllers();
-            });
-
-            await app.RunAsync();
         }
     }
 }

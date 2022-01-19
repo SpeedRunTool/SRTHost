@@ -35,6 +35,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
+	<UseWPF>true</UseWPF>
     <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
     <TargetFramework>net6.0-windows</TargetFramework>
     <LangVersion>latest</LangVersion>

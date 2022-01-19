@@ -39,6 +39,8 @@ namespace SRTHost
         public IReadOnlyCollection<PluginUIStateValue> PluginUIsAgnostic => new ReadOnlyCollection<PluginUIStateValue>(pluginUIsAgnostic);
 
         // Misc. variables
+        private ManualResetEventSlim pluginReinitializeEvent;
+        private ManualResetEventSlim pluginReadEvent;
         private PluginHostDelegates hostDelegates = new PluginHostDelegates();
         private string loadSpecificProvider = string.Empty; // TODO: Allow IConfiguration settings.
         private int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
@@ -48,6 +50,8 @@ namespace SRTHost
         public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
         {
             this.logger = logger;
+            pluginReinitializeEvent = new ManualResetEventSlim(true);
+            pluginReadEvent = new ManualResetEventSlim(true);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
@@ -97,17 +101,99 @@ namespace SRTHost
 
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
+            await Task.Run(async () =>
             {
                 string appExePath = Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME);
                 LogLoadedHost(appExePath.Replace(AppContext.BaseDirectory, string.Empty));
                 GetSigningInfo(appExePath);
+
+                // Initialize and start plugins.
+                await InitPlugins(cancellationToken);
+                await StartPlugins(cancellationToken);
+            }, cancellationToken);
+
+            await base.StartAsync(cancellationToken);
+        }
+
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await StopPlugins(cancellationToken);
+            await base.StopAsync(cancellationToken);
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            try
+            {
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    // Don't read from the plugins until the (re-)initialize operation completes.
+                    pluginReinitializeEvent.Wait(stoppingToken);
+
+                    // Signal that we're reading from plugins to block (re-)initialization and stopping until we're done.
+                    pluginReadEvent.Reset();
+
+                    foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
+                    {
+                        if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is running.
+                        {
+                            object gameMemory = pluginKeys.Key.Plugin.PullData();
+                            foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
+                                PluginReceiveData(pluginUIStateValue, gameMemory);
+                        }
+                        else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is not running.
+                        {
+                            // Loop through this plugin's UIs and shut them down if they're running. Only shuts down dependent UIs. Agnostic UIs such as JSON shouldn't be touched.
+                            foreach (PluginUIStateValue pluginUIStateValue in pluginKeys.Value)
+                                if (pluginUIStateValue.Startup)
+                                    PluginShutdown(pluginUIStateValue);
+                        }
+                    }
+                    pluginReadEvent.Set();
+
+                    await Task.Delay(settingUpdateRate).ConfigureAwait(false);
+                }
+
+                LogAppShutdown(APP_DISPLAY_NAME);
+            }
+            catch (FileLoadException ex)
+            {
+                LogException(ex?.GetType()?.Name, ex?.ToString());
+                LogIncorrectArchitecturePluginReference(ex.Source, ex.FileName);
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                LogException(ex?.GetType()?.Name, ex?.ToString());
+                throw ex;
+            }
+        }
+
+        public async Task ReloadPlugins(CancellationToken cancellationToken)
+        {
+            await StopPlugins(cancellationToken);
+            await InitPlugins(cancellationToken);
+            await StartPlugins(cancellationToken);
+        }
+
+
+        private async Task InitPlugins(CancellationToken cancellationToken)
+        {
+            await Task.Run(async () =>
+            {
+                // Don't (re-)initialize the plugins until the read operation completes.
+                pluginReadEvent.Wait(cancellationToken);
+
+                // Signal that we're (re-)initializing plugins to block reads until we're done.
+                pluginReinitializeEvent.Reset();
+
                 DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
 
                 // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
                 if (!pluginsDir.Exists)
                     pluginsDir.Create();
 
+                // (Re-)discover plugins.
                 if (loadSpecificProvider == string.Empty)
                 {
                     allPlugins = pluginsDir
@@ -131,17 +217,21 @@ namespace SRTHost
                 }
 
                 if (allPlugins.Length == 0)
-                {
-                    Exception ex = new ApplicationException("Unable to find any plugins located in the \"plugins\" folder that implement IPlugin");
-                    LogException(ex?.GetType()?.Name, ex?.ToString());
-                    throw ex;
-                }
+                    LogNoPlugins();
 
                 pluginProvidersAndDependentUIs = new Dictionary<PluginProviderStateValue, PluginUIStateValue[]>();
                 foreach (IPluginProvider pluginProvider in allPlugins.Where(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType())).Select(a => (IPluginProvider)a))
                     pluginProvidersAndDependentUIs.Add(new PluginProviderStateValue() { Plugin = pluginProvider, Startup = false }, allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == pluginProvider.GetType().Name).ToArray());
                 pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == null || a.Plugin.RequiredProvider == string.Empty).ToArray();
 
+                pluginReinitializeEvent.Set();
+            }, cancellationToken);
+        }
+
+        private async Task StartPlugins(CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
                 // Startup providers.
                 foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
                     PluginStartup(pluginKeys.Key);
@@ -150,67 +240,29 @@ namespace SRTHost
                 foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
                     PluginStartup(pluginUIStateValue);
             }, cancellationToken);
-
-            await base.StartAsync(cancellationToken);
         }
 
-        public override async Task StopAsync(CancellationToken cancellationToken)
+        private async Task StopPlugins(CancellationToken cancellationToken)
         {
             await Task.Run(() =>
             {
-                foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
-                    PluginShutdown(pluginUIStateValue);
+                // Don't stop the plugin until the read operation completes.
+                pluginReadEvent.Wait(cancellationToken);
 
-                foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
-                {
-                    foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
-                        PluginShutdown(pluginUI);
-                    PluginShutdown(pluginKeys.Key);
-                }
-            }, cancellationToken);
+                if (pluginUIsAgnostic != null)
+                    foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
+                        PluginShutdown(pluginUIStateValue);
 
-            await base.StopAsync(cancellationToken);
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            try
-            {
-                while (!stoppingToken.IsCancellationRequested)
+                if (pluginProvidersAndDependentUIs != null)
                 {
                     foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
                     {
-                        if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is running.
-                        {
-                            object gameMemory = pluginKeys.Key.Plugin.PullData();
-                            foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
-                                PluginReceiveData(pluginUIStateValue, gameMemory);
-                        }
-                        else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is not running.
-                        {
-                            // Loop through this plugin's UIs and shut them down if they're running. Only shuts down dependent UIs. Agnostic UIs such as JSON shouldn't be touched.
-                            foreach (PluginUIStateValue pluginUIStateValue in pluginKeys.Value)
-                                if (pluginUIStateValue.Startup)
-                                    PluginShutdown(pluginUIStateValue);
-                        }
+                        foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
+                            PluginShutdown(pluginUI);
+                        PluginShutdown(pluginKeys.Key);
                     }
-
-                    await Task.Delay(settingUpdateRate).ConfigureAwait(false);
                 }
-
-                LogAppShutdown(APP_DISPLAY_NAME);
-            }
-            catch (FileLoadException ex)
-            {
-                LogException(ex?.GetType()?.Name, ex?.ToString());
-                LogIncorrectArchitecturePluginReference(ex.Source, ex.FileName);
-                throw ex;
-            }
-            catch (Exception ex)
-            {
-                LogException(ex?.GetType()?.Name, ex?.ToString());
-                throw ex;
-            }
+            }, cancellationToken);
         }
 
         private void PluginStartup<T>(IPluginStateValue<T> plugin) where T : IPlugin

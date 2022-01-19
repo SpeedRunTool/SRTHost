@@ -22,6 +22,7 @@ namespace SRTHost
     [DebuggerDisplay("[{Plugin.GetType().Name,nq}] S:{Startup,nq} GR:{Plugin.GameRunning,nq}")]
     public class PluginProviderStateValue : PluginStateValue<IPluginProvider>
     {
+        public object LastData { get; set; }
     }
 
     [DebuggerDisplay("[{Plugin.GetType().Name,nq}] S:{Startup,nq} RP:{Plugin.RequiredProvider,nq}")]

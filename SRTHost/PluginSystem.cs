@@ -140,6 +140,7 @@ namespace SRTHost
                         if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is running.
                         {
                             object gameMemory = pluginKeys.Key.Plugin.PullData();
+                            pluginKeys.Key.LastData = gameMemory;
                             foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
                                 PluginReceiveData(pluginUIStateValue, gameMemory);
                         }

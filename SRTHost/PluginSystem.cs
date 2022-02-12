@@ -31,22 +31,21 @@ namespace SRTHost
 
         // Plugins
         private IPlugin[] allPlugins = null;
-        private Dictionary<PluginProviderStateValue, PluginUIStateValue[]> pluginProvidersAndDependentUIs = null;
+        private Dictionary<PluginProducerStateValue, PluginUIStateValue[]> pluginProducersAndDependentUIs = null;
         private PluginUIStateValue[] pluginUIsAgnostic = null;
 
         public IReadOnlyCollection<IPlugin> Plugins => new ReadOnlyCollection<IPlugin>(allPlugins);
-        public IReadOnlyDictionary<PluginProviderStateValue, PluginUIStateValue[]> PluginProvidersAndDependentUIs => new ReadOnlyDictionary<PluginProviderStateValue, PluginUIStateValue[]>(pluginProvidersAndDependentUIs);
+        public IReadOnlyDictionary<PluginProducerStateValue, PluginUIStateValue[]> PluginProducersAndDependentUIs => new ReadOnlyDictionary<PluginProducerStateValue, PluginUIStateValue[]>(pluginProducersAndDependentUIs);
         public IReadOnlyCollection<PluginUIStateValue> PluginUIsAgnostic => new ReadOnlyCollection<PluginUIStateValue>(pluginUIsAgnostic);
 
         // Misc. variables
         private IList<PluginLoadContext> pluginLoadContexts;
         private ManualResetEventSlim pluginReinitializeEvent;
         private ManualResetEventSlim pluginReadEvent;
-        private PluginHostDelegates hostDelegates = new PluginHostDelegates();
-        private string loadSpecificProvider = string.Empty; // TODO: Allow IConfiguration settings.
+        private string loadSpecificProducer = string.Empty; // TODO: Allow IConfiguration settings.
         private int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
 
-        public string LoadSpecificProvider => loadSpecificProvider;
+        public string LoadSpecificProducer => loadSpecificProducer;
 
         public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
         {
@@ -71,7 +70,7 @@ namespace SRTHost
                     case "HELP":
                         {
                             LogCommandLineHelpBanner();
-                            LogCommandLineHelpEntryValue("Provider", "Enables single provider mode where the given provider is the only one loaded", "SRTPluginProviderRE2");
+                            LogCommandLineHelpEntryValue("Producer", "Enables single producer mode where the given producer is the only one loaded", "SRTPluginProducerRE2");
                             LogCommandLineHelpEntryValue("UpdateRate", "Sets the time in milliseconds between memory value updates", "66");
                             return;
                         }
@@ -88,9 +87,9 @@ namespace SRTHost
                             }
                             break;
                         }
-                    case "PROVIDER":
+                    case "PRODUCER":
                         {
-                            loadSpecificProvider = kvp.Value;
+                            loadSpecificProducer = kvp.Value;
                             break;
                         }
                     default:
@@ -135,16 +134,16 @@ namespace SRTHost
                     // Signal that we're reading from plugins to block (re-)initialization and stopping until we're done.
                     pluginReadEvent.Reset();
 
-                    foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
+                    foreach (KeyValuePair<PluginProducerStateValue, PluginUIStateValue[]> pluginKeys in pluginProducersAndDependentUIs)
                     {
-                        if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is running.
+                        if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.ProcessRunning) // Producer is started and process is running.
                         {
-                            object gameMemory = pluginKeys.Key.Plugin.PullData();
-                            pluginKeys.Key.LastData = gameMemory;
+                            object pluginData = pluginKeys.Key.Plugin.PullData();
+                            pluginKeys.Key.LastData = pluginData;
                             foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
-                                PluginReceiveData(pluginUIStateValue, gameMemory);
+                                PluginReceiveData(pluginUIStateValue, pluginData);
                         }
-                        else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.GameRunning) // Provider is started and game is not running.
+                        else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.ProcessRunning) // Producer is started and process is not running.
                         {
                             // Loop through this plugin's UIs and shut them down if they're running. Only shuts down dependent UIs. Agnostic UIs such as JSON shouldn't be touched.
                             foreach (PluginUIStateValue pluginUIStateValue in pluginKeys.Value)
@@ -200,7 +199,7 @@ namespace SRTHost
                     pluginsDir.Create();
 
                 // (Re-)discover plugins.
-                if (loadSpecificProvider == string.Empty)
+                if (loadSpecificProducer == string.Empty)
                 {
                     allPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
@@ -221,7 +220,7 @@ namespace SRTHost
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                        .Where((FileInfo pluginAssemblyFileInfo) => !pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo.Name.Contains("Provider", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo.Name.Equals(string.Format("{0}.dll", loadSpecificProvider), StringComparison.InvariantCultureIgnoreCase)))
+                        .Where((FileInfo pluginAssemblyFileInfo) => !pluginAssemblyFileInfo.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo.Name.Equals(string.Format("{0}.dll", loadSpecificProducer), StringComparison.InvariantCultureIgnoreCase)))
                         .Select((FileInfo pluginAssemblyFileInfo) =>
                         {
                             PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory);
@@ -235,10 +234,10 @@ namespace SRTHost
                 if (allPlugins.Length == 0)
                     LogNoPlugins();
 
-                pluginProvidersAndDependentUIs = new Dictionary<PluginProviderStateValue, PluginUIStateValue[]>();
-                foreach (IPluginProvider pluginProvider in allPlugins.Where(a => typeof(IPluginProvider).IsAssignableFrom(a.GetType())).Select(a => (IPluginProvider)a))
-                    pluginProvidersAndDependentUIs.Add(new PluginProviderStateValue() { Plugin = pluginProvider, Startup = false }, allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == pluginProvider.GetType().Name).ToArray());
-                pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProvider == null || a.Plugin.RequiredProvider == string.Empty).ToArray();
+                pluginProducersAndDependentUIs = new Dictionary<PluginProducerStateValue, PluginUIStateValue[]>();
+                foreach (IPluginProducer pluginProducer in allPlugins.Where(a => typeof(IPluginProducer).IsAssignableFrom(a.GetType())).Select(a => (IPluginProducer)a))
+                    pluginProducersAndDependentUIs.Add(new PluginProducerStateValue() { Plugin = pluginProducer, Startup = false }, allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProducer == pluginProducer.GetType().Name).ToArray());
+                pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProducer == null || a.Plugin.RequiredProducer == string.Empty).ToArray();
             }, cancellationToken);
         }
 
@@ -246,8 +245,8 @@ namespace SRTHost
         {
             await Task.Run(() =>
             {
-                // Startup providers.
-                foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
+                // Startup producers.
+                foreach (KeyValuePair<PluginProducerStateValue, PluginUIStateValue[]> pluginKeys in pluginProducersAndDependentUIs)
                     PluginStartup(pluginKeys.Key);
 
                 // Startup agnotic UIs.
@@ -264,9 +263,9 @@ namespace SRTHost
                     foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
                         PluginShutdown(pluginUIStateValue);
 
-                if (pluginProvidersAndDependentUIs != null)
+                if (pluginProducersAndDependentUIs != null)
                 {
-                    foreach (KeyValuePair<PluginProviderStateValue, PluginUIStateValue[]> pluginKeys in pluginProvidersAndDependentUIs)
+                    foreach (KeyValuePair<PluginProducerStateValue, PluginUIStateValue[]> pluginKeys in pluginProducersAndDependentUIs)
                     {
                         foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
                             PluginShutdown(pluginUI);
@@ -290,7 +289,7 @@ namespace SRTHost
                 int pluginStatusResponse = 0;
                 try
                 {
-                    pluginStatusResponse = plugin.Plugin.Startup(hostDelegates);
+                    pluginStatusResponse = plugin.Plugin.Startup();
 
                     if (pluginStatusResponse == 0)
                         LogPluginStartupSuccess(plugin.Plugin.Info.Name);
@@ -305,18 +304,18 @@ namespace SRTHost
             }
         }
 
-        private void PluginReceiveData<T>(IPluginStateValue<T> plugin, object gameMemory) where T : IPluginUI
+        private void PluginReceiveData<T>(IPluginStateValue<T> plugin, object pluginData) where T : IPluginUI
         {
             // If the UI plugin isn't started, start it now.
             if (!plugin.Startup)
                 PluginStartup(plugin);
 
-            if (gameMemory != null)
+            if (pluginData != null)
             {
                 int uiPluginReceiveDataStatus = 0;
                 try
                 {
-                    uiPluginReceiveDataStatus = plugin.Plugin.ReceiveData(gameMemory);
+                    uiPluginReceiveDataStatus = plugin.Plugin.ReceiveData(pluginData);
 
                     if (uiPluginReceiveDataStatus == 0)
                         LogPluginReceiveDataSuccess(plugin.Plugin.Info.Name);
@@ -396,9 +395,9 @@ namespace SRTHost
             {
                 foreach (Type type in typesInAssembly)
                 {
-                    if (type.GetInterface(nameof(IPluginProvider)) != null)
+                    if (type.GetInterface(nameof(IPluginProducer)) != null)
                     {
-                        IPluginProvider result = (IPluginProvider)Activator.CreateInstance(type); // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
+                        IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type); // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
                         count++;
                         yield return result;
                     }

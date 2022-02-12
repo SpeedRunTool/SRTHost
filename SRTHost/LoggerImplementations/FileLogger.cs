@@ -8,13 +8,13 @@ namespace SRTHost.LoggerImplementations
     {
         private string logName;
         private string categoryName;
-        private FileLoggerProvider fileLoggerProvider;
+        private FileLoggerProducer fileLoggerProducer;
 
-        public FileLogger(string logName, string categoryName, FileLoggerProvider fileLoggerProvider)
+        public FileLogger(string logName, string categoryName, FileLoggerProducer fileLoggerProducer)
         {
             this.logName = logName;
             this.categoryName = categoryName;
-            this.fileLoggerProvider = fileLoggerProvider;
+            this.fileLoggerProducer = fileLoggerProducer;
         }
 
         public IDisposable BeginScope<TState>(TState state)
@@ -29,7 +29,7 @@ namespace SRTHost.LoggerImplementations
             }
         }
 
-        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None && logLevel >= fileLoggerProvider.LoggingLevel;
+        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None && logLevel >= fileLoggerProducer.LoggingLevel;
 
         private string GetShortLogLevel(LogLevel logLevel)
         {
@@ -73,7 +73,7 @@ namespace SRTHost.LoggerImplementations
                 return;
 
             StringBuilder logMessage = new StringBuilder();
-            logMessage.AppendFormat("[{0}]", (fileLoggerProvider.UtcTime ? DateTime.UtcNow : DateTime.Now).ToString(fileLoggerProvider.TimestampFormat));
+            logMessage.AppendFormat("[{0}]", (fileLoggerProducer.UtcTime ? DateTime.UtcNow : DateTime.Now).ToString(fileLoggerProducer.TimestampFormat));
             logMessage.AppendFormat("\x00A0{0}:", GetShortLogLevel(logLevel));
             logMessage.AppendFormat("\x00A0{0}[", categoryName);
             logMessage.AppendFormat("{0}]\r\n      ", eventId.Id);
@@ -84,7 +84,7 @@ namespace SRTHost.LoggerImplementations
             if (exception != null)
                 logMessage.AppendFormat("{0}{1}", Environment.NewLine, exception);
 
-            fileLoggerProvider.WriteLog(logMessage.ToString());
+            fileLoggerProducer.WriteLog(logMessage.ToString());
         }
     }
 }

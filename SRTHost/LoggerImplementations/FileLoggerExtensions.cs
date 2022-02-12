@@ -8,13 +8,13 @@ namespace Microsoft.Extensions.Logging
     {
         public static ILoggingBuilder AddFile(this ILoggingBuilder builder, string fileName, Action<FileLoggerOptions> configure = default)
         {
-            builder.Services.Add(ServiceDescriptor.Singleton<ILoggerProvider, FileLoggerProvider>(
-                (IServiceProvider serviceProvider) =>
+            builder.Services.Add(ServiceDescriptor.Singleton<ILoggerProvider, FileLoggerProducer>(
+                (IServiceProvider serviceProducer) =>
                 {
                     FileLoggerOptions options = new FileLoggerOptions();
                     if (configure != null)
                         configure(options);
-                    return new FileLoggerProvider(fileName, options);
+                    return new FileLoggerProducer(fileName, options);
                 }
             ));
             return builder;

@@ -45,7 +45,7 @@ namespace SRTHost.Controllers
             return Ok(pluginSystem.Plugins);
         }
 
-        // GET: api/v1/Plugin/Info/SRTPluginProviderRE2
+        // GET: api/v1/Plugin/Info/SRTPluginProducerRE2
         [HttpGet("Info/{Plugin}", Name = "InfoGet")]
         public IActionResult InfoGet(string plugin)
         {
@@ -61,7 +61,7 @@ namespace SRTHost.Controllers
                 return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
         }
 
-        // GET: api/v1/Plugin/Data/SRTPluginProviderRE2
+        // GET: api/v1/Plugin/Data/SRTPluginProducerRE2
         [HttpGet("Data/{Plugin}", Name = "DataGet")]
         public IActionResult DataGet(string plugin)
         {
@@ -70,11 +70,11 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            PluginProviderStateValue? pluginState = pluginSystem.PluginProvidersAndDependentUIs.Select(a => a.Key).Where(a => a.Plugin.GetType().Name == plugin).FirstOrDefault();
+            PluginProducerStateValue? pluginState = pluginSystem.PluginProducersAndDependentUIs.Select(a => a.Key).Where(a => a.Plugin.GetType().Name == plugin).FirstOrDefault();
             if (pluginState != null)
                 return Ok(pluginState.LastData);
             else
-                return NotFound(string.Format("Provider plugin \"{0}\" not found.", plugin));
+                return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
         }
 
         // GET: api/v1/Plugin/Reload

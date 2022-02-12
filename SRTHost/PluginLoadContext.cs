@@ -52,8 +52,8 @@ namespace SRTHost
             if (assemblyName.FullName == typeof(IPlugin).Assembly.FullName)
                 return Default.LoadFromAssemblyName(assemblyName);
 
-            // If the requested assembly is a provider and the assembly name does not match our folder name, do not load it from our folder. Load it from the other load contexts. This fixes issue #26 (ref: https://github.com/Squirrelies/SRTHost/issues/26).
-            if (assemblyName.Name.StartsWith("SRTPluginProvider", StringComparison.InvariantCultureIgnoreCase) && !thisPluginDirectory.Name.StartsWith("SRTPluginProvider", StringComparison.InvariantCultureIgnoreCase))
+            // If the requested assembly is a producer and the assembly name does not match our folder name, do not load it from our folder. Load it from the other load contexts. This fixes issue #26 (ref: https://github.com/Squirrelies/SRTHost/issues/26).
+            if (assemblyName.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase) && !thisPluginDirectory.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase))
                 return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName);
 
             // Attempt to let let the AssemblyDependencyResolver handle it first.
@@ -66,7 +66,7 @@ namespace SRTHost
             if (assemblyPath != null) // Return the assembly we found.
                 return LoadFromAssemblyPath(assemblyPath);
             else if (All.Any(a => a.Name == assemblyName.Name)) // Are there any LoadContexts that match this AssemblyName? If so, maybe we can enlist their help!
-                return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName); // TODO: Is this needed anymore with the new provider diversion above?
+                return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName); // TODO: Is this needed anymore with the new producer diversion above?
             else // If we made it this far, hopefully the default AssemblyLoadContext can help because we have no idea.
                 return Default.LoadFromAssemblyName(assemblyName);
         }

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace SRTHost.LoggerImplementations
 {
-    public class FileLoggerProvider : ILoggerProvider
+    public class FileLoggerProducer : ILoggerProvider
     {
         private string logName;
         private StreamWriter logStreamWriter;
@@ -17,7 +17,7 @@ namespace SRTHost.LoggerImplementations
         public string TimestampFormat { get; init; }
         public bool UtcTime { get; init; }
 
-        public FileLoggerProvider(string logName, FileLoggerOptions fileLoggerOptions)
+        public FileLoggerProducer(string logName, FileLoggerOptions fileLoggerOptions)
         {
             this.logName = logName;
 
@@ -58,7 +58,7 @@ namespace SRTHost.LoggerImplementations
         }
 
         // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~FileLoggerProvider()
+        // ~FileLoggerProducer()
         // {
         //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         //     Dispose(disposing: false);

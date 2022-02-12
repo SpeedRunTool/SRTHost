@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.Text;
-
-namespace SRTPluginBase
+﻿namespace SRTPluginBase
 {
     public interface IPluginUI : IPlugin
     {
         /// <summary>
-        /// Receives a representation of the game's current memory.
+        /// Receives a producer-specific data structure for processing and returns a status code.
         /// </summary>
-        /// <param name="gameMemory"></param>
+        /// <param name="data"></param>
         /// <returns></returns>
-        int ReceiveData(object gameMemory);
+        int ReceiveData(object data);
 
-        string RequiredProvider { get; }
+        string RequiredProducer { get; }
     }
 }

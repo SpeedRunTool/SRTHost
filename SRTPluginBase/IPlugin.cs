@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace SRTPluginBase
+﻿namespace SRTPluginBase
 {
     public interface IPlugin
     {
@@ -13,7 +11,7 @@ namespace SRTPluginBase
         /// This method is called when the plugin is being loaded. All one-time initialization should occur here.
         /// </summary>
         /// <returns>A value indicating success or failure. SRT Host expects 0 for success, any other value will indicate a failure. These values are up to the plugin developer discretion.</returns>
-        int Startup(IPluginHostDelegates hostDelegates);
+        int Startup();
 
         /// <summary>
         /// This method is called when the plugin is being unloaded. All graceful cleanup code should occur here.

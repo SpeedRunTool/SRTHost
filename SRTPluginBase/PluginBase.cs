@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Reflection;
-using System.Text.Json;
+﻿using System.Reflection;
 
 namespace SRTPluginBase
 {
@@ -9,18 +6,16 @@ namespace SRTPluginBase
     {
         public abstract IPluginInfo Info { get; }
 
-        public abstract int Startup(IPluginHostDelegates hostDelegates);
+        public abstract int Startup();
 
         public abstract int Shutdown();
 
         public string GetConfigFile(Assembly a) => a.GetConfigFile();
 
         public virtual T LoadConfiguration<T>() where T : class, new() => Extensions.LoadConfiguration<T>(null);
-        public virtual T LoadConfiguration<T>(IPluginHostDelegates hostDelegates = null) where T : class, new() => Extensions.LoadConfiguration<T>(null, hostDelegates);
-        public T LoadConfiguration<T>(string? configFile = null, IPluginHostDelegates hostDelegates = null) where T : class, new() => Extensions.LoadConfiguration<T>(configFile, hostDelegates);
+        public T LoadConfiguration<T>(string? configFile = null) where T : class, new() => Extensions.LoadConfiguration<T>(configFile);
 
         public virtual void SaveConfiguration<T>(T configuration) where T : class, new() => configuration.SaveConfiguration(null);
-        public virtual void SaveConfiguration<T>(T configuration, IPluginHostDelegates hostDelegates = null) where T : class, new() => configuration.SaveConfiguration(null, hostDelegates);
-        public void SaveConfiguration<T>(T configuration, string? configFile = null, IPluginHostDelegates hostDelegates = null) where T : class, new() => configuration.SaveConfiguration(configFile, hostDelegates);
+        public void SaveConfiguration<T>(T configuration, string? configFile = null) where T : class, new() => configuration.SaveConfiguration(configFile);
     }
 }

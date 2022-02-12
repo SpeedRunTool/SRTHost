@@ -34,9 +34,9 @@ namespace SRTPluginBase
         public static string GetConfigFile(this Assembly a) => Path.Combine(new FileInfo(a.Location).DirectoryName, string.Format("{0}.cfg", Path.GetFileNameWithoutExtension(new FileInfo(a.Location).Name)));
 
         public static T LoadConfiguration<T>() where T : class, new() => LoadConfiguration<T>(null);
-        public static T LoadConfiguration<T>(IPluginHostDelegates hostDelegates = null) where T : class, new() => LoadConfiguration<T>(null, hostDelegates);
-        public static T LoadConfiguration<T>(string? configFile = null, IPluginHostDelegates hostDelegates = null) where T : class, new()
+        public static T LoadConfiguration<T>(string? configFile = null) where T : class, new()
         {
+            // TODO: ILogger
             if (configFile == null)
                 configFile = GetConfigFile(typeof(T).Assembly);
 
@@ -50,19 +50,15 @@ namespace SRTPluginBase
             }
             catch (Exception ex)
             {
-                if (hostDelegates != null)
-                {
-                    try { hostDelegates.ExceptionMessage.Invoke(ex); }
-                    catch { }
-                }
+                // TODO: ILogger
                 return new T(); // An exception occurred when reading the file, return a new instance.
             }
         }
 
         public static void SaveConfiguration<T>(this T configuration) where T : class, new() => SaveConfiguration<T>(configuration, null);
-        public static void SaveConfiguration<T>(this T configuration, IPluginHostDelegates hostDelegates = null) where T : class, new() => SaveConfiguration<T>(configuration, null, hostDelegates);
-        public static void SaveConfiguration<T>(this T configuration, string? configFile = null, IPluginHostDelegates hostDelegates = null) where T : class, new()
+        public static void SaveConfiguration<T>(this T configuration, string? configFile = null) where T : class, new()
         {
+            // TODO: ILogger
             if (configFile == null)
                 configFile = GetConfigFile(typeof(T).Assembly);
 
@@ -75,11 +71,7 @@ namespace SRTPluginBase
                 }
                 catch (Exception ex)
                 {
-                    if (hostDelegates != null)
-                    {
-                        try { hostDelegates.ExceptionMessage.Invoke(ex); }
-                        catch { }
-                    }
+                    // TODO: ILogger
                 }
             }
         }

@@ -19,13 +19,13 @@ namespace SRTHost
         public bool Equals(PluginStateValue<T> other) => this.Plugin.Info.Name == other.Plugin.Info.Name;
     }
 
-    [DebuggerDisplay("[{Plugin.GetType().Name,nq}] S:{Startup,nq} GR:{Plugin.GameRunning,nq}")]
-    public class PluginProviderStateValue : PluginStateValue<IPluginProvider>
+    [DebuggerDisplay("[{Plugin.GetType().Name,nq}] S:{Startup,nq} GR:{Plugin.ProcessRunning,nq}")]
+    public class PluginProducerStateValue : PluginStateValue<IPluginProducer>
     {
         public object LastData { get; set; }
     }
 
-    [DebuggerDisplay("[{Plugin.GetType().Name,nq}] S:{Startup,nq} RP:{Plugin.RequiredProvider,nq}")]
+    [DebuggerDisplay("[{Plugin.GetType().Name,nq}] S:{Startup,nq} RP:{Plugin.RequiredProducer,nq}")]
     public class PluginUIStateValue : PluginStateValue<IPluginUI>
     {
     }

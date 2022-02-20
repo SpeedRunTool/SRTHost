@@ -23,18 +23,17 @@ namespace SRTHost.Controllers
         }
 
         // Plugins events
-        private const int pluginControllerEventId = 1;
         private const string pluginControllerEventName = "Plugin Controller";
-        [LoggerMessage(pluginControllerEventId, LogLevel.Information, "Get()", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 0, LogLevel.Information, "Get()", EventName = pluginControllerEventName)]
         private partial void LogPluginGet();
 
-        [LoggerMessage(pluginControllerEventId, LogLevel.Information, "InfoGet({plugin})", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 1, LogLevel.Information, "InfoGet({plugin})", EventName = pluginControllerEventName)]
         private partial void LogPluginInfoGet(string plugin);
 
-        [LoggerMessage(pluginControllerEventId, LogLevel.Information, "DataGet({plugin})", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 2, LogLevel.Information, "DataGet({plugin})", EventName = pluginControllerEventName)]
         private partial void LogPluginDataGet(string plugin);
 
-        [LoggerMessage(pluginControllerEventId, LogLevel.Information, "ReloadGet()", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 3, LogLevel.Information, "ReloadGet()", EventName = pluginControllerEventName)]
         private partial void LogPluginReloadGet();
 
         // GET: api/v1/Plugin
@@ -54,7 +53,7 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            IPlugin? iPlugin = pluginSystem.Plugins.Where(a => a.GetType().Name == plugin).FirstOrDefault();
+            IPlugin? iPlugin = pluginSystem.Plugins.ContainsKey(plugin) ? pluginSystem.Plugins[plugin] : null;
             if (iPlugin != null)
                 return Ok(iPlugin);
             else
@@ -70,7 +69,7 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            PluginProducerStateValue? pluginState = pluginSystem.PluginProducersAndDependentUIs.Select(a => a.Key).Where(a => a.Plugin.GetType().Name == plugin).FirstOrDefault();
+            PluginProducerStateValue? pluginState = pluginSystem.PluginProducersAndDependentUIs.Select(a => a.Key).Where(a => a.Plugin.TypeName == plugin).FirstOrDefault();
             if (pluginState != null)
                 return Ok(pluginState.LastData);
             else

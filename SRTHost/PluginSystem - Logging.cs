@@ -8,122 +8,110 @@ namespace SRTHost
         private readonly ILogger<PluginSystem> logger;
 
         // Version Banner events
-        private const int versionBannerEventId = 1;
         private const string versionBannerEventName = "Version Banner";
-        [LoggerMessage(versionBannerEventId, LogLevel.Information, "{productName} v{productVersion} {productArchitecture}", EventName = versionBannerEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 0, LogLevel.Information, "{productName} v{productVersion} {productArchitecture}", EventName = versionBannerEventName)]
         private partial void LogVersionBanner(string? productName, string? productVersion, string? productArchitecture);
 
         // Command line argument events
-        private const int commandLineArgsEventId = 2;
         private const string commandLineArgsEventName = "Command Line Arguments";
-        [LoggerMessage(commandLineArgsEventId, LogLevel.Information, "Command-line arguments:", EventName = commandLineArgsEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 1, LogLevel.Information, "Command-line arguments:", EventName = commandLineArgsEventName)]
         private partial void LogCommandLineBanner();
 
-        [LoggerMessage(commandLineArgsEventId, LogLevel.Information, "{key}: {value}", EventName = commandLineArgsEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 2, LogLevel.Information, "{key}: {value}", EventName = commandLineArgsEventName)]
         private partial void LogCommandLineKeyValue(string? key, string? value);
 
-        [LoggerMessage(commandLineArgsEventId, LogLevel.Information, "{key}", EventName = commandLineArgsEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 3, LogLevel.Information, "{key}", EventName = commandLineArgsEventName)]
         private partial void LogCommandLineKey(string? key);
 
-        [LoggerMessage(commandLineArgsEventId, LogLevel.Information, "Arguments and examples", EventName = commandLineArgsEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 4, LogLevel.Information, "Arguments and examples", EventName = commandLineArgsEventName)]
         private partial void LogCommandLineHelpBanner();
 
-        [LoggerMessage(commandLineArgsEventId, LogLevel.Information, "--{key}: {description}", EventName = commandLineArgsEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 5, LogLevel.Information, "--{key}: {description}", EventName = commandLineArgsEventName)]
         private partial void LogCommandLineHelpEntry(string? key, string? description);
 
-        [LoggerMessage(commandLineArgsEventId, LogLevel.Information, "--{key}=<Value>: {description}\r\nExample: --{key}={defaultValue}", EventName = commandLineArgsEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 6, LogLevel.Information, "--{key}=<Value>: {description}\r\nExample: --{key}={defaultValue}", EventName = commandLineArgsEventName)]
         private partial void LogCommandLineHelpEntryValue(string? key, string? description, string? defaultValue);
 
-        [LoggerMessage(commandLineArgsEventId, LogLevel.Error, "Error: {value} cannot be less than 16ms or greater than 2000ms. Resetting to default (66ms)", EventName = commandLineArgsEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 7, LogLevel.Error, "{value} cannot be less than 16ms or greater than 2000ms. Resetting to default (66ms)", EventName = commandLineArgsEventName)]
         private partial void LogCommandLineHelpUpdateRateOutOfRange(string? value);
 
         // Load Host event
-        private const int loadedHostEventId = 3;
         private const string loadedHostEventName = "Load Host";
-        [LoggerMessage(loadedHostEventId, LogLevel.Information, "Loaded host: {hostName}", EventName = loadedHostEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 8, LogLevel.Information, "Loaded host: {hostName}", EventName = loadedHostEventName)]
         private partial void LogLoadedHost(string? hostName);
 
         // Load Plugin event
-        private const int loadedPluginEventId = 4;
         private const string loadedPluginEventName = "Load Plugin";
-        [LoggerMessage(loadedPluginEventId, LogLevel.Information, "Loaded plugin: {pluginName}", EventName = loadedPluginEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 9, LogLevel.Information, "Loaded plugin: {pluginName}", EventName = loadedPluginEventName)]
         private partial void LogLoadedPlugin(string? pluginName);
 
-        [LoggerMessage(loadedPluginEventId, LogLevel.Error, "Unable to find any plugins located in the \"plugins\" folder that implement IPlugin", EventName = loadedPluginEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 10, LogLevel.Error, "Unable to find any plugins located in the \"plugins\" folder that implement IPlugin", EventName = loadedPluginEventName)]
         private partial void LogNoPlugins();
 
         // Signing Info events
-        private const int signingInfoEventId = 5;
         private const string signingInfoEventName = "Signing Info";
-        [LoggerMessage(signingInfoEventId, LogLevel.Information, "Digitally signed and verified: {sigSubject} [Thumbprint: {sigThumbprint}]", EventName = signingInfoEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 11, LogLevel.Information, "Digitally signed and verified: {sigSubject} [Thumbprint: {sigThumbprint}]", EventName = signingInfoEventName)]
         private partial void LogSigningInfoVerified(string? sigSubject, string? sigThumbprint);
 
-        [LoggerMessage(signingInfoEventId, LogLevel.Warning, "Digitally signed but NOT verified: {sigSubject} [Thumbprint: {sigThumbprint}]", EventName = signingInfoEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 12, LogLevel.Warning, "Digitally signed but NOT verified: {sigSubject} [Thumbprint: {sigThumbprint}]", EventName = signingInfoEventName)]
         private partial void LogSigningInfoNotVerified(string? sigSubject, string? sigThumbprint);
 
-        [LoggerMessage(signingInfoEventId, LogLevel.Warning, "No digital signature found", EventName = signingInfoEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 13, LogLevel.Warning, "No digital signature found", EventName = signingInfoEventName)]
         private partial void LogSigningInfoNotFound();
 
         // Plugin Version events
-        private const int pluginVersionEventId = 6;
         private const string pluginVersionEventName = "Plugin Version";
-        [LoggerMessage(pluginVersionEventId, LogLevel.Information, "Version v{version}", EventName = pluginVersionEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 14, LogLevel.Information, "Version v{version}", EventName = pluginVersionEventName)]
         private partial void LogPluginVersion(string? version);
 
         // Exception events
-        private const int exceptionEventId = 7;
         private const string exceptionEventName = "Exception";
-        [LoggerMessage(exceptionEventId, LogLevel.Critical, "[{exName}] {exString}", EventName = exceptionEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 15, LogLevel.Critical, "[{exName}] {exString}", EventName = exceptionEventName)]
         private partial void LogException(string? exName, string? exString);
 
         // Incorrect Architecture events
-        private const int incorrectArchitectureEventId = 8;
         private const string incorrectArchitectureEventName = "Incorrect Architecture";
 #if x64
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x86 + " DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 16, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x86 + " DLL", EventName = incorrectArchitectureEventName)]
 #else
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x64 + " DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 16, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x64 + " DLL", EventName = incorrectArchitectureEventName)]
 #endif
         private partial void LogIncorrectArchitecturePlugin(string? pluginPath);
 
 #if x64
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x86 + " DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 17, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x86 + " DLL", EventName = incorrectArchitectureEventName)]
 #else
-        [LoggerMessage(incorrectArchitectureEventId, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x64 + " DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 17, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_x64 + " DLL", EventName = incorrectArchitectureEventName)]
 #endif
         private partial void LogIncorrectArchitecturePluginReference(string? sourcePlugin, string? assemblyName);
 
         // Plugin Startup events
-        private const int pluginStartupEventId = 9;
         private const string pluginStartupEventName = "Plugin Startup";
-        [LoggerMessage(pluginStartupEventId, LogLevel.Information, "[{pluginName}] successfully started", EventName = pluginStartupEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 18, LogLevel.Information, "[{pluginName}] successfully started", EventName = pluginStartupEventName)]
         private partial void LogPluginStartupSuccess(string? pluginName);
 
-        [LoggerMessage(pluginStartupEventId, LogLevel.Error, "[{pluginName}] failed to startup properly with status {statusCode}", EventName = pluginStartupEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 19, LogLevel.Error, "[{pluginName}] failed to startup properly with status {statusCode}", EventName = pluginStartupEventName)]
         private partial void LogPluginStartupFailure(string? pluginName, int statusCode);
 
         // Plugin Receive Data events
-        private const int pluginReceiveDataEventId = 10;
         private const string pluginReceiveDataEventName = "Plugin Receive Data";
-        [LoggerMessage(pluginReceiveDataEventId, LogLevel.Trace, "[{pluginName}] successfully received data", EventName = pluginReceiveDataEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 20, LogLevel.Trace, "[{pluginName}] successfully received data", EventName = pluginReceiveDataEventName)]
         private partial void LogPluginReceiveDataSuccess(string? pluginName);
 
-        [LoggerMessage(pluginReceiveDataEventId, LogLevel.Debug, "[{pluginName}] failed to receive data with status code {statusCode}", EventName = pluginReceiveDataEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 21, LogLevel.Debug, "[{pluginName}] failed to receive data with status code {statusCode}", EventName = pluginReceiveDataEventName)]
         private partial void LogPluginReceiveDataFailure(string? pluginName, int statusCode);
 
         // Plugin Shutdown events
-        private const int pluginShutdownEventId = 11;
         private const string pluginShutdownEventName = "Plugin Shutdown";
-        [LoggerMessage(pluginShutdownEventId, LogLevel.Information, "[{pluginName}] successfully shutdown", EventName = pluginShutdownEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 22, LogLevel.Information, "[{pluginName}] successfully shutdown", EventName = pluginShutdownEventName)]
         private partial void LogPluginShutdownSuccess(string? pluginName);
 
-        [LoggerMessage(pluginShutdownEventId, LogLevel.Error, "[{pluginName}] failed to shutdown properly with status {statusCode}", EventName = pluginShutdownEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 23, LogLevel.Error, "[{pluginName}] failed to shutdown properly with status {statusCode}", EventName = pluginShutdownEventName)]
         private partial void LogPluginShutdownFailure(string? pluginName, int statusCode);
 
         // Application Shutdown events
-        private const int appShutdownEventId = 12;
         private const string appShutdownEventName = "Application Shutdown";
-        [LoggerMessage(appShutdownEventId, LogLevel.Information, "{appName} shutting down...", EventName = appShutdownEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 24, LogLevel.Information, "{appName} shutting down...", EventName = appShutdownEventName)]
         private partial void LogAppShutdown(string? appName);
     }
 }

@@ -8,7 +8,7 @@ namespace SRTHost.LoggerImplementations
     public class FileLoggerProducer : ILoggerProvider
     {
         private string logName;
-        private StreamWriter logStreamWriter;
+        private StreamWriter? logStreamWriter;
 
         public bool Append { get; init; }
         public bool AutoFlush { get; init; }

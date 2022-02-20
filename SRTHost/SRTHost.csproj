@@ -49,6 +49,7 @@
     <FileVersion>4.0.0.0</FileVersion>
     <AssemblyVersion>4.0.0.0</AssemblyVersion>
     <DebugType>embedded</DebugType>
+	<Nullable>enable</Nullable>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

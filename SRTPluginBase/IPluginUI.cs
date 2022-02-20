@@ -9,6 +9,9 @@
         /// <returns></returns>
         int ReceiveData(object data);
 
-        string RequiredProducer { get; }
+        /// <summary>
+        /// Constrains this UI plugin to work with a specific producer plugin. This value may be null if there are no plugin constraints.
+        /// </summary>
+        string? RequiredProducer { get; }
     }
 }

@@ -26,10 +26,10 @@ namespace SRTHost
             return Load(assemblyName);
         }
 
-        private string? DetectAssemblyLocation(string assemblyName)
+        private string? DetectAssemblyLocation(string? assemblyName)
         {
             // This is typicvally the plugin itself or a dependency that is included from its folder.
-            FileInfo pluginLocation = thisPluginDirectory
+            FileInfo? pluginLocation = thisPluginDirectory
                 .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
                 .OrderByDescending(a =>
                 {
@@ -53,11 +53,11 @@ namespace SRTHost
                 return Default.LoadFromAssemblyName(assemblyName);
 
             // If the requested assembly is a producer and the assembly name does not match our folder name, do not load it from our folder. Load it from the other load contexts. This fixes issue #26 (ref: https://github.com/Squirrelies/SRTHost/issues/26).
-            if (assemblyName.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase) && !thisPluginDirectory.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase))
+            if (assemblyName.Name != null && (assemblyName.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase) && !thisPluginDirectory.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase)))
                 return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName);
 
             // Attempt to let let the AssemblyDependencyResolver handle it first.
-            string assemblyPath = _thisPluginResolver.ResolveAssemblyToPath(assemblyName);
+            string? assemblyPath = _thisPluginResolver.ResolveAssemblyToPath(assemblyName);
 
             // If that failed, no problem. Check our folder.
             if (assemblyPath == null)

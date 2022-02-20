@@ -8,6 +8,9 @@
         /// <returns>Plugin-specific data structure.</returns>
         object PullData();
 
-        bool ProcessRunning { get; }
+        /// <summary>
+        /// Whether the producer is available or not.
+        /// </summary>
+        bool Available { get; }
     }
 }

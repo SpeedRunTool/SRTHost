@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.Logging
 {
     public static class FileLoggerExtensions
     {
-        public static ILoggingBuilder AddFile(this ILoggingBuilder builder, string fileName, Action<FileLoggerOptions> configure = default)
+        public static ILoggingBuilder AddFile(this ILoggingBuilder builder, string fileName, Action<FileLoggerOptions>? configure = default)
         {
             builder.Services.Add(ServiceDescriptor.Singleton<ILoggerProvider, FileLoggerProducer>(
                 (IServiceProvider serviceProducer) =>

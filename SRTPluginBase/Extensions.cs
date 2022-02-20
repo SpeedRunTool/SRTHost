@@ -44,11 +44,11 @@ namespace SRTPluginBase
             {
                 if (File.Exists(configFile))
                     using (FileStream fs = new FileStream(configFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
-                        return JsonSerializer.DeserializeAsync<T>(fs, JSO).Result;
+                        return JsonSerializer.DeserializeAsync<T>(fs, JSO).Result ?? new T();
                 else
                     return new T(); // File did not exist, just return a new instance.
             }
-            catch (Exception ex)
+            catch
             {
                 // TODO: ILogger
                 return new T(); // An exception occurred when reading the file, return a new instance.
@@ -69,7 +69,7 @@ namespace SRTPluginBase
                     using (FileStream fs = new FileStream(configFile, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
                         JsonSerializer.SerializeAsync<T>(fs, configuration, JSO).Wait();
                 }
-                catch (Exception ex)
+                catch
                 {
                     // TODO: ILogger
                 }

@@ -3,6 +3,11 @@
     public interface IPlugin
     {
         /// <summary>
+        /// Gets the plugins type name.
+        /// </summary>
+        string TypeName => this.GetType().Name;
+
+        /// <summary>
         /// Information about this plugin.
         /// </summary>
         IPluginInfo Info { get; }

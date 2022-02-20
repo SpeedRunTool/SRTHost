@@ -29,23 +29,37 @@ namespace SRTHost
 #endif
         private const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
-        // Plugins
-        private IPlugin[] allPlugins = null;
-        private Dictionary<PluginProducerStateValue, PluginUIStateValue[]> pluginProducersAndDependentUIs = null;
-        private PluginUIStateValue[] pluginUIsAgnostic = null;
+        // Misc. variables
+        private readonly IList<PluginLoadContext> pluginLoadContexts;
+        private readonly ManualResetEventSlim pluginReinitializeEvent;
+        private readonly ManualResetEventSlim pluginReadEvent;
+        private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
+        private readonly int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
 
-        public IReadOnlyCollection<IPlugin> Plugins => new ReadOnlyCollection<IPlugin>(allPlugins);
-        public IReadOnlyDictionary<PluginProducerStateValue, PluginUIStateValue[]> PluginProducersAndDependentUIs => new ReadOnlyDictionary<PluginProducerStateValue, PluginUIStateValue[]>(pluginProducersAndDependentUIs);
+        // Plugins
+        private IDictionary<string, IPlugin> allPlugins = new Dictionary<string, IPlugin>(); // What was said on the next line but with more than just string. Multiple dictionaries? idk...
+        private IDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginProducersAndDependentUIs = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>>(); // TODO: Make a collection where plugins can be looked up by their name or type without per-lookup reflection. For example, build collection with these details at plugin load.
+        private IList<PluginUIStateValue> pluginUIsAgnostic = new List<PluginUIStateValue>(); // ^^^
+
+        /// <summary>
+        /// All plugins which are currently loaded by the plugin system.
+        /// </summary>
+        public IReadOnlyDictionary<string, IPlugin> Plugins => new ReadOnlyDictionary<string, IPlugin>(allPlugins);
+
+        /// <summary>
+        /// All plugin producers and their dependent plugin UIs which are currently loaded by the plugin system.
+        /// </summary>
+        public IReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> PluginProducersAndDependentUIs => new ReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>>(pluginProducersAndDependentUIs);
+
+        /// <summary>
+        /// All plugin UIs that are not dependent on a specific plugin producer which are currently loaded by the plugin system.
+        /// </summary>
         public IReadOnlyCollection<PluginUIStateValue> PluginUIsAgnostic => new ReadOnlyCollection<PluginUIStateValue>(pluginUIsAgnostic);
 
-        // Misc. variables
-        private IList<PluginLoadContext> pluginLoadContexts;
-        private ManualResetEventSlim pluginReinitializeEvent;
-        private ManualResetEventSlim pluginReadEvent;
-        private string loadSpecificProducer = string.Empty; // TODO: Allow IConfiguration settings.
-        private int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
-
-        public string LoadSpecificProducer => loadSpecificProducer;
+        /// <summary>
+        /// The specific plugin provider that was loaded. This will be null if all plugins are loaded. This value is read-only and provided via the --Provider command-line argument.
+        /// </summary>
+        public string? LoadSpecificProducer => loadSpecificProducer;
 
         public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
         {
@@ -134,16 +148,16 @@ namespace SRTHost
                     // Signal that we're reading from plugins to block (re-)initialization and stopping until we're done.
                     pluginReadEvent.Reset();
 
-                    foreach (KeyValuePair<PluginProducerStateValue, PluginUIStateValue[]> pluginKeys in pluginProducersAndDependentUIs)
+                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginKeys in pluginProducersAndDependentUIs)
                     {
-                        if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.ProcessRunning) // Producer is started and process is running.
+                        if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.Available) // Producer is started and available for requests.
                         {
                             object pluginData = pluginKeys.Key.Plugin.PullData();
                             pluginKeys.Key.LastData = pluginData;
                             foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
                                 PluginReceiveData(pluginUIStateValue, pluginData);
                         }
-                        else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.ProcessRunning) // Producer is started and process is not running.
+                        else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.Available) // Producer is started but is not available for requests.
                         {
                             // Loop through this plugin's UIs and shut them down if they're running. Only shuts down dependent UIs. Agnostic UIs such as JSON shouldn't be touched.
                             foreach (PluginUIStateValue pluginUIStateValue in pluginKeys.Value)
@@ -154,7 +168,7 @@ namespace SRTHost
 
                     pluginReadEvent.Set();
 
-                    await Task.Delay(settingUpdateRate).ConfigureAwait(false);
+                    await Task.Delay(settingUpdateRate, stoppingToken).ConfigureAwait(false);
                 }
 
                 LogAppShutdown(APP_DISPLAY_NAME);
@@ -162,7 +176,7 @@ namespace SRTHost
             catch (FileLoadException ex)
             {
                 LogException(ex?.GetType()?.Name, ex?.ToString());
-                LogIncorrectArchitecturePluginReference(ex.Source, ex.FileName);
+                LogIncorrectArchitecturePluginReference(ex?.Source, ex?.FileName);
                 throw;
             }
             catch (Exception ex)
@@ -204,40 +218,42 @@ namespace SRTHost
                     allPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
-                        .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                        .Select((FileInfo pluginAssemblyFileInfo) =>
+                        .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
+                        .Select((FileInfo? pluginAssemblyFileInfo) =>
                         {
-                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory);
+                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
                             pluginLoadContexts.Add(pluginLoadContext);
                             return LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
                         })
-                        .Where((Assembly pluginAssembly) => pluginAssembly != null)
-                        .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
+                        .Where((Assembly? pluginAssembly) => pluginAssembly != null)
+                        .SelectMany((Assembly? pluginAssembly) => CreatePlugins(pluginAssembly!))
+                        .ToDictionary((IPlugin plugin) => plugin.TypeName, StringComparer.OrdinalIgnoreCase);
                 }
                 else
                 {
                     allPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
-                        .Where((FileInfo pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                        .Where((FileInfo pluginAssemblyFileInfo) => !pluginAssemblyFileInfo.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo.Name.Equals(string.Format("{0}.dll", loadSpecificProducer), StringComparison.InvariantCultureIgnoreCase)))
-                        .Select((FileInfo pluginAssemblyFileInfo) =>
+                        .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
+                        .Where((FileInfo? pluginAssemblyFileInfo) => !pluginAssemblyFileInfo!.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo!.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo!.Name.Equals(string.Format("{0}.dll", loadSpecificProducer), StringComparison.InvariantCultureIgnoreCase)))
+                        .Select((FileInfo? pluginAssemblyFileInfo) =>
                         {
-                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory);
+                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
                             pluginLoadContexts.Add(pluginLoadContext);
                             return LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
                         })
-                        .Where((Assembly pluginAssembly) => pluginAssembly != null)
-                        .SelectMany((Assembly pluginAssembly) => CreatePlugins(pluginAssembly)).ToArray();
+                        .Where((Assembly? pluginAssembly) => pluginAssembly != null)
+                        .SelectMany((Assembly? pluginAssembly) => CreatePlugins(pluginAssembly!))
+                        .ToDictionary((IPlugin plugin) => plugin.TypeName, StringComparer.OrdinalIgnoreCase);
                 }
 
-                if (allPlugins.Length == 0)
+                if (allPlugins.Count == 0)
                     LogNoPlugins();
 
-                pluginProducersAndDependentUIs = new Dictionary<PluginProducerStateValue, PluginUIStateValue[]>();
-                foreach (IPluginProducer pluginProducer in allPlugins.Where(a => typeof(IPluginProducer).IsAssignableFrom(a.GetType())).Select(a => (IPluginProducer)a))
-                    pluginProducersAndDependentUIs.Add(new PluginProducerStateValue() { Plugin = pluginProducer, Startup = false }, allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProducer == pluginProducer.GetType().Name).ToArray());
-                pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue() { Plugin = (IPluginUI)a, Startup = false }).Where(a => a.Plugin.RequiredProducer == null || a.Plugin.RequiredProducer == string.Empty).ToArray();
+                pluginProducersAndDependentUIs = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>>();
+                foreach (IPluginProducer pluginProducer in allPlugins.Where(a => typeof(IPluginProducer).IsAssignableFrom(a.Value.GetType())).Select(a => (IPluginProducer)a.Value))
+                    pluginProducersAndDependentUIs.Add(new PluginProducerStateValue(pluginProducer, false), allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue((IPluginUI)a.Value, false)).Where(a => a.Plugin.RequiredProducer == pluginProducer.TypeName).ToArray());
+                pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue((IPluginUI)a.Value, false)).Where(a => string.IsNullOrWhiteSpace(a.Plugin.RequiredProducer)).ToArray();
             }, cancellationToken);
         }
 
@@ -246,7 +262,7 @@ namespace SRTHost
             await Task.Run(() =>
             {
                 // Startup producers.
-                foreach (KeyValuePair<PluginProducerStateValue, PluginUIStateValue[]> pluginKeys in pluginProducersAndDependentUIs)
+                foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginKeys in pluginProducersAndDependentUIs)
                     PluginStartup(pluginKeys.Key);
 
                 // Startup agnotic UIs.
@@ -265,7 +281,7 @@ namespace SRTHost
 
                 if (pluginProducersAndDependentUIs != null)
                 {
-                    foreach (KeyValuePair<PluginProducerStateValue, PluginUIStateValue[]> pluginKeys in pluginProducersAndDependentUIs)
+                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginKeys in pluginProducersAndDependentUIs)
                     {
                         foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
                             PluginShutdown(pluginUI);
@@ -286,10 +302,9 @@ namespace SRTHost
         {
             if (!plugin.Startup)
             {
-                int pluginStatusResponse = 0;
                 try
                 {
-                    pluginStatusResponse = plugin.Plugin.Startup();
+                    int pluginStatusResponse = plugin.Plugin.Startup();
 
                     if (pluginStatusResponse == 0)
                         LogPluginStartupSuccess(plugin.Plugin.Info.Name);
@@ -312,10 +327,9 @@ namespace SRTHost
 
             if (pluginData != null)
             {
-                int uiPluginReceiveDataStatus = 0;
                 try
                 {
-                    uiPluginReceiveDataStatus = plugin.Plugin.ReceiveData(pluginData);
+                    int uiPluginReceiveDataStatus = plugin.Plugin.ReceiveData(pluginData);
 
                     if (uiPluginReceiveDataStatus == 0)
                         LogPluginReceiveDataSuccess(plugin.Plugin.Info.Name);
@@ -333,10 +347,9 @@ namespace SRTHost
         {
             if (plugin.Startup)
             {
-                int pluginStatusResponse = 0;
                 try
                 {
-                    pluginStatusResponse = plugin.Plugin.Shutdown();
+                    int pluginStatusResponse = plugin.Plugin.Shutdown();
 
                     if (pluginStatusResponse == 0)
                         LogPluginShutdownSuccess(plugin.Plugin.Info.Name);
@@ -351,9 +364,9 @@ namespace SRTHost
             }
         }
 
-        private Assembly LoadPlugin(PluginLoadContext loadContext, string pluginPath)
+        private Assembly? LoadPlugin(PluginLoadContext loadContext, string pluginPath)
         {
-            Assembly returnValue = null;
+            Assembly? returnValue = null;
 
             try
             {
@@ -362,7 +375,9 @@ namespace SRTHost
                 GetSigningInfo(pluginPath);
                 LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
             }
+#pragma warning disable CS0168 // Variable is declared but never used
             catch (FileLoadException ex)
+#pragma warning restore CS0168 // Variable is declared but never used
             {
                 LogIncorrectArchitecturePlugin(pluginPath);
                 GetSigningInfo(pluginPath);
@@ -379,7 +394,7 @@ namespace SRTHost
         private IEnumerable<IPlugin> CreatePlugins(Assembly assembly)
         {
             int count = 0;
-            Type[] typesInAssembly = null;
+            Type[]? typesInAssembly = null;
 
             try
             {
@@ -397,19 +412,19 @@ namespace SRTHost
                 {
                     if (type.GetInterface(nameof(IPluginProducer)) != null)
                     {
-                        IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type); // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
+                        IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type)!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
                         count++;
                         yield return result;
                     }
                     else if (type.GetInterface(nameof(IPluginUI)) != null)
                     {
-                        IPluginUI result = (IPluginUI)Activator.CreateInstance(type);
+                        IPluginUI result = (IPluginUI)Activator.CreateInstance(type)!;
                         count++;
                         yield return result;
                     }
                     else if (type.GetInterface(nameof(IPlugin)) != null)
                     {
-                        IPlugin result = (IPlugin)Activator.CreateInstance(type);
+                        IPlugin result = (IPlugin)Activator.CreateInstance(type)!;
                         count++;
                         yield return result;
                     }
@@ -419,7 +434,7 @@ namespace SRTHost
 
         private void GetSigningInfo(string location)
         {
-            X509Certificate2 cert2;
+            X509Certificate2? cert2;
             if ((cert2 = SigningInfo.GetSigningInfo2(location)) != null)
             {
                 if (cert2.Verify())

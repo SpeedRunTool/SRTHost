@@ -35,7 +35,6 @@ namespace SRTHost
                 if (disposing)
                 {
                     // TODO: dispose managed state (managed objects)
-                    keyValueDictionary = null;
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

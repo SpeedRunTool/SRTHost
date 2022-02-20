@@ -4,7 +4,7 @@ namespace SRTHost
 {
     public static class SigningInfo
     {
-        public static X509Certificate GetSigningInfo(string location)
+        public static X509Certificate? GetSigningInfo(string location)
         {
             try
             {
@@ -16,11 +16,15 @@ namespace SRTHost
             }
         }
 
-        public static X509Certificate2 GetSigningInfo2(string location)
+        public static X509Certificate2? GetSigningInfo2(string location)
         {
             try
             {
-                return new X509Certificate2(GetSigningInfo(location));
+                X509Certificate? signInfo = GetSigningInfo(location);
+                if (signInfo != null)
+                    return new X509Certificate2(signInfo);
+                else
+                    return null;
             }
             catch
             {

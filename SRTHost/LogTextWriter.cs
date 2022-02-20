@@ -21,7 +21,7 @@ namespace SRTHost
             base.Write(value);
         }
 
-        public override void Write(char[] buffer)
+        public override void Write(char[]? buffer)
         {
             originalTextWriter?.Write(buffer);
             base.Write(buffer);
@@ -33,13 +33,13 @@ namespace SRTHost
             base.Write(buffer, index, count);
         }
 
-        public override void Write(string value)
+        public override void Write(string? value)
         {
             originalTextWriter?.Write(value);
             base.Write(value);
         }
 
-        public override void Write(object value)
+        public override void Write(object? value)
         {
             originalTextWriter?.Write(value);
             base.Write(value);
@@ -51,7 +51,7 @@ namespace SRTHost
             base.Write(buffer);
         }
 
-        public override void Write(StringBuilder value)
+        public override void Write(StringBuilder? value)
         {
             originalTextWriter?.Write(value);
             base.Write(value);
@@ -88,7 +88,7 @@ namespace SRTHost
             base.WriteLine(value);
         }
 
-        public override void WriteLine(char[] buffer)
+        public override void WriteLine(char[]? buffer)
         {
             originalTextWriter?.WriteLine(buffer);
             base.WriteLine(buffer);
@@ -100,13 +100,13 @@ namespace SRTHost
             base.WriteLine(buffer, index, count);
         }
 
-        public override void WriteLine(string value)
+        public override void WriteLine(string? value)
         {
             originalTextWriter?.WriteLine(value);
             base.WriteLine(value);
         }
 
-        public override void WriteLine(object value)
+        public override void WriteLine(object? value)
         {
             originalTextWriter?.WriteLine(value);
             base.WriteLine(value);
@@ -118,7 +118,7 @@ namespace SRTHost
             base.WriteLine(buffer);
         }
 
-        public override void WriteLine(StringBuilder value)
+        public override void WriteLine(StringBuilder? value)
         {
             originalTextWriter?.WriteLine(value);
             base.WriteLine(value);

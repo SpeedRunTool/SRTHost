@@ -14,10 +14,11 @@
     <FileVersion>4.0.0.0</FileVersion>
     <AssemblyVersion>4.0.0.0</AssemblyVersion>
     <DebugType>embedded</DebugType>
+	<Nullable>enable</Nullable>
   </PropertyGroup>
 	
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="6.0.1" />
+    <PackageReference Include="System.Text.Json" Version="6.*" />
   </ItemGroup>
   
 </Project>

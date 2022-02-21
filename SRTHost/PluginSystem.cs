@@ -168,7 +168,8 @@ namespace SRTHost
 
                     pluginReadEvent.Set();
 
-                    await Task.Delay(settingUpdateRate, stoppingToken).ConfigureAwait(false);
+                    try { await Task.Delay(settingUpdateRate, stoppingToken).ConfigureAwait(false); }
+                    catch (OperationCanceledException) { }
                 }
 
                 LogAppShutdown(APP_DISPLAY_NAME);

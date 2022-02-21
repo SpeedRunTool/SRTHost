@@ -2,7 +2,7 @@
 {
     public static class EventIds
     {
-        public const int PluginController = 1000;
-        public const int PluginSystem = 2000;
+        public const int PluginSystem = 1000;
+        public const int PluginController = 2000;
     }
 }

@@ -6,13 +6,11 @@ namespace SRTHost.LoggerImplementations
 {
     public partial class FileLogger : ILogger
     {
-        private string logName;
-        private string categoryName;
-        private FileLoggerProducer fileLoggerProducer;
+        private readonly string categoryName;
+        private readonly FileLoggerProducer fileLoggerProducer;
 
-        public FileLogger(string logName, string categoryName, FileLoggerProducer fileLoggerProducer)
+        public FileLogger(string categoryName, FileLoggerProducer fileLoggerProducer)
         {
-            this.logName = logName;
             this.categoryName = categoryName;
             this.fileLoggerProducer = fileLoggerProducer;
         }
@@ -31,31 +29,18 @@ namespace SRTHost.LoggerImplementations
 
         public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None && logLevel >= fileLoggerProducer.LoggingLevel;
 
-        private string GetShortLogLevel(LogLevel logLevel)
+        private static string GetShortLogLevel(LogLevel logLevel)
         {
-            switch (logLevel)
+            return logLevel switch
             {
-                case LogLevel.Trace:
-                    return "trce";
-
-                case LogLevel.Debug:
-                    return "dbug";
-
-                case LogLevel.Information:
-                    return "info";
-
-                case LogLevel.Warning:
-                    return "warn";
-
-                case LogLevel.Error:
-                    return "fail";
-
-                case LogLevel.Critical:
-                    return "crit";
-
-                default:
-                    return string.Empty;
-            }
+                LogLevel.Trace => "trce",
+                LogLevel.Debug => "dbug",
+                LogLevel.Information => "info",
+                LogLevel.Warning => "warn",
+                LogLevel.Error => "fail",
+                LogLevel.Critical => "crit",
+                _ => string.Empty,
+            };
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)

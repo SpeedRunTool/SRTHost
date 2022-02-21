@@ -8,7 +8,7 @@ namespace SRTHost
 {
     public class CommandLineProcessor : IDisposable, IEnumerable<KeyValuePair<string, string?>>
     {
-        private ReadOnlyDictionary<string, string?> keyValueDictionary;
+        private readonly ReadOnlyDictionary<string, string?> keyValueDictionary;
         private bool disposedValue;
 
         public CommandLineProcessor(string[] args)

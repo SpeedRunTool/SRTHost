@@ -10,13 +10,13 @@ namespace SRTHost
 {
     public class PluginLoadContext : AssemblyLoadContext
     {
-        private DirectoryInfo thisPluginDirectory;
-        private AssemblyDependencyResolver _thisPluginResolver;
+        private readonly DirectoryInfo pluginDirectory;
+        private readonly AssemblyDependencyResolver pluginResolver;
 
-        public PluginLoadContext(DirectoryInfo thisPluginDirectory) : base(thisPluginDirectory.Name, true)
+        public PluginLoadContext(DirectoryInfo pluginDirectory) : base(pluginDirectory.Name, true)
         {
-            this.thisPluginDirectory = thisPluginDirectory;
-            _thisPluginResolver = new AssemblyDependencyResolver(this.thisPluginDirectory.FullName);
+            this.pluginDirectory = pluginDirectory;
+            pluginResolver = new AssemblyDependencyResolver(this.pluginDirectory.FullName);
 
             Resolving += PluginLoadContext_Resolving;
         }
@@ -29,7 +29,7 @@ namespace SRTHost
         private string? DetectAssemblyLocation(string? assemblyName)
         {
             // This is typicvally the plugin itself or a dependency that is included from its folder.
-            FileInfo? pluginLocation = thisPluginDirectory
+            FileInfo? pluginLocation = pluginDirectory
                 .EnumerateFiles(assemblyName + ".dll", SearchOption.AllDirectories)
                 .OrderByDescending(a =>
                 {
@@ -53,11 +53,11 @@ namespace SRTHost
                 return Default.LoadFromAssemblyName(assemblyName);
 
             // If the requested assembly is a producer and the assembly name does not match our folder name, do not load it from our folder. Load it from the other load contexts. This fixes issue #26 (ref: https://github.com/Squirrelies/SRTHost/issues/26).
-            if (assemblyName.Name != null && (assemblyName.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase) && !thisPluginDirectory.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase)))
+            if (assemblyName.Name != null && (assemblyName.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase) && !pluginDirectory.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase)))
                 return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName);
 
             // Attempt to let let the AssemblyDependencyResolver handle it first.
-            string? assemblyPath = _thisPluginResolver.ResolveAssemblyToPath(assemblyName);
+            string? assemblyPath = pluginResolver.ResolveAssemblyToPath(assemblyName);
 
             // If that failed, no problem. Check our folder.
             if (assemblyPath == null)

@@ -1,6 +1,8 @@
-﻿namespace SRTPluginBase
+﻿using System;
+
+namespace SRTPluginBase
 {
-    public interface IPlugin
+    public interface IPlugin : IEquatable<IPlugin>
     {
         /// <summary>
         /// Gets the plugins type name.
@@ -23,5 +25,11 @@
         /// </summary>
         /// <returns>A value indicating success or failure. SRT Host expects 0 for success, any other value will indicate a failure. These values are up to the plugin developer discretion.</returns>
         int Shutdown();
+
+        public new bool Equals(IPlugin? other) => TypeName == other?.TypeName && Info.Name == other?.Info.Name;
+
+        public bool Equals(object? obj) => Equals(obj as IPlugin);
+
+        public int GetHashCode() => HashCode.Combine(TypeName, Info);
     }
 }

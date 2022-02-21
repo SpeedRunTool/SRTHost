@@ -7,7 +7,6 @@ namespace SRTHost.LoggerImplementations
 {
     public class FileLoggerProducer : ILoggerProvider
     {
-        private string logName;
         private StreamWriter? logStreamWriter;
 
         public bool Append { get; init; }
@@ -19,8 +18,6 @@ namespace SRTHost.LoggerImplementations
 
         public FileLoggerProducer(string logName, FileLoggerOptions fileLoggerOptions)
         {
-            this.logName = logName;
-
             Append = fileLoggerOptions.Append;
             AutoFlush = fileLoggerOptions.AutoFlush;
             Encoding = fileLoggerOptions.Encoding;
@@ -35,7 +32,7 @@ namespace SRTHost.LoggerImplementations
             };
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(logName, categoryName, this);
+        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, this);
 
         public void WriteLog(string message) => logStreamWriter?.WriteLine(message);
 

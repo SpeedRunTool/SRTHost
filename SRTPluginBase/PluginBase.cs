@@ -17,5 +17,7 @@ namespace SRTPluginBase
 
         public virtual void SaveConfiguration<T>(T configuration) where T : class, new() => configuration.SaveConfiguration(null);
         public void SaveConfiguration<T>(T configuration, string? configFile = null) where T : class, new() => configuration.SaveConfiguration(configFile);
+
+        public bool Equals(IPlugin? other) => (this as IPlugin).Equals(other);
     }
 }

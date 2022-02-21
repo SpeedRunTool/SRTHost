@@ -22,7 +22,11 @@ namespace SRTHost
             Startup = startup;
         }
 
-        public bool Equals(PluginStateValue<T>? other) => this.Plugin.Info.Name == other?.Plugin.Info.Name;
+        public bool Equals(PluginStateValue<T>? other) => Plugin.Info.Name == other?.Plugin.Info.Name;
+
+        public override bool Equals(object? obj) => Equals(obj as PluginStateValue<T>);
+
+        public override int GetHashCode() => HashCode.Combine(Plugin, Startup);
     }
 
     [DebuggerDisplay("[{Plugin.TypeName,nq}] S:{Startup,nq} GR:{Plugin.ProcessRunning,nq}")]

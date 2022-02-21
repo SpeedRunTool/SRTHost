@@ -12,8 +12,7 @@ namespace Microsoft.Extensions.Logging
                 (IServiceProvider serviceProducer) =>
                 {
                     FileLoggerOptions options = new FileLoggerOptions();
-                    if (configure != null)
-                        configure(options);
+                    configure?.Invoke(options);
                     return new FileLoggerProducer(fileName, options);
                 }
             ));

@@ -7,7 +7,7 @@ namespace SRTHost
     public class LogTextWriter : StreamWriter
     {
         public override Encoding Encoding => base.Encoding;
-        private TextWriter originalTextWriter;
+        private readonly TextWriter originalTextWriter;
 
         public LogTextWriter(Stream stream, Encoding encoding, TextWriter originalTextWriter) : base(stream, encoding)
         {

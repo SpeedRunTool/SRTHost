@@ -2,7 +2,7 @@
 
 namespace SRTPluginBase
 {
-    public interface IPluginInfo
+    public interface IPluginInfo : IEquatable<IPluginInfo>
     {
         /// <summary>
         /// The name of the plugin.
@@ -43,5 +43,19 @@ namespace SRTPluginBase
         /// The revision version of this plugin.
         /// </summary>
         int VersionRevision { get; }
+
+        public new bool Equals(IPluginInfo? other) =>
+            Name == other?.Name &&
+            Description == other?.Description &&
+            Author == other?.Author &&
+            MoreInfoURL == other?.MoreInfoURL &&
+            VersionMajor == other?.VersionMajor &&
+            VersionMinor == other?.VersionMinor &&
+            VersionBuild == other?.VersionBuild &&
+            VersionRevision == other?.VersionRevision;
+
+        public bool Equals(object? obj) => Equals(obj as IPluginInfo);
+
+        public int GetHashCode() => HashCode.Combine(Name, Description, Author, MoreInfoURL, VersionMajor, VersionMinor, VersionBuild, VersionRevision);
     }
 }

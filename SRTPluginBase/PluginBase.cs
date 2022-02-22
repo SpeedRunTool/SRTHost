@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using System.Collections.Generic;
+using System.Net;
+using System.Reflection;
 
 namespace SRTPluginBase
 {
@@ -9,6 +11,12 @@ namespace SRTPluginBase
         public abstract int Startup();
 
         public abstract int Shutdown();
+
+        public virtual object? CommandHandler(string command, KeyValuePair<string, string[]>[] arguments, out HttpStatusCode statusCode)
+        {
+            statusCode = HttpStatusCode.NotImplemented;
+            return null;
+        }
 
         public string GetConfigFile(Assembly a) => a.GetConfigFile();
 

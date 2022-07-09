@@ -32,61 +32,53 @@
 	</ItemGroup>
 	<!-- end workaround -->
 	
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <UseWindowsForms>true</UseWindowsForms>
-	<UseWPF>true</UseWPF>
-    <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
-    <TargetFramework>net6.0-windows</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Platforms>x64;x86</Platforms>
-    <Authors>Travis J. Gutjahr</Authors>
-    <Company>Travis J. Gutjahr</Company>
-    <Copyright>Copyright © 2022 Travis J. Gutjahr</Copyright>
-    <Product>SRT Host</Product>
-    <Description>A plugin host for various informational SpeedRun Tools.</Description>
-    <Version>4.0.0.0</Version>
-    <FileVersion>4.0.0.0</FileVersion>
-    <AssemblyVersion>4.0.0.0</AssemblyVersion>
-    <DebugType>embedded</DebugType>
-	<Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<UseWindowsForms>true</UseWindowsForms>
+		<UseWPF>true</UseWPF>
+		<DisableWinExeOutputInference>true</DisableWinExeOutputInference>
+		<TargetFramework>net6.0-windows</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<Platforms>x64;x86</Platforms>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<Product>SRT Host</Product>
+		<Description>A plugin host for various informational SpeedRun Tools.</Description>
+		<Company>SpeedRunTool</Company>
+		<Authors>$(Company)</Authors>
+		<Copyright>Copyright © 2022 $(Company)</Copyright>
+		<Version>4.0.0</Version>
+		<FileVersion>4.0.0</FileVersion>
+		<AssemblyVersion>4.0.0</AssemblyVersion>
+		<PackageId>SRTHost</PackageId>
+		<PackageDescription>$(Description)</PackageDescription>
+		<RepositoryUrl>https://github.com/$(Company)/$(PackageId)</RepositoryUrl>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<DebugType>embedded</DebugType>
+		<Nullable>enable</Nullable>
+		<OutputPath>bin\$(Configuration)</OutputPath>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Platform)'=='x64'">
+		<DefineConstants>$(DefineConstants);x64</DefineConstants>
+		<AssemblyName>SRTHost64</AssemblyName>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Platform)'=='x86'">
+		<DefineConstants>$(DefineConstants);x86</DefineConstants>
+		<AssemblyName>SRTHost32</AssemblyName>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="SRTPluginBase" Version="4.0.0-alpha.41ece815c6631c56a4af0df93e7965b97d0696cc" />
 	</ItemGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DefineConstants>DEBUG;TRACE;x64</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-    <DefineConstants>DEBUG;TRACE;x86</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <DefineConstants>x64</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <DefineConstants>x86</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <OutputPath>bin\Debug</OutputPath>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <OutputPath>bin\Release</OutputPath>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Platform)'=='x64'">
-    <AssemblyName>SRTHost64</AssemblyName>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Platform)'=='x86'">
-    <AssemblyName>SRTHost32</AssemblyName>
-  </PropertyGroup>
 
   <!--<ItemGroup>
     <Content Include="appsettings.Development.json">

@@ -15,7 +15,7 @@
 
 	<Import Sdk="Microsoft.NET.Sdk.Razor" Project="Sdk.props" />
 
-	<ItemGroup Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' >= '3.0'">
+	<ItemGroup Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' &gt;= '3.0'">
 		<FrameworkReference Include="Microsoft.AspNetCore.App" IsImplicitlyDefined="true" />
 	</ItemGroup>
 
@@ -51,6 +51,10 @@
     <DebugType>embedded</DebugType>
 	<Nullable>enable</Nullable>
   </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="SRTPluginBase" Version="4.0.0-alpha.41ece815c6631c56a4af0df93e7965b97d0696cc" />
+	</ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DefineConstants>DEBUG;TRACE;x64</DefineConstants>
@@ -104,7 +108,7 @@
       Configure the Razor SDK to add support for the MVC configuration unless the project configured it or the user opted out of the implicit reference to
       Microsoft.AspNetCore.App. This needs to happen after the .NET SDK has evaluated TFMs.
      -->
-		<AddRazorSupportForMvc Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(AddRazorSupportForMvc)' == '' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' >= '3.0'">true</AddRazorSupportForMvc>
+		<AddRazorSupportForMvc Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(AddRazorSupportForMvc)' == '' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' &gt;= '3.0'">true</AddRazorSupportForMvc>
 	</PropertyGroup>
 
 	<Import Sdk="Microsoft.NET.Sdk.Razor" Project="Sdk.targets" />

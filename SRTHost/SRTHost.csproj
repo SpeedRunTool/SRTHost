@@ -95,11 +95,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>-->
-
-  <ItemGroup>
-    <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj">
-    </ProjectReference>
-  </ItemGroup>
 	
 	<!-- workaround -->
 	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" />

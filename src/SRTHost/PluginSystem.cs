@@ -18,14 +18,14 @@ namespace SRTHost
     {
         // Constants
         private const string APP_NAME = "SRT Host";
-        private const string APP_ARCHITECTURE_x64 = "64-bit (x64)";
-        private const string APP_ARCHITECTURE_x86 = "32-bit (x86)";
+        private const string APP_ARCHITECTURE_X64 = "64-bit (x64)";
+        private const string APP_ARCHITECTURE_X86 = "32-bit (x86)";
 #if x64
         private const string APP_EXE_NAME = "SRTHost64.exe";
-        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_x64;
+        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_X64;
 #else
         private const string APP_EXE_NAME = "SRTHost32.exe";
-        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_x86;
+        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_X86;
 #endif
         private const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
@@ -152,7 +152,7 @@ namespace SRTHost
                     {
                         if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.Available) // Producer is started and available for requests.
                         {
-                            object pluginData = pluginKeys.Key.Plugin.PullData();
+                            object? pluginData = pluginKeys.Key.Plugin.PullData();
                             pluginKeys.Key.LastData = pluginData;
                             foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
                                 PluginReceiveData(pluginUIStateValue, pluginData);
@@ -320,13 +320,13 @@ namespace SRTHost
             }
         }
 
-        private void PluginReceiveData<T>(IPluginStateValue<T> plugin, object pluginData) where T : IPluginUI
+        private void PluginReceiveData<T>(IPluginStateValue<T> plugin, object? pluginData) where T : IPluginUI
         {
             // If the UI plugin isn't started, start it now.
             if (!plugin.Startup)
                 PluginStartup(plugin);
 
-            if (pluginData != null)
+            if (pluginData is not null)
             {
                 try
                 {

@@ -25,20 +25,20 @@ namespace SRTHost.Controllers
         }
 
         // Plugins events
-        private const string pluginControllerEventName = "Plugin Controller";
-        [LoggerMessage(EventIds.PluginController + 0, LogLevel.Information, "PluginGet()", EventName = pluginControllerEventName)]
+        private const string PLUGIN_CONTROLLER_EVENT_NAME = "Plugin Controller";
+        [LoggerMessage(EventIds.PluginController + 0, LogLevel.Information, "PluginGet()", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginGet();
 
-        [LoggerMessage(EventIds.PluginController + 1, LogLevel.Information, "PluginReloadGet()", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 1, LogLevel.Information, "PluginReloadGet()", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginReloadGet();
 
-        [LoggerMessage(EventIds.PluginController + 2, LogLevel.Information, "PluginInfoGet({plugin})", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 2, LogLevel.Information, "PluginInfoGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginInfoGet(string plugin);
 
-        [LoggerMessage(EventIds.PluginController + 3, LogLevel.Information, "PluginDataGet({plugin})", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 3, LogLevel.Information, "PluginDataGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginDataGet(string plugin);
 
-        [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginCommandGet({plugin}, {command}, {args})", EventName = pluginControllerEventName)]
+        [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginCommandGet({plugin}, {command}, {args})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginCommandGet(string plugin, string command, string? args);
 
 

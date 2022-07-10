@@ -77,7 +77,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="SRTPluginBase" Version="4.0.0-alpha.41ece815c6631c56a4af0df93e7965b97d0696cc" />
+		<PackageReference Include="SRTPluginBase" Version="4.0.*-*" />
 	</ItemGroup>
 
   <!--<ItemGroup>

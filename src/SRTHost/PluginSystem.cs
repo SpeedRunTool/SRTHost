@@ -214,7 +214,7 @@ namespace SRTHost
                     pluginsDir.Create();
 
                 // (Re-)discover plugins.
-                if (loadSpecificProducer == string.Empty)
+                if (string.IsNullOrWhiteSpace(loadSpecificProducer))
                 {
                     allPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)

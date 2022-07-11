@@ -29,7 +29,7 @@ namespace SRTHost
         public override int GetHashCode() => HashCode.Combine(Plugin, Startup);
     }
 
-    [DebuggerDisplay("[{Plugin.TypeName,nq}] S:{Startup,nq} GR:{Plugin.ProcessRunning,nq}")]
+    [DebuggerDisplay("[{Plugin.TypeName,nq}] S:{Startup,nq} GR:{Plugin.Available,nq}")]
     public class PluginProducerStateValue : PluginStateValue<IPluginProducer>
     {
         public object? LastData { get; set; }

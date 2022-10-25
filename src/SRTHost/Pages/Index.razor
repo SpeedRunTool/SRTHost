@@ -1,7 +1,29 @@
 ﻿@page "/"
+@using SRTPluginBase
+@inject PluginSystem pluginSystem
 
 <PageTitle>Index</PageTitle>
 
-<h1>Hello, world!</h1>
+<div>
+    @if (pluginSystem == null)
+    {
+        <em>Loading...</em>
+    }
+    else
+    {
+        <span><a href="api/v1/Plugin" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Loaded Plugins</b></a></span><br />
+        <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
 
-Welcome to your new app.
+        <br />
+        @foreach (IPlugin plugin in pluginSystem.Plugins.Values)
+        {
+            <span>
+                <b>@plugin.TypeName</b>
+                <a href="api/v1/Plugin/@plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
+                <a href="api/v1/Plugin/@plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
+                <a href="api/v1/Plugin/@plugin.TypeName/Command?Key1=Value1&Key2=Value2" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Custom Command</a>
+            </span>
+            <br />
+        }
+    }
+</div>

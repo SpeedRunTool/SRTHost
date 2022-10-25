@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
@@ -38,8 +39,8 @@ namespace SRTHost.Controllers
         [LoggerMessage(EventIds.PluginController + 3, LogLevel.Information, "PluginDataGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginDataGet(string plugin);
 
-        [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginCommandGet({plugin}, {command}, {args})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginCommandGet(string plugin, string command, string? args);
+        [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginHttpHandlerGet({plugin}, {command})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        private partial void LogPluginHttpHandlerGet(string plugin, string? command);
 
 
         // GET: api/v1/Plugin
@@ -94,25 +95,18 @@ namespace SRTHost.Controllers
         }
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Roar?Name=Burrito
-        // SRTPluginProducerRE2.CommandHandler("Roar", { "Name", { "Burrito" } });
-        [HttpGet("{Plugin}/{Command}", Name = "PluginCommandGet")]
-        public IActionResult PluginCommandGet(string plugin, string command)
+        // SRTPluginProducerRE2.HttpHandler(this);
+        [HttpGet("{Plugin}/{**Command}", Name = "PluginHttpHandlerGet")]
+        public IActionResult PluginHttpHandlerGet(string plugin, string? command)
         {
-            KeyValuePair<string, string[]>[] args = HttpContext.Request.Query.Select(a => new KeyValuePair<string, string[]>(a.Key, a.Value.ToArray())).ToArray();
-            LogPluginCommandGet(plugin, command, args.ToString());
+            LogPluginHttpHandlerGet(plugin, command);
 
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            if (string.IsNullOrWhiteSpace(command))
-                return BadRequest("A command must be provided.");
-
             IPlugin? iPlugin = pluginSystem.Plugins.ContainsKey(plugin) ? pluginSystem.Plugins[plugin] : null;
             if (iPlugin != null)
-            {
-                object? value = iPlugin.CommandHandler(command, args, out HttpStatusCode httpStatusCode);
-                return StatusCode((int)httpStatusCode, value);
-            }
+                return iPlugin.HttpHandler(this);
             else
                 return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
         }

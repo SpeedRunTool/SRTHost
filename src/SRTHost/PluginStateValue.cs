@@ -38,8 +38,8 @@ namespace SRTHost
     }
 
     [DebuggerDisplay("[{Plugin.TypeName,nq}] S:{Startup,nq} RP:{Plugin.RequiredProducer,nq}")]
-    public class PluginUIStateValue : PluginStateValue<IPluginUI>
+    public class PluginConsumerStateValue : PluginStateValue<IPluginConsumer>
     {
-        public PluginUIStateValue(IPluginUI plugin, bool startup) : base(plugin, startup) { }
+        public PluginConsumerStateValue(IPluginConsumer plugin, bool startup) : base(plugin, startup) { }
     }
 }

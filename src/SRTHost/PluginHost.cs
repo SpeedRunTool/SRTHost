@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace SRTHost
 {
-    public partial class PluginSystem : BackgroundService, IHostedService
+    public partial class PluginHost : BackgroundService, IHostedService, IPluginHost
     {
         // Constants
         private const string APP_NAME = "SRT Host";
@@ -29,6 +29,19 @@ namespace SRTHost
 #endif
         private const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
+        // *** IPluginHost
+        private IDictionary<string, IPlugin> LoadedPlugins = new Dictionary<string, IPlugin>(StringComparer.OrdinalIgnoreCase);
+
+        public T? GetPluginReference<T>(string pluginName) where T : class, IPlugin
+        {
+            // If the plugin is not loaded, return default.
+            if (!LoadedPlugins.ContainsKey(pluginName))
+                return default;
+
+            return LoadedPlugins[pluginName] as T;
+        }
+        // *** IPluginHost
+
         // Misc. variables
         private readonly IList<PluginLoadContext> pluginLoadContexts;
         private readonly ManualResetEventSlim pluginReinitializeEvent;
@@ -38,8 +51,8 @@ namespace SRTHost
 
         // Plugins
         private IDictionary<string, IPlugin> allPlugins = new Dictionary<string, IPlugin>(); // What was said on the next line but with more than just string. Multiple dictionaries? idk...
-        private IDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginProducersAndDependentUIs = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>>(); // TODO: Make a collection where plugins can be looked up by their name or type without per-lookup reflection. For example, build collection with these details at plugin load.
-        private IList<PluginUIStateValue> pluginUIsAgnostic = new List<PluginUIStateValue>(); // ^^^
+        private IDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginProducersAndDependentConsumers = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>>(); // TODO: Make a collection where plugins can be looked up by their name or type without per-lookup reflection. For example, build collection with these details at plugin load.
+        private IList<PluginConsumerStateValue> pluginConsumersAgnostic = new List<PluginConsumerStateValue>(); // ^^^
 
         /// <summary>
         /// All plugins which are currently loaded by the plugin system.
@@ -47,21 +60,21 @@ namespace SRTHost
         public IReadOnlyDictionary<string, IPlugin> Plugins => new ReadOnlyDictionary<string, IPlugin>(allPlugins);
 
         /// <summary>
-        /// All plugin producers and their dependent plugin UIs which are currently loaded by the plugin system.
+        /// All plugin producers and their dependent plugin Consumers which are currently loaded by the plugin system.
         /// </summary>
-        public IReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> PluginProducersAndDependentUIs => new ReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>>(pluginProducersAndDependentUIs);
+        public IReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> PluginProducersAndDependentConsumers => new ReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>>(pluginProducersAndDependentConsumers);
 
         /// <summary>
-        /// All plugin UIs that are not dependent on a specific plugin producer which are currently loaded by the plugin system.
+        /// All plugin Consumers that are not dependent on a specific plugin producer which are currently loaded by the plugin system.
         /// </summary>
-        public IReadOnlyCollection<PluginUIStateValue> PluginUIsAgnostic => new ReadOnlyCollection<PluginUIStateValue>(pluginUIsAgnostic);
+        public IReadOnlyCollection<PluginConsumerStateValue> PluginConsumersAgnostic => new ReadOnlyCollection<PluginConsumerStateValue>(pluginConsumersAgnostic);
 
         /// <summary>
         /// The specific plugin provider that was loaded. This will be null if all plugins are loaded. This value is read-only and provided via the --Provider command-line argument.
         /// </summary>
         public string? LoadSpecificProducer => loadSpecificProducer;
 
-        public PluginSystem(ILogger<PluginSystem> logger, params string[] args)
+        public PluginHost(ILogger<PluginHost> logger, params string[] args)
         {
             this.logger = logger;
             pluginLoadContexts = new List<PluginLoadContext>();
@@ -148,21 +161,21 @@ namespace SRTHost
                     // Signal that we're reading from plugins to block (re-)initialization and stopping until we're done.
                     pluginReadEvent.Reset();
 
-                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginKeys in pluginProducersAndDependentUIs)
+                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginKeys in pluginProducersAndDependentConsumers)
                     {
                         if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.Available) // Producer is started and available for requests.
                         {
                             object? pluginData = pluginKeys.Key.Plugin.PullData();
                             pluginKeys.Key.LastData = pluginData;
-                            foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic.Concat(pluginKeys.Value))
-                                PluginReceiveData(pluginUIStateValue, pluginData);
+                            foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginConsumersAgnostic.Concat(pluginKeys.Value))
+                                PluginReceiveData(pluginConsumerStateValue, pluginData);
                         }
                         else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.Available) // Producer is started but is not available for requests.
                         {
-                            // Loop through this plugin's UIs and shut them down if they're running. Only shuts down dependent UIs. Agnostic UIs such as JSON shouldn't be touched.
-                            foreach (PluginUIStateValue pluginUIStateValue in pluginKeys.Value)
-                                if (pluginUIStateValue.Startup)
-                                    PluginShutdown(pluginUIStateValue);
+                            // Loop through this plugin's Consumers and shut them down if they're running. Only shuts down dependent Consumers. Agnostic Consumers such as JSON shouldn't be touched.
+                            foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginKeys.Value)
+                                if (pluginConsumerStateValue.Startup)
+                                    PluginShutdown(pluginConsumerStateValue);
                         }
                     }
 
@@ -251,10 +264,10 @@ namespace SRTHost
                 if (allPlugins.Count == 0)
                     LogNoPlugins();
 
-                pluginProducersAndDependentUIs = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>>();
+                pluginProducersAndDependentConsumers = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>>();
                 foreach (IPluginProducer pluginProducer in allPlugins.Where(a => typeof(IPluginProducer).IsAssignableFrom(a.Value.GetType())).Select(a => (IPluginProducer)a.Value))
-                    pluginProducersAndDependentUIs.Add(new PluginProducerStateValue(pluginProducer, false), allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue((IPluginUI)a.Value, false)).Where(a => a.Plugin.RequiredProducer == pluginProducer.TypeName).ToArray());
-                pluginUIsAgnostic = allPlugins.Where(a => typeof(IPluginUI).IsAssignableFrom(a.GetType())).Select(a => new PluginUIStateValue((IPluginUI)a.Value, false)).Where(a => string.IsNullOrWhiteSpace(a.Plugin.RequiredProducer)).ToArray();
+                    pluginProducersAndDependentConsumers.Add(new PluginProducerStateValue(pluginProducer, false), allPlugins.Where(a => typeof(IPluginConsumer).IsAssignableFrom(a.GetType())).Select(a => new PluginConsumerStateValue((IPluginConsumer)a.Value, false)).Where(a => a.Plugin.RequiredProducer == pluginProducer.TypeName).ToArray());
+                pluginConsumersAgnostic = allPlugins.Where(a => typeof(IPluginConsumer).IsAssignableFrom(a.GetType())).Select(a => new PluginConsumerStateValue((IPluginConsumer)a.Value, false)).Where(a => string.IsNullOrWhiteSpace(a.Plugin.RequiredProducer)).ToArray();
             }, cancellationToken);
         }
 
@@ -263,12 +276,12 @@ namespace SRTHost
             await Task.Run(() =>
             {
                 // Startup producers.
-                foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginKeys in pluginProducersAndDependentUIs)
+                foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginKeys in pluginProducersAndDependentConsumers)
                     PluginStartup(pluginKeys.Key);
 
-                // Startup agnotic UIs.
-                foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
-                    PluginStartup(pluginUIStateValue);
+                // Startup agnotic Consumers.
+                foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginConsumersAgnostic)
+                    PluginStartup(pluginConsumerStateValue);
             }, cancellationToken);
         }
 
@@ -276,16 +289,16 @@ namespace SRTHost
         {
             await Task.Run(() =>
             {
-                if (pluginUIsAgnostic != null)
-                    foreach (PluginUIStateValue pluginUIStateValue in pluginUIsAgnostic)
-                        PluginShutdown(pluginUIStateValue);
+                if (pluginConsumersAgnostic != null)
+                    foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginConsumersAgnostic)
+                        PluginShutdown(pluginConsumerStateValue);
 
-                if (pluginProducersAndDependentUIs != null)
+                if (pluginProducersAndDependentConsumers != null)
                 {
-                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginUIStateValue>> pluginKeys in pluginProducersAndDependentUIs)
+                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginKeys in pluginProducersAndDependentConsumers)
                     {
-                        foreach (PluginUIStateValue pluginUI in pluginKeys.Value)
-                            PluginShutdown(pluginUI);
+                        foreach (PluginConsumerStateValue pluginConsumer in pluginKeys.Value)
+                            PluginShutdown(pluginConsumer);
                         PluginShutdown(pluginKeys.Key);
                     }
                 }
@@ -320,9 +333,9 @@ namespace SRTHost
             }
         }
 
-        private void PluginReceiveData<T>(IPluginStateValue<T> plugin, object? pluginData) where T : IPluginUI
+        private void PluginReceiveData<T>(IPluginStateValue<T> plugin, object? pluginData) where T : IPluginConsumer
         {
-            // If the UI plugin isn't started, start it now.
+            // If the Consumer plugin isn't started, start it now.
             if (!plugin.Startup)
                 PluginStartup(plugin);
 
@@ -417,9 +430,9 @@ namespace SRTHost
                         count++;
                         yield return result;
                     }
-                    else if (type.GetInterface(nameof(IPluginUI)) != null)
+                    else if (type.GetInterface(nameof(IPluginConsumer)) != null)
                     {
-                        IPluginUI result = (IPluginUI)Activator.CreateInstance(type)!;
+                        IPluginConsumer result = (IPluginConsumer)Activator.CreateInstance(type)!;
                         count++;
                         yield return result;
                     }

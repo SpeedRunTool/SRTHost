@@ -1,11 +1,11 @@
 ﻿@page "/"
 @using SRTPluginBase
-@inject PluginSystem pluginSystem
+@inject PluginHost pluginHost
 
 <PageTitle>Index</PageTitle>
 
 <div>
-    @if (pluginSystem == null)
+    @if (pluginHost == null)
     {
         <em>Loading...</em>
     }
@@ -15,7 +15,7 @@
         <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
 
         <br />
-        @foreach (IPlugin plugin in pluginSystem.Plugins.Values)
+        @foreach (IPlugin plugin in pluginHost.Plugins.Values)
         {
             <span>
                 <b>@plugin.TypeName</b>

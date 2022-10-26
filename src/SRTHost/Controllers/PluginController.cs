@@ -17,12 +17,12 @@ namespace SRTHost.Controllers
     public partial class PluginController : ControllerBase
     {
         private readonly ILogger<PluginController> logger;
-        private readonly PluginSystem pluginSystem;
+        private readonly PluginHost pluginHost;
 
-        public PluginController(ILogger<PluginController> logger, PluginSystem pluginSystem)
+        public PluginController(ILogger<PluginController> logger, PluginHost pluginHost)
         {
             this.logger = logger;
-            this.pluginSystem = pluginSystem;
+            this.pluginHost = pluginHost;
         }
 
         // Plugins events
@@ -49,7 +49,7 @@ namespace SRTHost.Controllers
         public IActionResult PluginGet()
         {
             LogPluginGet();
-            return Ok(pluginSystem.Plugins);
+            return Ok(pluginHost.Plugins);
         }
 
         // GET: api/v1/Plugin/Reload
@@ -58,7 +58,7 @@ namespace SRTHost.Controllers
         {
             LogPluginReloadGet();
 
-            await pluginSystem.ReloadPlugins(CancellationToken.None);
+            await pluginHost.ReloadPlugins(CancellationToken.None);
             return Ok("Success");
         }
 
@@ -71,7 +71,7 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            IPlugin? iPlugin = pluginSystem.Plugins.ContainsKey(plugin) ? pluginSystem.Plugins[plugin] : null;
+            IPlugin? iPlugin = pluginHost.Plugins.ContainsKey(plugin) ? pluginHost.Plugins[plugin] : null;
             if (iPlugin != null)
                 return Ok(iPlugin);
             else
@@ -87,7 +87,7 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            PluginProducerStateValue? pluginState = pluginSystem.PluginProducersAndDependentUIs.Select(a => a.Key).Where(a => a.Plugin.TypeName == plugin).FirstOrDefault();
+            PluginProducerStateValue? pluginState = pluginHost.PluginProducersAndDependentConsumers.Select(a => a.Key).Where(a => a.Plugin.TypeName == plugin).FirstOrDefault();
             if (pluginState != null)
                 return Ok(pluginState.LastData);
             else
@@ -104,7 +104,7 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            IPlugin? iPlugin = pluginSystem.Plugins.ContainsKey(plugin) ? pluginSystem.Plugins[plugin] : null;
+            IPlugin? iPlugin = pluginHost.Plugins.ContainsKey(plugin) ? pluginHost.Plugins[plugin] : null;
             if (iPlugin != null)
                 return iPlugin.HttpHandler(this);
             else

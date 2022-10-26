@@ -1,11 +1,12 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SRTPluginBase;
 
 namespace SRTHost
 {
-    public partial class PluginSystem : BackgroundService, IHostedService
+    public partial class PluginHost : BackgroundService, IHostedService, IPluginHost
     {
-        private readonly ILogger<PluginSystem> logger;
+        private readonly ILogger<PluginHost> logger;
 
         // Version Banner events
         private const string VERSION_BANNER_EVENT_NAME = "Version Banner";

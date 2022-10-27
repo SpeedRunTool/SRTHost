@@ -15,13 +15,13 @@
         <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
 
         <br />
-        @foreach (IPlugin plugin in pluginHost.Plugins.Values)
+        @foreach (IPluginStateValue <IPlugin> pluginStateValue in pluginHost.LoadedPlugins.Values)
         {
             <span>
-                <b>@plugin.TypeName</b>
-                <a href="api/v1/Plugin/@plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
-                <a href="api/v1/Plugin/@plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
-                <a href="api/v1/Plugin/@plugin.TypeName/Command?Key1=Value1&Key2=Value2" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Custom Command</a>
+                <b>@pluginStateValue.Plugin.TypeName</b>
+                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
+                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
+                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Command?Key1=Value1&Key2=Value2" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Custom Command</a>
             </span>
             <br />
         }

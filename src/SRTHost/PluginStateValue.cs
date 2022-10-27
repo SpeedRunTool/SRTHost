@@ -6,40 +6,26 @@ namespace SRTHost
 {
     public interface IPluginStateValue<T> : IEquatable<PluginStateValue<T>> where T : IPlugin
     {
-        T Plugin { get; set;  }
-        bool Startup { get; set; }
+        PluginLoadContext LoadContext { get; init; }
+        T Plugin { get; init; }
     }
 
-    [DebuggerDisplay("[{Plugin.TypeName,nq}] S:{Startup,nq}")]
+    [DebuggerDisplay("[{Plugin.TypeName,nq}]")]
     public class PluginStateValue<T> : IPluginStateValue<T>, IEquatable<PluginStateValue<T>> where T : IPlugin
     {
-        public T Plugin { get; set; }
-        public bool Startup { get; set; }
+        public PluginLoadContext LoadContext { get; init; }
+        public T Plugin { get; init; }
 
-        public PluginStateValue(T plugin, bool startup)
+        public PluginStateValue(PluginLoadContext loadContext, T plugin)
         {
+            LoadContext = loadContext;
             Plugin = plugin;
-            Startup = startup;
         }
 
         public bool Equals(PluginStateValue<T>? other) => Plugin.Info.Name == other?.Plugin.Info.Name;
 
         public override bool Equals(object? obj) => Equals(obj as PluginStateValue<T>);
 
-        public override int GetHashCode() => HashCode.Combine(Plugin, Startup);
-    }
-
-    [DebuggerDisplay("[{Plugin.TypeName,nq}] S:{Startup,nq} GR:{Plugin.Available,nq}")]
-    public class PluginProducerStateValue : PluginStateValue<IPluginProducer>
-    {
-        public object? LastData { get; set; }
-
-        public PluginProducerStateValue(IPluginProducer plugin, bool startup) : base(plugin, startup) { }
-    }
-
-    [DebuggerDisplay("[{Plugin.TypeName,nq}] S:{Startup,nq} RP:{Plugin.RequiredProducer,nq}")]
-    public class PluginConsumerStateValue : PluginStateValue<IPluginConsumer>
-    {
-        public PluginConsumerStateValue(IPluginConsumer plugin, bool startup) : base(plugin, startup) { }
+        public override int GetHashCode() => HashCode.Combine(LoadContext, Plugin);
     }
 }

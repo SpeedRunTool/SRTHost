@@ -1,11 +1,7 @@
 ﻿using Microsoft.AspNetCore.Cors;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -49,7 +45,7 @@ namespace SRTHost.Controllers
         public IActionResult PluginGet()
         {
             LogPluginGet();
-            return Ok(pluginHost.Plugins);
+            return Ok(pluginHost.LoadedPlugins.Keys);
         }
 
         // GET: api/v1/Plugin/Reload
@@ -71,7 +67,7 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            IPlugin? iPlugin = pluginHost.Plugins.ContainsKey(plugin) ? pluginHost.Plugins[plugin] : null;
+            IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
             if (iPlugin != null)
                 return Ok(iPlugin);
             else
@@ -87,9 +83,9 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            PluginProducerStateValue? pluginState = pluginHost.PluginProducersAndDependentConsumers.Select(a => a.Key).Where(a => a.Plugin.TypeName == plugin).FirstOrDefault();
-            if (pluginState != null)
-                return Ok(pluginState.LastData);
+            IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
+            if (pluginStateValue != null && pluginStateValue.Plugin is IPluginProducer)
+                return Ok(((IPluginProducer)pluginStateValue.Plugin).Data);
             else
                 return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
         }
@@ -104,7 +100,7 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            IPlugin? iPlugin = pluginHost.Plugins.ContainsKey(plugin) ? pluginHost.Plugins[plugin] : null;
+            IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
             if (iPlugin != null)
                 return iPlugin.HttpHandler(this);
             else

@@ -29,8 +29,8 @@ namespace SRTHost
 #endif
         private const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
-        // *** IPluginHost
-        private IDictionary<string, IPlugin> LoadedPlugins = new Dictionary<string, IPlugin>(StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, IPluginStateValue<IPlugin>> loadedPlugins;
+        public IReadOnlyDictionary<string, IPluginStateValue<IPlugin>> LoadedPlugins => loadedPlugins.AsReadOnly();
 
         public T? GetPluginReference<T>(string pluginName) where T : class, IPlugin
         {
@@ -38,48 +38,16 @@ namespace SRTHost
             if (!LoadedPlugins.ContainsKey(pluginName))
                 return default;
 
-            return LoadedPlugins[pluginName] as T;
+            return LoadedPlugins[pluginName].Plugin as T;
         }
-        // *** IPluginHost
 
         // Misc. variables
-        private readonly IList<PluginLoadContext> pluginLoadContexts;
-        private readonly ManualResetEventSlim pluginReinitializeEvent;
-        private readonly ManualResetEventSlim pluginReadEvent;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
         private readonly int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
-
-        // Plugins
-        private IDictionary<string, IPlugin> allPlugins = new Dictionary<string, IPlugin>(); // What was said on the next line but with more than just string. Multiple dictionaries? idk...
-        private IDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginProducersAndDependentConsumers = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>>(); // TODO: Make a collection where plugins can be looked up by their name or type without per-lookup reflection. For example, build collection with these details at plugin load.
-        private IList<PluginConsumerStateValue> pluginConsumersAgnostic = new List<PluginConsumerStateValue>(); // ^^^
-
-        /// <summary>
-        /// All plugins which are currently loaded by the plugin system.
-        /// </summary>
-        public IReadOnlyDictionary<string, IPlugin> Plugins => new ReadOnlyDictionary<string, IPlugin>(allPlugins);
-
-        /// <summary>
-        /// All plugin producers and their dependent plugin Consumers which are currently loaded by the plugin system.
-        /// </summary>
-        public IReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> PluginProducersAndDependentConsumers => new ReadOnlyDictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>>(pluginProducersAndDependentConsumers);
-
-        /// <summary>
-        /// All plugin Consumers that are not dependent on a specific plugin producer which are currently loaded by the plugin system.
-        /// </summary>
-        public IReadOnlyCollection<PluginConsumerStateValue> PluginConsumersAgnostic => new ReadOnlyCollection<PluginConsumerStateValue>(pluginConsumersAgnostic);
-
-        /// <summary>
-        /// The specific plugin provider that was loaded. This will be null if all plugins are loaded. This value is read-only and provided via the --Provider command-line argument.
-        /// </summary>
-        public string? LoadSpecificProducer => loadSpecificProducer;
 
         public PluginHost(ILogger<PluginHost> logger, params string[] args)
         {
             this.logger = logger;
-            pluginLoadContexts = new List<PluginLoadContext>();
-            pluginReinitializeEvent = new ManualResetEventSlim(true);
-            pluginReadEvent = new ManualResetEventSlim(true);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
@@ -137,7 +105,6 @@ namespace SRTHost
 
                 // Initialize and start plugins.
                 await InitPlugins(cancellationToken);
-                await StartPlugins(cancellationToken);
             }, cancellationToken);
 
             await base.StartAsync(cancellationToken);
@@ -145,7 +112,7 @@ namespace SRTHost
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            await StopPlugins(cancellationToken);
+            await UnloadPlugins(cancellationToken);
             await base.StopAsync(cancellationToken);
         }
 
@@ -155,32 +122,6 @@ namespace SRTHost
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    // Don't read from the plugins until the (re-)initialize operation completes.
-                    pluginReinitializeEvent.Wait(stoppingToken);
-
-                    // Signal that we're reading from plugins to block (re-)initialization and stopping until we're done.
-                    pluginReadEvent.Reset();
-
-                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginKeys in pluginProducersAndDependentConsumers)
-                    {
-                        if (pluginKeys.Key.Startup && pluginKeys.Key.Plugin.Available) // Producer is started and available for requests.
-                        {
-                            object? pluginData = pluginKeys.Key.Plugin.PullData();
-                            pluginKeys.Key.LastData = pluginData;
-                            foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginConsumersAgnostic.Concat(pluginKeys.Value))
-                                PluginReceiveData(pluginConsumerStateValue, pluginData);
-                        }
-                        else if (pluginKeys.Key.Startup && !pluginKeys.Key.Plugin.Available) // Producer is started but is not available for requests.
-                        {
-                            // Loop through this plugin's Consumers and shut them down if they're running. Only shuts down dependent Consumers. Agnostic Consumers such as JSON shouldn't be touched.
-                            foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginKeys.Value)
-                                if (pluginConsumerStateValue.Startup)
-                                    PluginShutdown(pluginConsumerStateValue);
-                        }
-                    }
-
-                    pluginReadEvent.Set();
-
                     try { await Task.Delay(settingUpdateRate, stoppingToken).ConfigureAwait(false); }
                     catch (OperationCanceledException) { }
                 }
@@ -202,17 +143,8 @@ namespace SRTHost
 
         public async Task ReloadPlugins(CancellationToken cancellationToken)
         {
-            // Don't (re-)initialize the plugins until the read operation completes.
-            pluginReadEvent.Wait(cancellationToken);
-
-            // Signal that we're (re-)initializing plugins to block reads until we're done.
-            pluginReinitializeEvent.Reset();
-
-            await StopPlugins(cancellationToken);
+            await UnloadPlugins(cancellationToken);
             await InitPlugins(cancellationToken);
-            await StartPlugins(cancellationToken);
-
-            pluginReinitializeEvent.Set();
         }
 
 
@@ -229,23 +161,22 @@ namespace SRTHost
                 // (Re-)discover plugins.
                 if (string.IsNullOrWhiteSpace(loadSpecificProducer))
                 {
-                    allPlugins = pluginsDir
+                    loadedPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
                         .Select((FileInfo? pluginAssemblyFileInfo) =>
                         {
                             PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
-                            pluginLoadContexts.Add(pluginLoadContext);
-                            return LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+                            Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+                            return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
                         })
-                        .Where((Assembly? pluginAssembly) => pluginAssembly != null)
-                        .SelectMany((Assembly? pluginAssembly) => CreatePlugins(pluginAssembly!))
-                        .ToDictionary((IPlugin plugin) => plugin.TypeName, StringComparer.OrdinalIgnoreCase);
+                        .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues)
+                        .ToDictionary((IPluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.Plugin.TypeName, StringComparer.OrdinalIgnoreCase);
                 }
                 else
                 {
-                    allPlugins = pluginsDir
+                    loadedPlugins = pluginsDir
                         .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
                         .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
                         .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
@@ -253,130 +184,32 @@ namespace SRTHost
                         .Select((FileInfo? pluginAssemblyFileInfo) =>
                         {
                             PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
-                            pluginLoadContexts.Add(pluginLoadContext);
-                            return LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+                            Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+                            return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
                         })
-                        .Where((Assembly? pluginAssembly) => pluginAssembly != null)
-                        .SelectMany((Assembly? pluginAssembly) => CreatePlugins(pluginAssembly!))
-                        .ToDictionary((IPlugin plugin) => plugin.TypeName, StringComparer.OrdinalIgnoreCase);
+                        .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues)
+                        .ToDictionary((IPluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.Plugin.TypeName, StringComparer.OrdinalIgnoreCase);
                 }
 
-                if (allPlugins.Count == 0)
+                if (loadedPlugins.Count == 0)
                     LogNoPlugins();
-
-                pluginProducersAndDependentConsumers = new Dictionary<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>>();
-                foreach (IPluginProducer pluginProducer in allPlugins.Where(a => typeof(IPluginProducer).IsAssignableFrom(a.Value.GetType())).Select(a => (IPluginProducer)a.Value))
-                    pluginProducersAndDependentConsumers.Add(new PluginProducerStateValue(pluginProducer, false), allPlugins.Where(a => typeof(IPluginConsumer).IsAssignableFrom(a.GetType())).Select(a => new PluginConsumerStateValue((IPluginConsumer)a.Value, false)).Where(a => a.Plugin.RequiredProducer == pluginProducer.TypeName).ToArray());
-                pluginConsumersAgnostic = allPlugins.Where(a => typeof(IPluginConsumer).IsAssignableFrom(a.GetType())).Select(a => new PluginConsumerStateValue((IPluginConsumer)a.Value, false)).Where(a => string.IsNullOrWhiteSpace(a.Plugin.RequiredProducer)).ToArray();
             }, cancellationToken);
         }
 
-        private async Task StartPlugins(CancellationToken cancellationToken)
+        private async Task UnloadPlugins(CancellationToken cancellationToken)
         {
             await Task.Run(() =>
             {
-                // Startup producers.
-                foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginKeys in pluginProducersAndDependentConsumers)
-                    PluginStartup(pluginKeys.Key);
+                foreach (IPluginStateValue<IPlugin> pluginStateValue in loadedPlugins.Values)
+                {
+                    pluginStateValue.Plugin.Dispose();
+                    pluginStateValue.LoadContext.Unload();
+                }
 
-                // Startup agnotic Consumers.
-                foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginConsumersAgnostic)
-                    PluginStartup(pluginConsumerStateValue);
+                loadedPlugins.Clear();
             }, cancellationToken);
         }
 
-        private async Task StopPlugins(CancellationToken cancellationToken)
-        {
-            await Task.Run(() =>
-            {
-                if (pluginConsumersAgnostic != null)
-                    foreach (PluginConsumerStateValue pluginConsumerStateValue in pluginConsumersAgnostic)
-                        PluginShutdown(pluginConsumerStateValue);
-
-                if (pluginProducersAndDependentConsumers != null)
-                {
-                    foreach (KeyValuePair<PluginProducerStateValue, IReadOnlyCollection<PluginConsumerStateValue>> pluginKeys in pluginProducersAndDependentConsumers)
-                    {
-                        foreach (PluginConsumerStateValue pluginConsumer in pluginKeys.Value)
-                            PluginShutdown(pluginConsumer);
-                        PluginShutdown(pluginKeys.Key);
-                    }
-                }
-
-                // Unload the load contexts.
-                foreach (PluginLoadContext pluginLoadContext in pluginLoadContexts)
-                    pluginLoadContext.Unload();
-
-                // Clear the load contexts.
-                pluginLoadContexts.Clear();
-            }, cancellationToken);
-        }
-
-        private void PluginStartup<T>(IPluginStateValue<T> plugin) where T : IPlugin
-        {
-            if (!plugin.Startup)
-            {
-                try
-                {
-                    int pluginStatusResponse = plugin.Plugin.Startup();
-
-                    if (pluginStatusResponse == 0)
-                        LogPluginStartupSuccess(plugin.Plugin.Info.Name);
-                    else
-                        LogPluginStartupFailure(plugin.Plugin.Info.Name, pluginStatusResponse);
-                }
-                catch (Exception ex)
-                {
-                    LogException(ex?.GetType()?.Name, ex?.ToString());
-                }
-                plugin.Startup = true;
-            }
-        }
-
-        private void PluginReceiveData<T>(IPluginStateValue<T> plugin, object? pluginData) where T : IPluginConsumer
-        {
-            // If the Consumer plugin isn't started, start it now.
-            if (!plugin.Startup)
-                PluginStartup(plugin);
-
-            if (pluginData is not null)
-            {
-                try
-                {
-                    int uiPluginReceiveDataStatus = plugin.Plugin.ReceiveData(pluginData);
-
-                    if (uiPluginReceiveDataStatus == 0)
-                        LogPluginReceiveDataSuccess(plugin.Plugin.Info.Name);
-                    else
-                        LogPluginReceiveDataFailure(plugin.Plugin.Info.Name, uiPluginReceiveDataStatus);
-                }
-                catch (Exception ex)
-                {
-                    LogException(ex?.GetType()?.Name, ex?.ToString());
-                }
-            }
-        }
-
-        private void PluginShutdown<T>(IPluginStateValue<T> plugin) where T : IPlugin
-        {
-            if (plugin.Startup)
-            {
-                try
-                {
-                    int pluginStatusResponse = plugin.Plugin.Shutdown();
-
-                    if (pluginStatusResponse == 0)
-                        LogPluginShutdownSuccess(plugin.Plugin.Info.Name);
-                    else
-                        LogPluginShutdownFailure(plugin.Plugin.Info.Name, pluginStatusResponse);
-                }
-                catch (Exception ex)
-                {
-                    LogException(ex?.GetType()?.Name, ex?.ToString());
-                }
-                plugin.Startup = false;
-            }
-        }
 
         private Assembly? LoadPlugin(PluginLoadContext loadContext, string pluginPath)
         {

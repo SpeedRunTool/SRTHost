@@ -20,10 +20,10 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\{#MyAppPublisher}\{#MyAppExeNamePrefix}
+DefaultDirName={localappdata}\{#MyAppPublisher}\{#MyAppExeNamePrefix}
 DisableProgramGroupPage=yes
 UsePreviousAppDir=yes
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
 CloseApplications=yes
 RestartApplications=no
 TimeStampsInUTC=yes
@@ -44,7 +44,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\SRTHost\bin\Release\net7.0-windows\publish\{#MyAppExeNamePrefix}32.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\SRTHost\bin\Release\net7.0-windows\publish\{#MyAppExeNamePrefix}64.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\SRTHost\bin\Release\net7.0-windows\publish\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\SRTHost\bin\Release\net7.0-windows\publish\appsettings.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "..\SRTHost\bin\Release\net7.0-windows\publish\appsettings.Production.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "..\SRTHost\bin\Release\net7.0-windows\publish\appsettings.Development.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
@@ -54,7 +54,7 @@ Source: "..\SRTHost\bin\Release\net7.0-windows\publish\appsettings.Development.j
 Name: "{app}\plugins"
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName} {#SuffixText32Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}32.exe"
-Name: "{autoprograms}\{#MyAppName} {#SuffixText64Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}64.exe"
-Name: "{autodesktop}\{#MyAppName} {#SuffixText32Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}32.exe"; Tasks: desktopicon
-Name: "{autodesktop}\{#MyAppName} {#SuffixText64Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}64.exe"; Tasks: desktopicon
+Name: "{userprograms}\{#MyAppName} {#SuffixText32Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}32.exe"
+Name: "{userprograms}\{#MyAppName} {#SuffixText64Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}64.exe"
+Name: "{userdesktop}\{#MyAppName} {#SuffixText32Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}32.exe"; Tasks: desktopicon
+Name: "{userdesktop}\{#MyAppName} {#SuffixText64Bit}"; Filename: "{app}\{#MyAppExeNamePrefix}64.exe"; Tasks: desktopicon

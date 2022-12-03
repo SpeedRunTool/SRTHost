@@ -1,0 +1,140 @@
+name: "Manual Setup - Develop"
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    name: "Build"
+    runs-on: "windows-latest"
+    strategy:
+      matrix:
+        publish-profile-name: [x86, x64]
+    env:
+      working-directory: .
+      project-name: SRTHost
+      config: 'Debug'
+      platform: ${{matrix.publish-profile-name}}
+      release-type: '-alpha' # Use -alpha, -beta, or -rc for pre-release. An empty string for stable.
+    outputs:
+      solution: ${{steps.generated-variables-1.outputs.solution}}
+      project: ${{steps.generated-variables-1.outputs.project}}
+      publish-directory: ${{steps.generated-variables-1.outputs.publish-directory}}
+      setup-filename: ${{steps.generated-variables-2.outputs.setup-filename}}
+      version: ${{steps.get_version.outputs.RELEASE_VERSION}}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        ref: develop
+
+    - name: Set the main environment variables based on other environment variables
+      id: generated-variables-1
+      run: |
+        echo 'solution=${{env.project-name}}.sln' >> $env:GITHUB_OUTPUT
+        echo 'project=${{env.project-name}}/${{env.project-name}}.csproj' >> $env:GITHUB_OUTPUT
+        echo 'publish-directory=${{env.project-name}}/bin/Release/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
+
+    - name: Get project version information
+      id: project-versions
+      run: Select-String -Path "$env:PROJECT" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
+
+    - name: Ensure we detected the version properly
+      id: assert-version
+      env:
+        VERSION: '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.release-type}}.${{steps.get-datetime.outputs.UTCDateTime}}'
+      if: ${{ env.VERSION == format('..{0}.', env.release-type) }}
+      run: exit 1
+
+    - name: Sets the setup-filename environment variable based on the project version
+      id: generated-variables-2
+      run: |
+        echo 'setup-filename=${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.exe' >> $env:GITHUB_OUTPUT
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1.1.1
+
+    - name: Restore dependencies
+      run: nuget restore $env:SOLUTION
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.0.x
+        
+    - name: Build
+      env:
+        VERSION: '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.RELEASE_TYPE}}.${{steps.get-datetime.outputs.UTCDateTime}}'
+      run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION" --no-restore --verbosity normal
+
+    - name: Unit tests
+      env:
+        VERSION: '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.RELEASE_TYPE}}.${{steps.get-datetime.outputs.UTCDateTime}}'
+      run: dotnet test /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION" --no-restore --no-build --verbosity normal
+
+    - name: Publish
+      env:
+        VERSION: '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.RELEASE_TYPE}}.${{steps.get-datetime.outputs.UTCDateTime}}'
+      run: |
+        dotnet publish /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION;PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
+
+    - name: Upload publish artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        path: |
+          ${{steps.generated-variables-1.outputs.publish-directory}}SRTHost*.exe
+
+  setup:
+    name: "Setup"
+    runs-on: "windows-latest"
+    needs: build
+    env:
+      working-directory: .
+      is-prerelease: true
+
+    steps:
+    # Checkout latest code
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      
+    # Decode the base 64 encoded pfx and save the code signing certificate
+    - name: Decode the pfx
+      run: |
+        Set-Content -Path 'artifact/CodeSign.txt' -Value '${{ secrets.CERTIFICATE }}'
+        certutil -decode 'artifact/CodeSign.txt' 'artifact/CodeSign.pfx'
+        Remove-Item -Path 'artifact/CodeSign.txt'
+        
+    - name: Code sign the program
+      run: |
+        $filesToSign = (Get-ChildItem -Path 'artifact/' -Filter SRTHost*.exe).fullname
+        foreach ($fileToSign in $filesToSign) {
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToSign"
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "$fileToSign"
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "$fileToSign"
+        }
+      
+    - name: Create setup
+      run: |
+        "%programfiles(x86)%/Inno Setup 6/ISCC.exe" "src/SRTHostSetup/SRTHostSetup.iss"
+    
+    - name: Code sign the setup
+      run: |
+        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+
+    - name: Publish setup
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "develop-build"
+        prerelease: ${{env.is-prerelease}}
+        title: 'Manual Build [develop] - ${{needs.build.outputs.version}} Release'
+        files: |
+          src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}

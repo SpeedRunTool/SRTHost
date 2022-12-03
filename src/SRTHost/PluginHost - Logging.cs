@@ -75,14 +75,14 @@ namespace SRTHost
 #if x64
         [LoggerMessage(EventIds.PluginSystem + 16, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_X86 + " DLL", EventName = INCORRECT_ARCHITECTURE_EVENT_NAME)]
 #else
-        [LoggerMessage(EventIds.PluginSystem + 16, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_X64 + " DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 16, LogLevel.Warning, "Failed plugin: \"{pluginPath}\"\r\nIncorrect architecture. " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_X64 + " DLL", EventName = INCORRECT_ARCHITECTURE_EVENT_NAME)]
 #endif
         private partial void LogIncorrectArchitecturePlugin(string? pluginPath);
 
 #if x64
         [LoggerMessage(EventIds.PluginSystem + 17, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_X86 + " DLL", EventName = INCORRECT_ARCHITECTURE_EVENT_NAME)]
 #else
-        [LoggerMessage(EventIds.PluginSystem + 17, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_X64 + " DLL", EventName = incorrectArchitectureEventName)]
+        [LoggerMessage(EventIds.PluginSystem + 17, LogLevel.Warning, "Failed plugin: \"plugins\\x5C{sourcePlugin}\\x5C{sourcePlugin}.dll\"\r\nIncorrect architecture in referenced assembly \"{assemblyName}\". " + APP_DISPLAY_NAME + " cannot load a " + APP_ARCHITECTURE_X64 + " DLL", EventName = INCORRECT_ARCHITECTURE_EVENT_NAME)]
 #endif
         private partial void LogIncorrectArchitecturePluginReference(string? sourcePlugin, string? assemblyName);
 

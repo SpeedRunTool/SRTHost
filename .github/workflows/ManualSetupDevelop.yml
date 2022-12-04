@@ -1,6 +1,6 @@
 name: "Manual Setup - Develop"
 
-on: [workflow_dispatch]
+on: [workflow_dispatch, push]
 
 jobs:
   build:
@@ -115,8 +115,7 @@ jobs:
         }
       
     - name: Create setup
-      run: |
-        "%programfiles(x86)%/Inno Setup 6/ISCC.exe" "src/SRTHostSetup/SRTHostSetup.iss"
+      run: ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "src/SRTHostSetup/SRTHostSetup.iss"
     
     - name: Code sign the setup
       run: |

@@ -64,14 +64,14 @@ jobs:
     - name: Restore
       run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} --verbosity normal
         
-    - name: Build
-      run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform" --no-restore --verbosity normal
+    #- name: Build
+    #  run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform" --no-restore --verbosity normal
 
-    - name: Unit tests
-      run: dotnet test ${{steps.generated-variables-1.outputs.solution}} --no-restore --no-build --verbosity normal
+    #- name: Unit tests
+    #  run: dotnet test ${{steps.generated-variables-1.outputs.solution}} --no-restore --no-build --verbosity normal
 
     - name: Publish
-      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
+      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"PublishProfile=${{matrix.publish-profile-name}}" --verbosity normal
 
     - name: Upload publish artifacts
       uses: actions/upload-artifact@v3

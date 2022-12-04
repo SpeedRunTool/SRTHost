@@ -1,6 +1,6 @@
 name: "Manual Setup - Develop"
 
-on: workflow_dispatch
+on: [workflow_dispatch, push]
 
 jobs:
   build:

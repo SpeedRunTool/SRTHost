@@ -62,16 +62,16 @@ jobs:
         dotnet-version: 7.0.x
 
     - name: Restore
-      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-version-string.outputs.Version}}" --verbosity normal
+      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform" --verbosity normal
         
     - name: Build
-      run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-version-string.outputs.Version}}" --no-restore --verbosity normal
+      run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform" --no-restore --verbosity normal
 
     - name: Unit tests
-      run: dotnet test ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-version-string.outputs.Version}}" --no-restore --no-build --verbosity normal
+      run: dotnet test ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform" --no-restore --no-build --verbosity normal
 
     - name: Publish
-      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-version-string.outputs.Version}};PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
+      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
 
     - name: Upload publish artifacts
       uses: actions/upload-artifact@v3

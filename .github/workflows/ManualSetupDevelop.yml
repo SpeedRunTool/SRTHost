@@ -77,7 +77,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         path: |
-          ${{steps.generated-variables-1.outputs.publish-directory}}SRTHost*.exe
+          ${{steps.generated-variables-1.outputs.publish-directory}}*
 
   setup:
     name: "Setup"
@@ -101,17 +101,17 @@ jobs:
     # Decode the base 64 encoded pfx and save the code signing certificate
     - name: Decode the pfx
       run: |
-        Set-Content -Path 'artifact/CodeSign.txt' -Value '${{ secrets.CERTIFICATE }}'
-        certutil -decode 'artifact/CodeSign.txt' 'artifact/CodeSign.pfx'
-        Remove-Item -Path 'artifact/CodeSign.txt'
+        Set-Content -Path 'CodeSign.txt' -Value '${{ secrets.CERTIFICATE }}'
+        certutil -decode 'CodeSign.txt' 'CodeSign.pfx'
+        Remove-Item -Path 'CodeSign.txt'
         
     - name: Code sign the program
       run: |
         $filesToSign = (Get-ChildItem -Path 'artifact/' -Filter SRTHost*.exe).fullname
         foreach ($fileToSign in $filesToSign) {
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToSign"
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "$fileToSign"
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "$fileToSign"
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToSign"
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "$fileToSign"
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "$fileToSign"
         }
       
     - name: Create setup
@@ -127,9 +127,9 @@ jobs:
     
     - name: Code sign the setup
       run: |
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "artifact/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
 
     - name: Publish setup
       uses: "marvinpinto/action-automatic-releases@latest"

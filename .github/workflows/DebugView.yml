@@ -1,0 +1,24 @@
+name: "Debug View"
+
+on: [workflow_dispatch, push]
+
+jobs:
+  build:
+    name: "Debug"
+    runs-on: "windows-latest"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        ref: develop
+        
+    - name: DIR 1
+      run: Get-ChildItem -Name
+
+    - name: DIR 2
+      run: Get-ChildItem -Name src/
+
+    - name: DIR 3
+      run: Get-ChildItem -Name src/SRTHostSetup/

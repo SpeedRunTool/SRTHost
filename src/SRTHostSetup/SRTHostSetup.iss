@@ -4,8 +4,8 @@
 #define SuffixText64Bit "(64-bit)"
 #define AppURL "https://www.SpeedRunTool.com/"
 
-#if DirExists("artifact")
-#define AppPublishDir "artifact"
+#if DirExists("..\..\artifact")
+#define AppPublishDir "..\..\artifact"
 #else
 #define AppPublishDir "..\SRTHost\bin\Release\net7.0-windows\publish"
 #endif
@@ -23,6 +23,10 @@
 
 #ifndef AppVersion
 #define AppVersion GetFileProductVersion(AppExe64Path)
+#endif
+
+#ifndef VersionTag
+#define VersionTag AppVersion + "-undefined"
 #endif
 
 [Setup]
@@ -49,7 +53,7 @@ TimeStampsInUTC=yes
 ArchitecturesAllowed=x86 x64
 ; Require Windows 7 SP1 or newer (minimum needed for .NET 7)
 MinVersion=6.1sp1
-OutputBaseFilename=SRTHostSetup
+OutputBaseFilename=SRTHostSetup-v{#VersionTag}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

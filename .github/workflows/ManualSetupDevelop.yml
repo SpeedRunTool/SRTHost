@@ -96,7 +96,7 @@ jobs:
     - name: Sets the setup-filename environment variable based on the project version
       id: generated-variables-1
       run: |
-        echo 'setup-filename=${{needs.build.outputs.project-name}}-v${{needs.build.outputs.version}}.exe' >> $env:GITHUB_OUTPUT
+        echo 'setup-filename=${{needs.build.outputs.project-name}}Setup-v${{needs.build.outputs.version}}.exe' >> $env:GITHUB_OUTPUT
       
     # Decode the base 64 encoded pfx and save the code signing certificate
     - name: Decode the pfx

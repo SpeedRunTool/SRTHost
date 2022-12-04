@@ -117,7 +117,10 @@ jobs:
     - name: Create setup
       env:
         working-directory: ./src/SRTHostSetup
-      run: ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "src/SRTHostSetup/SRTHostSetup.iss"
+      run:  |
+        cd "src/SRTHostSetup"
+        ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "SRTHostSetup.iss"
+        cd "../.."
     
     - name: Code sign the setup
       run: |

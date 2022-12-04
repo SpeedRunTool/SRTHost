@@ -52,16 +52,15 @@ jobs:
       run: |
         echo 'setup-filename=${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.exe' >> $env:GITHUB_OUTPUT
 
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v1.1.1
-
-    - name: Restore dependencies
-      run: nuget restore ${{steps.generated-variables-1.outputs.solution}}
-
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 7.0.x
+
+    - name: Restore
+      env:
+        VERSION: '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.RELEASE_TYPE}}.${{steps.get-datetime.outputs.UTCDateTime}}'
+      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION" --verbosity normal
         
     - name: Build
       env:

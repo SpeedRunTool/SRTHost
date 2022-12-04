@@ -15,13 +15,12 @@ jobs:
       config: 'Debug'
       platform: ${{matrix.publish-profile-name}}
       release-type: '-alpha' # Use -alpha, -beta, or -rc for pre-release. An empty string for stable.
-      versionTest: ${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.release-type}}
     outputs:
       solution: ${{steps.generated-variables-1.outputs.solution}}
       project: ${{steps.generated-variables-1.outputs.project}}
       publish-directory: ${{steps.generated-variables-1.outputs.publish-directory}}
       setup-filename: ${{steps.generated-variables-2.outputs.setup-filename}}
-      version: ${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.release-type}}
+      version: ${{env.Version}}
 
     steps:
     - name: Checkout
@@ -40,7 +39,8 @@ jobs:
     - name: Get project version information
       id: project-versions
       run: |
-        Select-String -Path "${{steps.generated-variables-1.outputs.project}}" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
+        Select-String -Path "${{steps.generated-variables-1.outputs.project}}" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT >> $env:GITHUB_ENV }
+        echo 'Version=${{env.Version_Major}}.${{env.Version_Minor}}.${{env.Version_Patch}}${{env.release-type}}' >> $env:GITHUB_ENV
 
     - name: Test something
       run: echo '${{env.versionTest}}'

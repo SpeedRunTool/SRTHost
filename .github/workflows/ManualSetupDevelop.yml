@@ -40,10 +40,10 @@ jobs:
       id: project-versions
       run: |
         Select-String -Path "${{steps.generated-variables-1.outputs.project}}" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
-        echo 'Version=${{outputs.Version_Major}}.${{outputs.Version_Minor}}.${{outputs.Version_Patch}}${{env.release-type}}' >> $env:GITHUB_OUTPUT
+#echo 'Version=${{env.Version_Major}}.${{env.Version_Minor}}.${{env.Version_Patch}}${{env.release-type}}' >> $env:GITHUB_OUTPUT
 
     - name: Test something
-      run: echo '${{outputs.Version_Major}}.${{outputs.Version_Minor}}.${{outputs.Version_Patch}}${{env.release-type}}'
+      run: echo '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.release-type}}'
 
     - name: Ensure we detected the version properly
       id: assert-version

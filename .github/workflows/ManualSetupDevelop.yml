@@ -119,17 +119,14 @@ jobs:
         working-directory: ./src/SRTHostSetup
       run:  |
         cd "src/SRTHostSetup"
-        Get-Location
-        dir
-        dir "../../artifact"
         ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "SRTHostSetup.iss"
         cd "../.."
     
     - name: Code sign the setup
       run: |
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
 
     - name: Publish setup
       uses: "marvinpinto/action-automatic-releases@latest"

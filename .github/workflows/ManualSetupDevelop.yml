@@ -71,13 +71,13 @@ jobs:
     - name: Unit tests
       env:
         VERSION: '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.RELEASE_TYPE}}.${{steps.get-datetime.outputs.UTCDateTime}}'
-      run: dotnet test /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION" --no-restore --no-build --verbosity normal
+      run: dotnet test ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION" --no-restore --no-build --verbosity normal
 
     - name: Publish
       env:
         VERSION: '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.RELEASE_TYPE}}.${{steps.get-datetime.outputs.UTCDateTime}}'
       run: |
-        dotnet publish /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION;PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
+        dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=$env:VERSION;PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
 
     - name: Upload publish artifacts
       uses: actions/upload-artifact@v3

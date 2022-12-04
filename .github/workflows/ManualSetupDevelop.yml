@@ -119,6 +119,9 @@ jobs:
         working-directory: ./src/SRTHostSetup
       run:  |
         cd "src/SRTHostSetup"
+        dir "../SRTHost/bin/Release/net7.0-windows/publish"
+        dir ".."
+        dir
         ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "SRTHostSetup.iss"
         cd "../.."
     

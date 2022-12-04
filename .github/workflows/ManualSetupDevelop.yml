@@ -71,7 +71,7 @@ jobs:
       run: dotnet test ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform" --no-restore --no-build --verbosity normal
 
     - name: Publish
-      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
+      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;PublishProfile=${{matrix.publish-profile-name}}" --no-restore --verbosity normal
 
     - name: Upload publish artifacts
       uses: actions/upload-artifact@v3

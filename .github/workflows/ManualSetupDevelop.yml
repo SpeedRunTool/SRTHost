@@ -33,12 +33,12 @@ jobs:
       id: generated-variables-1
       run: |
         echo 'solution=${{env.project-name}}.sln' >> $env:GITHUB_OUTPUT
-        echo 'project=${{env.project-name}}/${{env.project-name}}.csproj' >> $env:GITHUB_OUTPUT
-        echo 'publish-directory=${{env.project-name}}/bin/Release/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
+        echo 'project=src/${{env.project-name}}/${{env.project-name}}.csproj' >> $env:GITHUB_OUTPUT
+        echo 'publish-directory=src/${{env.project-name}}/bin/Release/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
 
     - name: Get project version information
       id: project-versions
-      run: Select-String -Path "$env:PROJECT" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
+      run: Select-String -Path "${{steps.generated-variables-1.outputs.project}}" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
 
     - name: Ensure we detected the version properly
       id: assert-version
@@ -56,7 +56,7 @@ jobs:
       uses: NuGet/setup-nuget@v1.1.1
 
     - name: Restore dependencies
-      run: nuget restore $env:SOLUTION
+      run: nuget restore ${{steps.generated-variables-1.outputs.solution}}
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v3

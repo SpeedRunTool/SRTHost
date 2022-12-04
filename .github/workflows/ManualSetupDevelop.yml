@@ -20,7 +20,7 @@ jobs:
       project: ${{steps.generated-variables-1.outputs.project}}
       publish-directory: ${{steps.generated-variables-1.outputs.publish-directory}}
       setup-filename: ${{steps.generated-variables-2.outputs.setup-filename}}
-      version: ${{steps.get_version.outputs.RELEASE_VERSION}}
+      version: ${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.release-type}}
 
     steps:
     - name: Checkout
@@ -40,23 +40,19 @@ jobs:
       id: project-versions
       run: |
         Select-String -Path "${{steps.generated-variables-1.outputs.project}}" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
-#echo 'Version=${{env.Version_Major}}.${{env.Version_Minor}}.${{env.Version_Patch}}${{env.release-type}}' >> $env:GITHUB_OUTPUT
 
-    - name: Test something 1
-      run: echo '${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.release-type}}'
-
-    - name: Test something 2
-      run: echo '${{steps.project-versions.outputs.Version}}'
+    - name: Test something
+      run: echo '${{env.version}}'
 
     - name: Ensure we detected the version properly
       id: assert-version
-      if: ${{ steps.project-versions.outputs.Version == format('..{0}', env.release-type) }}
+      if: ${{ env.version == format('..{0}', env.release-type) }}
       run: exit 1
 
     - name: Sets the setup-filename environment variable based on the project version
       id: generated-variables-2
       run: |
-        echo 'setup-filename=${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.exe' >> $env:GITHUB_OUTPUT
+        echo 'setup-filename=${{env.project-name}}-v${{env.version}}.exe' >> $env:GITHUB_OUTPUT
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
@@ -64,16 +60,16 @@ jobs:
         dotnet-version: 7.0.x
 
     - name: Restore
-      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-versions.outputs.Version}}" --verbosity normal
+      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{env.version}}" --verbosity normal
         
     - name: Build
-      run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-versions.outputs.Version}}" --no-restore --verbosity normal
+      run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{env.version}}" --no-restore --verbosity normal
 
     - name: Unit tests
-      run: dotnet test ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-versions.outputs.Version}}" --no-restore --no-build --verbosity normal
+      run: dotnet test ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{env.version}}" --no-restore --no-build --verbosity normal
 
     - name: Publish
-      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{steps.project-versions.outputs.Version}};PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
+      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform;VERSION=${{env.version}};PublishProfile=${{matrix.publish-profile-name}}" --no-restore --no-build --verbosity normal
 
     - name: Upload publish artifacts
       uses: actions/upload-artifact@v3

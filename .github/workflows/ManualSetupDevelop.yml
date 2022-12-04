@@ -16,10 +16,10 @@ jobs:
       platform: ${{matrix.publish-profile-name}}
       release-type: '-alpha' # Use -alpha, -beta, or -rc for pre-release. An empty string for stable.
     outputs:
+      project-name: ${{env.project-name}}
       solution: ${{steps.generated-variables-1.outputs.solution}}
       project: ${{steps.generated-variables-1.outputs.project}}
       publish-directory: ${{steps.generated-variables-1.outputs.publish-directory}}
-      setup-filename: ${{steps.generated-variables-2.outputs.setup-filename}}
       version: ${{steps.project-version-string.outputs.Version}}
 
     steps:
@@ -50,11 +50,6 @@ jobs:
       id: assert-version
       if: ${{ steps.project-version-string.outputs.Version == format('..{0}', env.release-type) }}
       run: exit 1
-
-    - name: Sets the setup-filename environment variable based on the project version
-      id: generated-variables-2
-      run: |
-        echo 'setup-filename=${{env.project-name}}-v${{steps.project-version-string.outputs.Version}}.exe' >> $env:GITHUB_OUTPUT
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
@@ -97,6 +92,11 @@ jobs:
 
     - name: Download all artifacts
       uses: actions/download-artifact@v3
+
+    - name: Sets the setup-filename environment variable based on the project version
+      id: generated-variables-1
+      run: |
+        echo 'setup-filename=${{needs.build.outputs.project-name}}-v${{needs.build.outputs.version}}.exe' >> $env:GITHUB_OUTPUT
       
     # Decode the base 64 encoded pfx and save the code signing certificate
     - name: Decode the pfx
@@ -115,18 +115,13 @@ jobs:
         }
       
     - name: Create setup
-      env:
-        working-directory: ./src/SRTHostSetup
-      run:  |
-        cd "src/SRTHostSetup"
-        ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "SRTHostSetup.iss"
-        cd "../.."
+      run: ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "/DVersionTag=${{needs.build.outputs.version}}" "src/SRTHostSetup/SRTHostSetup.iss"
     
     - name: Code sign the setup
       run: |
-        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
-        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
-        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}"
+        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "src/SRTHostSetup/Output/${{steps.generated-variables-1.outputs.setup-filename}}"
+        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "src/SRTHostSetup/Output/${{steps.generated-variables-1.outputs.setup-filename}}"
+        ."C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "src/SRTHostSetup/Output/${{steps.generated-variables-1.outputs.setup-filename}}"
 
     - name: Publish setup
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -136,4 +131,4 @@ jobs:
         prerelease: ${{env.is-prerelease}}
         title: 'Manual Build [develop] - ${{needs.build.outputs.version}} Release'
         files: |
-          src/SRTHostSetup/Output/${{needs.build.outputs.setup-filename}}
+          src/SRTHostSetup/Output/${{steps.generated-variables-1.outputs.setup-filename}}

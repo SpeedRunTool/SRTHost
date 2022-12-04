@@ -4,8 +4,8 @@
 #define SuffixText64Bit "(64-bit)"
 #define AppURL "https://www.SpeedRunTool.com/"
 
-#if DirExists("..\..\artifact")
-#define AppPublishDir "..\..\artifact"
+#if DirExists("artifact")
+#define AppPublishDir "artifact"
 #else
 #define AppPublishDir "..\SRTHost\bin\Release\net7.0-windows\publish"
 #endif

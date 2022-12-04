@@ -3,7 +3,13 @@
 #define SuffixText32Bit "(32-bit)"
 #define SuffixText64Bit "(64-bit)"
 #define AppURL "https://www.SpeedRunTool.com/"
+
+#if DirExists("..\..\artifact")
+#define AppPublishDir "..\..\artifact"
+#else
 #define AppPublishDir "..\SRTHost\bin\Release\net7.0-windows\publish"
+#endif
+
 #define AppExe32Path AppPublishDir + "\" + AppExeNamePrefix + "32.exe"
 #define AppExe64Path AppPublishDir + "\" + AppExeNamePrefix + "64.exe"
 

@@ -120,6 +120,8 @@ jobs:
       run:  |
         cd "src/SRTHostSetup"
         Get-Location
+        dir
+        dir "../../artifact"
         ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "SRTHostSetup.iss"
         cd "../.."
     

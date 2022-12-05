@@ -1,6 +1,26 @@
 name: "Manual Setup - Develop"
 
-on: [workflow_dispatch, push]
+on:
+  workflow_dispatch:
+    inputs:
+      #buildConfig:
+      #  description: 'Build configuration'
+      #  required: true
+      #  default: 'Debug' 
+      #  type: choice
+      #  options:
+      #  - 'Debug'
+      #  - 'Release'
+      releaseTypeTag: # Use -alpha, -beta, or -rc for pre-release. An empty string for stable.
+        description: 'Release type tag'
+        required: true
+        default: '-beta' 
+        type: choice
+        options:
+        - '-alpha'
+        - '-beta'
+        - '-RC'
+        - ''
 
 jobs:
   build:
@@ -12,9 +32,7 @@ jobs:
     env:
       working-directory: .
       project-name: SRTHost
-      config: 'Debug'
       platform: ${{matrix.publish-profile-name}}
-      release-type: '-alpha' # Use -alpha, -beta, or -rc for pre-release. An empty string for stable.
     outputs:
       project-name: ${{env.project-name}}
       solution: ${{steps.generated-variables-1.outputs.solution}}
@@ -44,23 +62,24 @@ jobs:
     - name: Set project version string
       id: project-version-string
       run: |
-        echo 'Version=${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{env.release-type}}' >> $env:GITHUB_OUTPUT
+        echo 'Version=${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{inputs.releaseTypeTag}}' >> $env:GITHUB_OUTPUT
 
     - name: Ensure we detected the version properly
       id: assert-version
-      if: ${{ steps.project-version-string.outputs.Version == format('..{0}', env.release-type) }}
+      if: ${{ steps.project-version-string.outputs.Version == format('..{0}', inputs.releaseTypeTag) }}
       run: exit 1
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 7.0.x
+        dotnet-quality: 'ga'
 
     - name: Restore
       run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} --verbosity normal
         
     #- name: Build
-    #  run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=$env:config;Platform=$env:platform" --no-restore --verbosity normal
+    #  run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=${{inputs.buildConfig}};Platform=$env:platform" --no-restore --verbosity normal
 
     #- name: Unit tests
     #  run: dotnet test ${{steps.generated-variables-1.outputs.solution}} --no-restore --no-build --verbosity normal

@@ -1,10 +1,30 @@
 name: "Manual Release - Develop"
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      #buildConfig:
+      #  description: 'Build configuration'
+      #  required: true
+      #  default: 'Debug' 
+      #  type: choice
+      #  options:
+      #  - 'Debug'
+      #  - 'Release'
+      releaseTypeTag: # Use -alpha, -beta, or -rc for pre-release. An empty string for stable.
+        description: 'Release type tag'
+        required: true
+        default: '-beta' 
+        type: choice
+        options:
+        - '-alpha'
+        - '-beta'
+        - '-RC'
+        - ''
 
 jobs:
-  publish:
-    name: "Publish"
+  build:
+    name: "Build"
     runs-on: "windows-latest"
     strategy:
       matrix:
@@ -14,67 +34,62 @@ jobs:
       project-name: SRTHost
       platform: ${{matrix.publish-profile-name}}
     outputs:
+      project-name: ${{env.project-name}}
       solution: ${{steps.generated-variables-1.outputs.solution}}
       project: ${{steps.generated-variables-1.outputs.project}}
       publish-directory: ${{steps.generated-variables-1.outputs.publish-directory}}
       zip-filename: ${{steps.generated-variables-2.outputs.zip-filename}}
-      version: ${{steps.get_version.outputs.RELEASE_VERSION}}
+      version: ${{steps.project-version-string.outputs.Version}}
 
     steps:
-    # Checkout latest code
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
         ref: develop
 
-    # Set some output variables
     - name: Set the main environment variables based on other environment variables
       id: generated-variables-1
       run: |
-        echo '::set-output name=solution::${{env.project-name}}.sln'
-        echo '::set-output name=project::${{env.project-name}}/${{env.project-name}}.csproj'
-        echo '::set-output name=publish-directory::${{env.project-name}}/bin/Release/net6.0-windows/publish/'
+        echo 'solution=${{env.project-name}}.sln' >> $env:GITHUB_OUTPUT
+        echo 'project=src/${{env.project-name}}/${{env.project-name}}.csproj' >> $env:GITHUB_OUTPUT
+        echo 'publish-directory=src/${{env.project-name}}/bin/Release/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
 
-    # Get the project's version number
-    - name: Get project version
-      id: get_version
-      uses: greenygh0st/net-proj-release-version@v1
-      with:
-        PROJ_FILE: ${{steps.generated-variables-1.outputs.project}}
+    - name: Get project version information
+      id: project-versions
+      run: Select-String -Path "${{steps.generated-variables-1.outputs.project}}" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
+
+    - name: Set project version string
+      id: project-version-string
+      run: echo 'Version=${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}${{inputs.releaseTypeTag}}' >> $env:GITHUB_OUTPUT
+
+    - name: Ensure we detected the version properly
+      id: assert-version
+      if: ${{ steps.project-version-string.outputs.Version == format('..{0}', inputs.releaseTypeTag) }}
+      run: exit 1
 
     # Sets the zip-filename output variable based on the project version
     - name: Sets the zip-filename environment variable based on the project version
       id: generated-variables-2
-      run: |
-        echo '::set-output name=zip-filename::${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.zip'
+      run: echo 'zip-filename=${{env.project-name}}-v${{steps.project-version-string.outputs.Version}}.zip' >> $env:GITHUB_OUTPUT
 
-    # Install .NET
-    - name: Install .NET
-      uses: actions/setup-dotnet@v1
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 7.0.x
+        dotnet-quality: 'ga'
 
-    # Compiles the program and runs the publish profile
-    - name: Compile and run publish profile
-      run: |
-        dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:PublishProfile=${{matrix.publish-profile-name}}
-
-    # Decode the base 64 encoded pfx and save the code signing certificate
-    - name: Decode the pfx
-      run: |
-        Set-Content -Path '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt' -Value '${{ secrets.CERTIFICATE }}'
-        certutil -decode '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt' '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx'
-        Remove-Item -Path '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt'
+    - name: Restore
+      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} --verbosity normal
         
-    - name: Code sign the exes
-      run: |
-        $filesToZip = (Get-ChildItem -Path '${{steps.generated-variables-1.outputs.publish-directory}}' -Filter SRTHost*.exe).fullname
-        foreach ($fileToZip in $filesToZip) {
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToZip"
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "$fileToZip"
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "$fileToZip"
-        }
+    #- name: Build
+    #  run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=${{inputs.buildConfig}};Platform=$env:platform" --no-restore --verbosity normal
+
+    #- name: Unit tests
+    #  run: dotnet test ${{steps.generated-variables-1.outputs.solution}} --no-restore --no-build --verbosity normal
+
+    - name: Publish
+      run: dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:"PublishProfile=${{matrix.publish-profile-name}}" --verbosity normal
 
     - name: Upload publish artifacts
       uses: actions/upload-artifact@v2
@@ -85,7 +100,7 @@ jobs:
   release:
     name: "Release"
     runs-on: "windows-latest"
-    needs: publish
+    needs: build
     env:
       working-directory: .
       is-prerelease: true
@@ -100,12 +115,28 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v2
 
+    # Decode the base 64 encoded pfx and save the code signing certificate
+    - name: Decode the pfx
+      run: |
+        Set-Content -Path 'CodeSign.txt' -Value '${{ secrets.CERTIFICATE }}'
+        certutil -decode 'CodeSign.txt' 'CodeSign.pfx'
+        Remove-Item -Path 'CodeSign.txt'
+        
+    - name: Code sign the program
+      run: |
+        $filesToSign = (Get-ChildItem -Path 'artifact/' -Filter SRTHost*.exe).fullname
+        foreach ($fileToSign in $filesToSign) {
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA1 "$fileToSign"
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA256 /as "$fileToSign"
+            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CERTIFICATE_PASS}}" /fd SHA512 /as "$fileToSign"
+        }
+
     # Zip the publish artifacts
     - name: Zip the publish artifacts
       run: |
         Add-Type -assembly 'System.IO.Compression'
         Add-Type -assembly 'System.IO.Compression.FileSystem'
-        [System.IO.Compression.ZipArchive]$zipFile = [System.IO.Compression.ZipFile]::Open('${{needs.publish.outputs.zip-filename}}', ([System.IO.Compression.ZipArchiveMode]::Create))
+        [System.IO.Compression.ZipArchive]$zipFile = [System.IO.Compression.ZipFile]::Open('${{needs.build.outputs.zip-filename}}', ([System.IO.Compression.ZipArchiveMode]::Create))
         $filesToZip = (Get-ChildItem -Path artifact/ -Filter SRTHost*.exe).fullname
         foreach ($fileToZip in $filesToZip) {
             [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, $fileToZip, (Split-Path $fileToZip -Leaf))
@@ -120,6 +151,6 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         automatic_release_tag: "develop-build"
         prerelease: ${{env.is-prerelease}}
-        title: 'Manual Build [develop] - ${{needs.publish.outputs.version}} Release'
+        title: 'Manual Build [develop] - ${{needs.build.outputs.version}} Release'
         files: |
-          ${{needs.publish.outputs.zip-filename}}
+          ${{needs.build.outputs.zip-filename}}

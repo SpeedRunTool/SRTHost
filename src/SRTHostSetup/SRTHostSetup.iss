@@ -4,6 +4,8 @@
 #define SuffixText64Bit "(64-bit)"
 #define AppURL "https://www.SpeedRunTool.com/"
 
+; If the artifact directory exists, we're operating in the CI/CD pipeline on GitHub so use that path.
+; Otherwise we're operating locally.
 #if DirExists("..\..\artifact")
 #define AppPublishDir "..\..\artifact"
 #else
@@ -25,8 +27,9 @@
 #define AppVersion GetFileProductVersion(AppExe64Path)
 #endif
 
+; This is defined via command-line in the CI/CD pipeline as either -alpha, -beta, -RC, or an empty string
 #ifndef VersionTag
-#define VersionTag AppVersion + "-undefined"
+#define VersionTag AppVersion
 #endif
 
 [Setup]

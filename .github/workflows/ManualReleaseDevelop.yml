@@ -14,7 +14,7 @@ on:
       releaseTypeTag: # Use -alpha, -beta, or -rc for pre-release. An empty string for stable.
         description: 'Release type tag'
         required: true
-        default: '-beta' 
+        default: '-alpha' 
         type: choice
         options:
         - '-alpha'

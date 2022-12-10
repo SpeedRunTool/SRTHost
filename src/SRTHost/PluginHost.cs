@@ -48,6 +48,7 @@ namespace SRTHost
         public PluginHost(ILogger<PluginHost> logger, params string[] args)
         {
             this.logger = logger;
+            this.loadedPlugins = new Dictionary<string, IPluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
@@ -136,16 +137,49 @@ namespace SRTHost
             }
         }
 
+        public async Task ReloadPlugin(string pluginName, CancellationToken cancellationToken)
+        {
+            await UnloadPlugin(pluginName, cancellationToken);
+            await InitPlugin(pluginName, cancellationToken);
+        }
+
         public async Task ReloadPlugins(CancellationToken cancellationToken)
         {
             await UnloadPlugins(cancellationToken);
             await InitPlugins(cancellationToken);
         }
 
+        private async Task InitPlugin(string pluginName, CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins", pluginName));
+
+                if (!pluginsDir.Exists)
+                    throw new DirectoryNotFoundException($"{nameof(pluginName)} directory {pluginName} was not found in the plugins folder");
+
+                // Load plugin.
+                IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues = pluginsDir
+                .EnumerateFiles(string.Format("{0}.dll", pluginName), SearchOption.TopDirectoryOnly)
+                .Select((FileInfo pluginAssemblyFileInfo) =>
+                {
+                    PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory!);
+                    Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+                    return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
+                })
+                .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues);
+
+                foreach (IPluginStateValue<IPlugin> pluginStateValue in pluginStateValues)
+                    loadedPlugins.Add(pluginStateValue.Plugin.TypeName, pluginStateValue);
+
+                if (loadedPlugins.Count == 0)
+                    LogNoPlugins();
+            }, cancellationToken);
+        }
 
         private async Task InitPlugins(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
+            await Task.Run(async () =>
             {
                 DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
 
@@ -154,40 +188,74 @@ namespace SRTHost
                     pluginsDir.Create();
 
                 // (Re-)discover plugins.
-                if (string.IsNullOrWhiteSpace(loadSpecificProducer))
-                {
-                    loadedPlugins = pluginsDir
-                        .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
-                        .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
-                        .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                        .Select((FileInfo? pluginAssemblyFileInfo) =>
-                        {
-                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
-                            Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
-                            return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
-                        })
-                        .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues)
-                        .ToDictionary((IPluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.Plugin.TypeName, StringComparer.OrdinalIgnoreCase);
-                }
+                if (!string.IsNullOrWhiteSpace(loadSpecificProducer))
+                    await InitPlugin(loadSpecificProducer!, cancellationToken);
                 else
-                {
-                    loadedPlugins = pluginsDir
-                        .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
-                        .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
-                        .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
-                        .Where((FileInfo? pluginAssemblyFileInfo) => !pluginAssemblyFileInfo!.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo!.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo!.Name.Equals(string.Format("{0}.dll", loadSpecificProducer), StringComparison.InvariantCultureIgnoreCase)))
-                        .Select((FileInfo? pluginAssemblyFileInfo) =>
-                        {
-                            PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
-                            Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
-                            return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
-                        })
-                        .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues)
-                        .ToDictionary((IPluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.Plugin.TypeName, StringComparer.OrdinalIgnoreCase);
-                }
+                    foreach (DirectoryInfo pluginDir in pluginsDir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
+                        await InitPlugin(pluginDir.Name, cancellationToken);
 
                 if (loadedPlugins.Count == 0)
                     LogNoPlugins();
+            }, cancellationToken);
+        }
+
+        //private async Task InitPlugins(CancellationToken cancellationToken)
+        //{
+        //    await Task.Run(() =>
+        //    {
+        //        DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
+
+        //        // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
+        //        if (!pluginsDir.Exists)
+        //            pluginsDir.Create();
+
+        //        // (Re-)discover plugins.
+        //        if (string.IsNullOrWhiteSpace(loadSpecificProducer))
+        //        {
+        //            loadedPlugins = pluginsDir
+        //                .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
+        //                .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
+        //                .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
+        //                .Select((FileInfo? pluginAssemblyFileInfo) =>
+        //                {
+        //                    PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
+        //                    Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+        //                    return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
+        //                })
+        //                .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues)
+        //                .ToDictionary((IPluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.Plugin.TypeName, StringComparer.OrdinalIgnoreCase);
+        //        }
+        //        else
+        //        {
+        //            loadedPlugins = pluginsDir
+        //                .EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
+        //                .Select((DirectoryInfo pluginDir) => pluginDir.EnumerateFiles(string.Format("{0}.dll", pluginDir.Name), SearchOption.TopDirectoryOnly).FirstOrDefault())
+        //                .Where((FileInfo? pluginAssemblyFileInfo) => pluginAssemblyFileInfo != null)
+        //                .Where((FileInfo? pluginAssemblyFileInfo) => !pluginAssemblyFileInfo!.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) || (pluginAssemblyFileInfo!.Name.Contains("Producer", StringComparison.InvariantCultureIgnoreCase) && pluginAssemblyFileInfo!.Name.Equals(string.Format("{0}.dll", loadSpecificProducer), StringComparison.InvariantCultureIgnoreCase)))
+        //                .Select((FileInfo? pluginAssemblyFileInfo) =>
+        //                {
+        //                    PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo!.Directory!);
+        //                    Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
+        //                    return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
+        //                })
+        //                .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues)
+        //                .ToDictionary((IPluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.Plugin.TypeName, StringComparer.OrdinalIgnoreCase);
+        //        }
+
+        //        if (loadedPlugins.Count == 0)
+        //            LogNoPlugins();
+        //    }, cancellationToken);
+        //}
+
+        private async Task UnloadPlugin(string pluginName, CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                if (loadedPlugins.Remove(pluginName, out IPluginStateValue<IPlugin>? pluginStateValue) && pluginStateValue is not null)
+                {
+                    pluginStateValue.Plugin.Dispose();
+                    pluginStateValue.LoadContext.Unload();
+                }
             }, cancellationToken);
         }
 

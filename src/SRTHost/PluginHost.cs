@@ -120,12 +120,7 @@ namespace SRTHost
         {
             try
             {
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                    try { await Task.Delay(settingUpdateRate, stoppingToken).ConfigureAwait(false); }
-                    catch (OperationCanceledException) { }
-                }
-
+                await stoppingToken;
                 LogAppShutdown(APP_DISPLAY_NAME);
             }
             catch (FileLoadException ex)

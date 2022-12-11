@@ -36,8 +36,9 @@ namespace SRTHost
             services.AddRazorPages();
             services.AddServerSideBlazor();
 
-            services.AddSingleton(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), Environment.GetCommandLineArgs().Skip(1).ToArray()));
-            services.AddHostedService(s => s.GetService<PluginHost>()!);
+            services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
+            services.AddSingleton<IPluginHost>(s => s.GetRequiredService<PluginHost>());
+            services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

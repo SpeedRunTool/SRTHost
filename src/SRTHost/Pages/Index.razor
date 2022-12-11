@@ -15,7 +15,7 @@
         <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
 
         <br />
-        @foreach (IPluginStateValue <IPlugin> pluginStateValue in pluginHost.LoadedPlugins.Values)
+        @foreach (IPluginStateValue<IPlugin> pluginStateValue in pluginHost.LoadedPlugins.Values)
         {
             <span>
                 <b>@pluginStateValue.Plugin.TypeName</b>

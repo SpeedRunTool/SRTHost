@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 using System;
@@ -42,12 +43,14 @@ namespace SRTHost
         }
 
         // Misc. variables
+        private readonly IServiceProvider serviceProvider;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
         private readonly int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
 
-        public PluginHost(ILogger<PluginHost> logger, params string[] args)
+        public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, params string[] args)
         {
             this.logger = logger;
+            this.serviceProvider = serviceProvider;
             this.loadedPlugins = new Dictionary<string, IPluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
@@ -322,24 +325,37 @@ namespace SRTHost
                 {
                     if (type.GetInterface(nameof(IPluginProducer)) != null)
                     {
-                        IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type)!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
+                        IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
                         count++;
                         yield return result;
                     }
                     else if (type.GetInterface(nameof(IPluginConsumer)) != null)
                     {
-                        IPluginConsumer result = (IPluginConsumer)Activator.CreateInstance(type)!;
+                        IPluginConsumer result = (IPluginConsumer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
                         count++;
                         yield return result;
                     }
                     else if (type.GetInterface(nameof(IPlugin)) != null)
                     {
-                        IPlugin result = (IPlugin)Activator.CreateInstance(type)!;
+                        IPlugin result = (IPlugin)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
                         count++;
                         yield return result;
                     }
                 }
             }
+        }
+
+        private object?[]? CreatePluginCtorArgs(Type type)
+        {
+            object?[]? args = null;
+            ParameterInfo[]? ctorArgTypes = type.GetConstructors().FirstOrDefault()?.GetParameters();
+            if (ctorArgTypes is not null && ctorArgTypes!.Length > 0)
+            {
+                args = new object?[ctorArgTypes!.Length];
+                for (int i = 0; i < args.Length; ++i)
+                    args[i] = serviceProvider.GetService(ctorArgTypes![i].ParameterType);
+            }
+            return args;
         }
 
         private void GetSigningInfo(string location)

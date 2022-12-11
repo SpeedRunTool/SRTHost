@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +15,10 @@ namespace SRTHost.Controllers
     [EnableCors("CORSPolicy")]
     public partial class PluginController : ControllerBase
     {
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private readonly ILogger<PluginController> logger;
+
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private readonly PluginHost pluginHost;
 
         public PluginController(ILogger<PluginController> logger, PluginHost pluginHost)
@@ -113,8 +117,13 @@ namespace SRTHost.Controllers
                 return BadRequest("A plugin name must be provided.");
 
             IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
-            if (pluginStateValue != null && pluginStateValue.Plugin is IPluginProducer)
-                return Ok(((IPluginProducer)pluginStateValue.Plugin).Data);
+            if (pluginStateValue != null && pluginStateValue.Plugin is IPluginProducer pluginProducer)
+            {
+                if (pluginProducer.LastUpdated is null || (DateTime.UtcNow - pluginProducer.LastUpdated.Value).TotalMilliseconds > 5000d)
+                    pluginProducer.Refresh();
+
+                return Ok(pluginProducer.Data);
+            }
             else
                 return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
         }
@@ -122,7 +131,7 @@ namespace SRTHost.Controllers
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Roar?Name=Burrito
         // SRTPluginProducerRE2.HttpHandler(this);
         [HttpGet("{Plugin}/{**Command}", Name = "PluginHttpHandlerGet")]
-        public IActionResult PluginHttpHandlerGet(string plugin, string? command)
+        public async Task<IActionResult> PluginHttpHandlerGet(string plugin, string? command)
         {
             LogPluginHttpHandlerGet(plugin, command);
 
@@ -131,7 +140,7 @@ namespace SRTHost.Controllers
 
             IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
             if (iPlugin != null)
-                return iPlugin.HttpHandler(this);
+                return await iPlugin.HttpHandlerAsync(this);
             else
                 return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
         }

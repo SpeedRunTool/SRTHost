@@ -4,7 +4,7 @@ using SRTPluginBase;
 
 namespace SRTHost
 {
-    public partial class PluginHost : BackgroundService, IHostedService, IPluginHost
+    public partial class PluginHost : IHostedService, IPluginHost
     {
         private readonly ILogger<PluginHost> logger;
 

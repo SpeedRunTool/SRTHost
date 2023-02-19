@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
@@ -15,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace SRTHost
 {
-    public partial class PluginHost : BackgroundService, IHostedService, IPluginHost
+    public partial class PluginHost : IHostedService, IPluginHost
     {
         // Constants
         private const string APP_NAME = "SRT Host";
@@ -98,45 +99,19 @@ namespace SRTHost
             }
         }
 
-        public override async Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(async () =>
-            {
-                string appExePath = Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME);
-                LogLoadedHost(appExePath.Replace(AppContext.BaseDirectory, string.Empty));
-                GetSigningInfo(appExePath);
+            string appExePath = Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME);
+            LogLoadedHost(appExePath.Replace(AppContext.BaseDirectory, string.Empty));
+            GetSigningInfo(appExePath);
 
-                // Initialize and start plugins.
-                await InitPlugins(cancellationToken);
-            }, cancellationToken);
-
-            await base.StartAsync(cancellationToken);
+            // Initialize and start plugins.
+            await InitPlugins(cancellationToken);
         }
 
-        public override async Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             await UnloadPlugins(cancellationToken);
-            await base.StopAsync(cancellationToken);
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            try
-            {
-                await stoppingToken;
-                LogAppShutdown(APP_DISPLAY_NAME);
-            }
-            catch (FileLoadException ex)
-            {
-                LogException(ex?.GetType()?.Name, ex?.ToString());
-                LogIncorrectArchitecturePluginReference(ex?.Source, ex?.FileName);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                LogException(ex?.GetType()?.Name, ex?.ToString());
-                throw;
-            }
         }
 
         public async Task ReloadPlugin(string pluginName, CancellationToken cancellationToken)
@@ -181,24 +156,21 @@ namespace SRTHost
 
         private async Task InitPlugins(CancellationToken cancellationToken)
         {
-            await Task.Run(async () =>
-            {
-                DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
+            DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
 
-                // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
-                if (!pluginsDir.Exists)
-                    pluginsDir.Create();
+            // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
+            if (!pluginsDir.Exists)
+                pluginsDir.Create();
 
-                // (Re-)discover plugins.
-                if (!string.IsNullOrWhiteSpace(loadSpecificProducer))
-                    await InitPlugin(loadSpecificProducer!, cancellationToken);
-                else
-                    foreach (DirectoryInfo pluginDir in pluginsDir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
-                        await InitPlugin(pluginDir.Name, cancellationToken);
+            // (Re-)discover plugins.
+            if (!string.IsNullOrWhiteSpace(loadSpecificProducer))
+                await InitPlugin(loadSpecificProducer!, cancellationToken);
+            else
+                foreach (DirectoryInfo pluginDir in pluginsDir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
+                    await InitPlugin(pluginDir.Name, cancellationToken);
 
-                if (loadedPlugins.Count == 0)
-                    LogNoPlugins();
-            }, cancellationToken);
+            if (loadedPlugins.Count == 0)
+                LogNoPlugins();
         }
 
         private async Task UnloadPlugin(string pluginName, CancellationToken cancellationToken)

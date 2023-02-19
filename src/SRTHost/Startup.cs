@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 using System;
 using System.Linq;
+using System.Net.Http;
 
 namespace SRTHost
 {

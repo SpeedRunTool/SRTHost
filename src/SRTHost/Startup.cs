@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Razor.Compilation;
+using Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,22 +43,21 @@ namespace SRTHost
                 });
             });
 
-            IMvcBuilder mvcBuilder = services.AddRazorPages();
-            Assembly[] assemblies = GetPrivateRazorAssemblies().ToArray();
-            foreach (Assembly assembly in assemblies)
-                mvcBuilder = mvcBuilder.AddApplicationPart(assembly);
-            mvcBuilder.AddRazorRuntimeCompilation(
-                opt =>
-                {
-                    opt.FileProviders.Clear();
-                    foreach (Assembly assembly in assemblies)
-                        opt.FileProviders.Add(new EmbeddedFileProvider(assembly));
-                });
+			services
+                .AddRazorPages()
+                .AddRazorRuntimeCompilation();
+
             services.AddServerSideBlazor();
 
-            services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
-            services.AddSingleton<IPluginHost>(s => s.GetRequiredService<PluginHost>());
-            services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
+			// Add a new ViewCompilerProvider to support plugins. Ref(s): https://stackoverflow.com/a/60901929
+			ServiceDescriptor? descriptor = services.FirstOrDefault(s => s.ServiceType == typeof(IViewCompilerProvider));
+            if (descriptor is not null)
+                services.Remove(descriptor);
+			services.AddSingleton<IViewCompilerProvider, PluginViewCompilerProvider>();
+
+			services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
+			services.AddSingleton<IPluginHost>(s => s.GetRequiredService<PluginHost>());
+			services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -86,13 +88,5 @@ namespace SRTHost
                 endpoints.MapControllers();
             });
         }
-
-        private IEnumerable<Assembly> GetPrivateRazorAssemblies()
-        {
-            DirectoryInfo dir = new DirectoryInfo(Path.Combine(Environment.CurrentDirectory, "plugins"));
-            if (dir.Exists)
-                foreach (var file in dir.EnumerateFiles("*.dll", SearchOption.AllDirectories).Where(d => string.Equals(Path.GetFileNameWithoutExtension(d.Name), d.Directory?.Name ?? string.Empty, StringComparison.Ordinal)))
-                    yield return AssemblyLoadContext.Default.LoadFromAssemblyPath(file?.FullName ?? string.Empty);
-        }
-    }
+	}
 }

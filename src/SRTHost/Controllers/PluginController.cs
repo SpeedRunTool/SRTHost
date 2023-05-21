@@ -13,7 +13,7 @@ namespace SRTHost.Controllers
     [ApiController]
     [Route("api/v1/[controller]")]
     [EnableCors("CORSPolicy")]
-    public partial class PluginController : ControllerBase
+    public partial class PluginController : Controller
     {
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private readonly ILogger<PluginController> logger;

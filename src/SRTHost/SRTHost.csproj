@@ -47,7 +47,7 @@
 		<Description>A plugin host for various informational SpeedRun Tools.</Description>
 		<Company>SpeedRunTool</Company>
 		<Authors>$(Company)</Authors>
-		<Copyright>Copyright © 2022 $(Company)</Copyright>
+		<Copyright>Copyright © 2023 $(Company)</Copyright>
 		<Version>4.0.0</Version>
 		<FileVersion>4.0.0</FileVersion>
 		<AssemblyVersion>4.0.0</AssemblyVersion>
@@ -78,6 +78,9 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="7.0.5" />
+		<PackageReference Include="Microsoft.Data.Sqlite" Version="*">
+			<ExcludeAssets>Compile;Build</ExcludeAssets>
+		</PackageReference>
 		<PackageReference Include="SRTPluginBase" Version="4.0.*-*" />
 	</ItemGroup>
 	

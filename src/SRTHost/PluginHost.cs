@@ -105,8 +105,18 @@ namespace SRTHost
             LogLoadedHost(appExePath.Replace(AppContext.BaseDirectory, string.Empty));
             GetSigningInfo(appExePath);
 
-            // Initialize and start plugins.
-            await InitPlugins(cancellationToken);
+            // Create plugins directory if it does not exist.
+			DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
+			if (!pluginsDir.Exists)
+				pluginsDir.Create();
+
+			// Create .plugindb directory if it does not exist.
+			DirectoryInfo pluginDbDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, ".plugindb"));
+			if (!pluginDbDir.Exists)
+				pluginDbDir.Create();
+
+			// Initialize and start plugins.
+			await InitPlugins(cancellationToken);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
@@ -156,11 +166,7 @@ namespace SRTHost
 
         private async Task InitPlugins(CancellationToken cancellationToken)
         {
-            DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
-
-            // Create the folder if it is missing. We will eventually throw an exception due to no plugins exists but... yeah.
-            if (!pluginsDir.Exists)
-                pluginsDir.Create();
+			DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
 
             // (Re-)discover plugins.
             if (!string.IsNullOrWhiteSpace(loadSpecificProducer))
@@ -180,7 +186,18 @@ namespace SRTHost
                 if (loadedPlugins.Remove(pluginName, out IPluginStateValue<IPlugin>? pluginStateValue) && pluginStateValue is not null)
                 {
                     pluginStateValue.Plugin.Dispose();
-                    pluginStateValue.LoadContext.Unload();
+                    foreach (Assembly assembly in pluginStateValue.LoadContext.Assemblies)
+                    {
+                        try
+                        {
+                            PluginViewCompiler.Current.UnloadModuleCompiledViews(assembly);
+                        }
+                        catch
+                        {
+                            throw;
+                        }
+                    }
+					pluginStateValue.LoadContext.Unload();
                 }
             }, cancellationToken);
         }
@@ -207,7 +224,8 @@ namespace SRTHost
             try
             {
                 returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
-                LogLoadedPlugin(pluginPath.Replace(AppContext.BaseDirectory, string.Empty));
+                PluginViewCompiler.Current.LoadModuleCompiledViews(returnValue);
+				LogLoadedPlugin(pluginPath.Replace(AppContext.BaseDirectory, string.Empty));
                 GetSigningInfo(pluginPath);
                 LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
             }

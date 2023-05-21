@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SRTHost.LoggerImplementations;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace SRTHost
@@ -21,6 +22,7 @@ namespace SRTHost
         public static IWebHostBuilder CreateBuilder(string[] args) =>
             WebHost
             .CreateDefaultBuilder(args)
+            .UseWebRoot(Path.Combine(Directory.GetCurrentDirectory(), "plugins")) // Set the Web Root to the same folder as the Content Root + "/plugins".
             .ConfigureLogging(ConfigureLogging)
             .UseStartup<Startup>();
 

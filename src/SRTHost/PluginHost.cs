@@ -18,18 +18,18 @@ namespace SRTHost
 {
     public partial class PluginHost : IHostedService, IPluginHost
     {
-        // Constants
-        private const string APP_NAME = "SRT Host";
-        private const string APP_ARCHITECTURE_X64 = "64-bit (x64)";
-        private const string APP_ARCHITECTURE_X86 = "32-bit (x86)";
+		// Constants
+		public const string APP_NAME = "SRT Host";
+		public const string APP_ARCHITECTURE_X64 = "64-bit (x64)";
+		public const string APP_ARCHITECTURE_X86 = "32-bit (x86)";
 #if x64
-        private const string APP_EXE_NAME = "SRTHost64.exe";
-        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_X64;
+		public const string APP_EXE_NAME = "SRTHost64.exe";
+		public const string APP_ARCHITECTURE = APP_ARCHITECTURE_X64;
 #else
-        private const string APP_EXE_NAME = "SRTHost32.exe";
-        private const string APP_ARCHITECTURE = APP_ARCHITECTURE_X86;
+        public const string APP_EXE_NAME = "SRTHost32.exe";
+        public const string APP_ARCHITECTURE = APP_ARCHITECTURE_X86;
 #endif
-        private const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
+		public const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
         private IDictionary<string, IPluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, IPluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
         public IReadOnlyDictionary<string, IPluginStateValue<IPlugin>> LoadedPlugins => loadedPlugins.AsReadOnly();

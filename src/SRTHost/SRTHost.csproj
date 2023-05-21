@@ -77,6 +77,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="7.0.5" />
 		<PackageReference Include="SRTPluginBase" Version="4.0.*-*" />
 	</ItemGroup>
 	

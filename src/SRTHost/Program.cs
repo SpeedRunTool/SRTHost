@@ -26,6 +26,7 @@ namespace SRTHost
             .CreateDefaultBuilder(args)
             .UseWebRoot(WebRoot) // Set the Web Root to the same folder as the Content Root + "/plugins".
             .ConfigureLogging(ConfigureLogging)
+            .UseStaticWebAssets()
             .UseStartup<Startup>();
 
         public static void ConfigureLogging(WebHostBuilderContext ctx, ILoggingBuilder logging)

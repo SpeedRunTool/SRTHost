@@ -33,6 +33,14 @@ a, .btn-link {
     margin-bottom: 8px; /* Adjust the gap between buttons as needed */
 }
 
+.even {
+    background: #e2e8f0;
+}
+
+.odd {
+    background: #f1f5f9;
+}
+
 .content {
     padding-top: 1.1rem;
 }

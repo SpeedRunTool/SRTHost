@@ -15,19 +15,26 @@
             <span><a href="api/v1/Plugin" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Loaded Plugins</b></a></span><br />
             <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
         </div>
-
-        <br />
         @foreach (IPluginStateValue<IPlugin> pluginStateValue in pluginHost.LoadedPlugins.Values)
         {
-            <span>
+            <div class="@GetItemCssClass(pluginStateValue) w-100 d-flex justify-content-between align-items-center p-2 gap-1">
                 <b>@pluginStateValue.Plugin.TypeName</b>
-                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
-                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
-                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
-                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Config" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Config</a>
-                @*<a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Command?Key1=Value1&Key2=Value2" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Custom Command</a>*@
-            </span>
-            <br />
+                <div class="d-flex gap-2">
+                    <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
+                    <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
+                    <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
+                    <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Config" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Config</a>
+                    @*<a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Command?Key1=Value1&Key2=Value2" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Custom Command</a>*@
+                </div>
+            </div>
         }
     }
 </div>
+
+@code {
+    private string GetItemCssClass(IPluginStateValue<IPlugin> val)
+    {
+        var index = Array.IndexOf(pluginHost.LoadedPlugins.Values.ToArray(), val);
+        return index % 2 == 0 ? "even" : "odd";
+    }
+}

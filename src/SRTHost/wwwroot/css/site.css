@@ -1,5 +1,12 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
+input[type="text"],
+input[type="number"],
+input[type="checkbox"],
+select {
+    padding: 8px;
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
@@ -16,6 +23,14 @@ a, .btn-link {
     color: #fff;
     background-color: #1b6ec2;
     border-color: #1861ac;
+}
+
+.btn-group-gap .btn {
+    margin-right: 8px; /* Adjust the gap between buttons as needed */
+}
+
+.mb-8 {
+    margin-bottom: 8px; /* Adjust the gap between buttons as needed */
 }
 
 .content {

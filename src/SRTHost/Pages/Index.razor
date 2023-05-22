@@ -11,8 +11,10 @@
     }
     else
     {
-        <span><a href="api/v1/Plugin" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Loaded Plugins</b></a></span><br />
-        <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
+        <div class="btn-group btn-group-gap mb-8">
+            <span><a href="api/v1/Plugin" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Loaded Plugins</b></a></span><br />
+            <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
+        </div>
 
         <br />
         @foreach (IPluginStateValue<IPlugin> pluginStateValue in pluginHost.LoadedPlugins.Values)
@@ -22,7 +24,8 @@
                 <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
                 <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
                 <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
-                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Command?Key1=Value1&Key2=Value2" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Custom Command</a>
+                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Config" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Config</a>
+                @*<a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Command?Key1=Value1&Key2=Value2" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Custom Command</a>*@
             </span>
             <br />
         }

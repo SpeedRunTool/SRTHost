@@ -79,6 +79,8 @@ namespace SRTHost
                     staticFileResponseContext.Context.Response.Headers.TryAdd("X-SRT-Host", FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, PluginHost.APP_EXE_NAME)).ProductVersion);
                 }
             });
+            app.UseStaticFiles();
+
             app.UseRouting();
             app.UseCors("CORSPolicy");
             app.UseEndpoints(endpoints =>

@@ -140,9 +140,14 @@ namespace SRTHost.Controllers
 
             IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
             if (iPlugin != null)
-                return await iPlugin.HttpHandlerAsync(this);
+            {
+                if (command is not null && iPlugin.RegisteredPages.ContainsKey(command))
+                    return await iPlugin.RegisteredPages[command].Invoke(this);
+                else
+                    return NotFound($"Plugin \"{plugin}\" does not have the command \"{command}\" registered.");
+            }
             else
-                return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
+                return NotFound($"Plugin \"{plugin}\" not found.");
         }
     }
 }

@@ -22,7 +22,10 @@
                 <div class="d-flex gap-2">
                     <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
                     <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
-                    <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
+                    @if (pluginStateValue.Plugin is IPluginProducer)
+                    {
+                        <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
+                    }
                     @foreach (string registeredPage in pluginStateValue.Plugin.RegisteredPages.Keys)
                     {
                         <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/@registeredPage" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">@registeredPage</a>

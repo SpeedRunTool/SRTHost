@@ -118,12 +118,7 @@ namespace SRTHost.Controllers
 
             IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
             if (pluginStateValue != null && pluginStateValue.Plugin is IPluginProducer pluginProducer)
-            {
-                if (pluginProducer.LastUpdated is null || (DateTime.UtcNow - pluginProducer.LastUpdated.Value).TotalMilliseconds > 5000d)
-                    pluginProducer.Refresh();
-
-                return Ok(pluginProducer.Data);
-            }
+                return Ok(pluginProducer.Refresh());
             else
                 return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
         }

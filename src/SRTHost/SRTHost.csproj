@@ -81,8 +81,20 @@
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="*">
 			<ExcludeAssets>Compile;Build</ExcludeAssets>
 		</PackageReference>
-		<PackageReference Include="SRTPluginBase" Version="4.0.*-*" />
 	</ItemGroup>
+
+	<Choose>
+		<When Condition="'$(Configuration)'=='Debug'">
+			<ItemGroup>
+				<ProjectReference Include="..\..\..\SRTPluginBase\src\SRTPluginBase\SRTPluginBase.csproj" />
+			</ItemGroup>
+		</When>
+		<Otherwise>
+			<ItemGroup>
+				<PackageReference Include="SRTPluginBase" Version="4.0.*-*" />
+			</ItemGroup>
+		</Otherwise>
+	</Choose>
 	
 	<!-- workaround -->
 	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" />

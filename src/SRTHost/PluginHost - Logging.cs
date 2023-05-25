@@ -114,5 +114,10 @@ namespace SRTHost
         private const string APP_SHUTDOWN_EVENT_NAME = "Application Shutdown";
         [LoggerMessage(EventIds.PluginSystem + 24, LogLevel.Information, "{appName} shutting down...", EventName = APP_SHUTDOWN_EVENT_NAME)]
         private partial void LogAppShutdown(string? appName);
+
+        // Report Web Server URL
+        private const string APP_REPORT_URL_EVENT_NAME = "Application Web Server URL";
+        [LoggerMessage(EventIds.PluginSystem + 25, LogLevel.Information, "Web Server URL: {url}", EventName = APP_REPORT_URL_EVENT_NAME)]
+        private partial void LogApplicationWebSeverURL(string url);
     }
 }

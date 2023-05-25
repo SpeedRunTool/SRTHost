@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,6 +16,7 @@ using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace SRTHost
 {
@@ -45,13 +49,15 @@ namespace SRTHost
 
         // Misc. variables
         private readonly IServiceProvider serviceProvider;
+        private readonly IConfiguration configuration;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
         private readonly int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
 
-        public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, params string[] args)
+        public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
         {
             this.logger = logger;
             this.serviceProvider = serviceProvider;
+            this.configuration = configuration;
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
@@ -117,11 +123,44 @@ namespace SRTHost
 
 			// Initialize and start plugins.
 			await InitPlugins(cancellationToken);
+
+            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:DevelopmentHttp:Url"));
+            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:DevelopmentHttps:Url"));
+            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:ProductionHttp:Url"));
+            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:ProductionHttps:Url"));
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             await UnloadPlugins(cancellationToken);
+        }
+
+        [GeneratedRegex(@"^(?<Protocol>https?)://(?<Host>.*?):?(?<Port>\d+)?$", RegexOptions.CultureInvariant | RegexOptions.Singleline)]
+        private static partial Regex RegexGetConfigurationURLDetails();
+
+        private void ReportURL(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return;
+
+            Match urlMatch = RegexGetConfigurationURLDetails().Match(url);
+            string? protocol = urlMatch.Groups["Protocol"].Success ? urlMatch.Groups["Protocol"].Value : default;
+            string? host = urlMatch.Groups["Host"].Success ? urlMatch.Groups["Host"].Value : default;
+            string? port = urlMatch.Groups["Port"].Success ? urlMatch.Groups["Port"].Value : default;
+            
+            if (string.Equals(host, "+") || string.Equals(host, "*"))
+                host = Helpers.GetIPv4() ?? Helpers.GetIPv6();
+
+            if (string.IsNullOrWhiteSpace(host))
+                host = "localhost";
+
+            string returnValue;
+            if (string.IsNullOrWhiteSpace(port))
+                returnValue = $"{protocol}://{host}";
+            else
+                returnValue = $"{protocol}://{host}:{port}";
+
+            LogApplicationWebSeverURL(returnValue);
         }
 
         public async Task ReloadPlugin(string pluginName, CancellationToken cancellationToken)

@@ -49,6 +49,8 @@ namespace SRTHost
 
             services.AddServerSideBlazor();
 
+            services.AddHttpClient();
+
 			// Add a new ViewCompilerProvider to support plugins. Ref(s): https://stackoverflow.com/a/60901929
 			ServiceDescriptor? descriptor = services.FirstOrDefault(s => s.ServiceType == typeof(IViewCompilerProvider));
             if (descriptor is not null)

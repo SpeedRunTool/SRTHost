@@ -17,6 +17,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Runtime.Loader;
 
 namespace SRTHost
 {
@@ -38,6 +39,9 @@ namespace SRTHost
         private IDictionary<string, IPluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, IPluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
         public IReadOnlyDictionary<string, IPluginStateValue<IPlugin>> LoadedPlugins => loadedPlugins.AsReadOnly();
 
+        private HashSet<string> failedPlugins = new HashSet<string>();
+        public IReadOnlySet<string> FailedPlugins => failedPlugins;
+
         public T? GetPluginReference<T>(string pluginName) where T : class, IPlugin
         {
             // If the plugin is not loaded, return default.
@@ -51,13 +55,14 @@ namespace SRTHost
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
-        private readonly int settingUpdateRate = 33; // Default to 33ms. TODO: Allow IConfiguration settings.
+        private readonly Timer failedPluginRetryTimer;
 
         public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
         {
             this.logger = logger;
             this.serviceProvider = serviceProvider;
             this.configuration = configuration;
+            this.failedPluginRetryTimer = new Timer(RetryFailedPluginsAsync, FailedPlugins, 0, 5 * 1000);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
@@ -78,19 +83,6 @@ namespace SRTHost
                             LogCommandLineHelpEntryValue("Producer", "Enables single producer mode where the given producer is the only one loaded", "SRTPluginProducerRE2");
                             LogCommandLineHelpEntryValue("UpdateRate", "Sets the time in milliseconds between memory value updates", "66");
                             return;
-                        }
-                    case "UPDATERATE":
-                        {
-                            if (int.TryParse(kvp.Value, out settingUpdateRate))
-                            {
-                                // If we successfully parsed the value, ensure it is within range. If not, reset it.
-                                if (settingUpdateRate < 16 || settingUpdateRate > 2000)
-                                {
-                                    LogCommandLineHelpUpdateRateOutOfRange(kvp.Key);
-                                    settingUpdateRate = 66;
-                                }
-                            }
-                            break;
                         }
                     case "PRODUCER":
                         {
@@ -163,6 +155,12 @@ namespace SRTHost
             LogApplicationWebSeverURL(returnValue);
         }
 
+        private void RetryFailedPluginsAsync(object? state)
+        {
+            foreach (string pluginName in FailedPlugins)
+                InitPlugin(pluginName, CancellationToken.None).GetAwaiter().GetResult();
+        }
+
         public async Task ReloadPlugin(string pluginName, CancellationToken cancellationToken)
         {
             await UnloadPlugin(pluginName, cancellationToken);
@@ -191,7 +189,7 @@ namespace SRTHost
                 {
                     PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory!);
                     Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
-                    return (pluginAssembly is not null) ? CreatePlugins(pluginAssembly).Select((IPlugin plugin) => new PluginStateValue<IPlugin>(pluginLoadContext, plugin)) : Enumerable.Empty<IPluginStateValue<IPlugin>>();
+                    return ((pluginAssembly is not null) ? CreatePlugins(pluginLoadContext, pluginAssembly, pluginName, cancellationToken) : Enumerable.Empty<IPluginStateValue<IPlugin>>()).ToArray();
                 })
                 .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues);
 
@@ -236,8 +234,27 @@ namespace SRTHost
                             throw;
                         }
                     }
-					pluginStateValue.LoadContext.Unload();
+                    pluginStateValue.LoadContext.Unload();
                 }
+            }, cancellationToken);
+        }
+
+        private async Task UnloadPlugin(PluginLoadContext plc, CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                foreach (Assembly assembly in plc.Assemblies)
+                {
+                    try
+                    {
+                        PluginViewCompiler.Current.UnloadModuleCompiledViews(assembly);
+                    }
+                    catch
+                    {
+                        throw;
+                    }
+                }
+                plc.Unload();
             }, cancellationToken);
         }
 
@@ -264,9 +281,9 @@ namespace SRTHost
             {
                 returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
                 PluginViewCompiler.Current.LoadModuleCompiledViews(returnValue);
-				LogLoadedPlugin(pluginPath.Replace(AppContext.BaseDirectory, string.Empty));
-                GetSigningInfo(pluginPath);
-                LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
+				//LogLoadedPlugin(pluginPath.Replace(AppContext.BaseDirectory, string.Empty));
+                //GetSigningInfo(pluginPath);
+                //LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
             }
 #pragma warning disable CS0168 // Variable is declared but never used
             catch (FileLoadException ex)
@@ -284,9 +301,8 @@ namespace SRTHost
             return returnValue;
         }
 
-        private IEnumerable<IPlugin> CreatePlugins(Assembly assembly)
+        private IEnumerable<PluginStateValue<IPlugin>> CreatePlugins(PluginLoadContext plc, Assembly assembly, string pluginName, CancellationToken cancellationToken)
         {
-            int count = 0;
             Type[]? typesInAssembly = null;
 
             try
@@ -296,33 +312,45 @@ namespace SRTHost
             catch (Exception ex)
             {
                 LogException(ex?.GetType()?.Name, ex?.ToString());
-                yield break;
+                typesInAssembly = null;
             }
 
             if (typesInAssembly != null)
             {
-                foreach (Type type in typesInAssembly)
+                List<PluginStateValue<IPlugin>> plugins = new List<PluginStateValue<IPlugin>>();
+                try
                 {
-                    if (type.GetInterface(nameof(IPluginProducer)) != null)
+                    foreach (Type type in typesInAssembly)
                     {
-                        IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
-                        count++;
-                        yield return result;
+                        if (type.GetInterface(nameof(IPluginProducer)) != null)
+                        {
+                            IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
+                            plugins.Add(new PluginStateValue<IPlugin>(plc, result));
+                        }
+                        else if (type.GetInterface(nameof(IPluginConsumer)) != null)
+                        {
+                            IPluginConsumer result = (IPluginConsumer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
+                            plugins.Add(new PluginStateValue<IPlugin>(plc, result));
+                        }
+                        else if (type.GetInterface(nameof(IPlugin)) != null)
+                        {
+                            IPlugin result = (IPlugin)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
+                            plugins.Add(new PluginStateValue<IPlugin>(plc, result));
+                        }
                     }
-                    else if (type.GetInterface(nameof(IPluginConsumer)) != null)
-                    {
-                        IPluginConsumer result = (IPluginConsumer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
-                        count++;
-                        yield return result;
-                    }
-                    else if (type.GetInterface(nameof(IPlugin)) != null)
-                    {
-                        IPlugin result = (IPlugin)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
-                        count++;
-                        yield return result;
-                    }
+                    LogLoadedPlugin(assembly.Location.Replace(AppContext.BaseDirectory, string.Empty));
+                    GetSigningInfo(assembly.Location);
+                    LogPluginVersion(FileVersionInfo.GetVersionInfo(assembly.Location).ProductVersion);
+                    return plugins;
+                }
+                catch (Exception ex) when (ex is TargetInvocationException or PluginInitializationException or PluginNotFoundException)
+                {
+                    failedPlugins.Add(pluginName);
+                    UnloadPlugin(plc, cancellationToken).GetAwaiter().GetResult();
                 }
             }
+
+            return Enumerable.Empty<PluginStateValue<IPlugin>>();
         }
 
         private object?[]? CreatePluginCtorArgs(Type type)

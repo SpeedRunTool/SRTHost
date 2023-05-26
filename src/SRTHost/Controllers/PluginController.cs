@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -44,7 +46,10 @@ namespace SRTHost.Controllers
         [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginDataGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginDataGet(string plugin);
 
-        [LoggerMessage(EventIds.PluginController + 5, LogLevel.Information, "PluginHttpHandlerGet({plugin}, {command})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        [LoggerMessage(EventIds.PluginController + 5, LogLevel.Information, "PluginGenerateManifestGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        private partial void LogPluginGenerateManifestGet(string plugin);
+
+        [LoggerMessage(EventIds.PluginController + 6, LogLevel.Information, "PluginHttpHandlerGet({plugin}, {command})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginHttpHandlerGet(string plugin, string? command);
 
 
@@ -121,6 +126,36 @@ namespace SRTHost.Controllers
                 return Ok(pluginProducer.Refresh());
             else
                 return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
+        }
+
+        // GET: api/v1/Plugin/SRTPluginProducerRE2/GenerateManifest
+        [HttpGet("{Plugin}/GenerateManifest", Name = "PluginGenerateManifestGet")]
+        public IActionResult PluginGenerateManifestGet(string plugin)
+        {
+            LogPluginGenerateManifestGet(plugin);
+
+            if (string.IsNullOrWhiteSpace(plugin))
+                return BadRequest("A plugin name must be provided.");
+
+            IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
+            if (pluginStateValue != null)
+            {
+                List<string> tags = new List<string>();
+                if (pluginStateValue.Plugin is IPluginProducer pluginProducer)
+                    tags.Add("Producer");
+                else if (pluginStateValue.Plugin is IPluginConsumer pluginConsumer)
+                    tags.Add("Consumer");
+
+                return new JsonResult(
+                    new ManifestJson() { Contributors = pluginStateValue.Plugin.Info.Author.Split(new string[] { ",", "&", "and", "/", "\\" }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries), Tags = tags },
+                    new JsonSerializerOptions()
+                    {
+                        WriteIndented = true
+                    }
+                    );
+            }
+            else
+                return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
         }
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Roar?Name=Burrito

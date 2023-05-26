@@ -1,0 +1,20 @@
+﻿@page "/Settings"
+@using System.Diagnostics;
+
+<h3>Settings</h3>
+
+<span><InputCheckbox @bind-Value="ShowDebugMenu" />Show Debug Menu</span><br />
+<button class="btn btn-primary" @onclick="SaveSettings">Save Settings</button>
+
+@code
+{
+    public bool ShowDebugMenu { get; set; }
+
+    public void SaveSettings()
+    {
+        Debugger.Break();
+    }
+
+    //Configuration = (IPluginConfiguration)DbLoadConfiguration().ConfigDictionaryToModel<PluginConfiguration>()
+    //DbSaveConfiguration(((PluginConfiguration)Configuration).ModelToConfigDictionary());
+}

@@ -81,7 +81,6 @@ namespace SRTHost
                         {
                             LogCommandLineHelpBanner();
                             LogCommandLineHelpEntryValue("Producer", "Enables single producer mode where the given producer is the only one loaded", "SRTPluginProducerRE2");
-                            LogCommandLineHelpEntryValue("UpdateRate", "Sets the time in milliseconds between memory value updates", "66");
                             return;
                         }
                     case "PRODUCER":

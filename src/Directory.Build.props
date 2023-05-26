@@ -1,0 +1,20 @@
+<Project>
+	<PropertyGroup>
+		<Company>SpeedRunTool</Company>
+		<Authors>$(Company)</Authors>
+		<Copyright>Copyright © 2023 $(Company)</Copyright>
+		<RepositoryUrl>https://github.com/$(Company)/$(PackageId)</RepositoryUrl>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<DebugType>embedded</DebugType>
+		<Nullable>enable</Nullable>
+		<AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+		<OutputPath>bin\$(Configuration)</OutputPath>
+		<DefineConstants>$(DefineConstants);$(Platform)</DefineConstants>
+	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+</Project>

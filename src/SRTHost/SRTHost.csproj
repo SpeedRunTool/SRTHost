@@ -45,34 +45,18 @@
 	<PropertyGroup>
 		<Product>SRT Host</Product>
 		<Description>A plugin host for various informational SpeedRun Tools.</Description>
-		<Company>SpeedRunTool</Company>
-		<Authors>$(Company)</Authors>
-		<Copyright>Copyright © 2023 $(Company)</Copyright>
+		<PackageId>SRTHost</PackageId>
+		<PackageDescription>$(Description)</PackageDescription>
 		<Version>4.0.0</Version>
 		<FileVersion>4.0.0</FileVersion>
 		<AssemblyVersion>4.0.0</AssemblyVersion>
-		<PackageId>SRTHost</PackageId>
-		<PackageDescription>$(Description)</PackageDescription>
-		<RepositoryUrl>https://github.com/$(Company)/$(PackageId)</RepositoryUrl>
-	</PropertyGroup>
-
-	<PropertyGroup>
-		<DebugType>embedded</DebugType>
-		<Nullable>enable</Nullable>
-		<OutputPath>bin\$(Configuration)</OutputPath>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
-		<DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Platform)'=='x64'">
-		<DefineConstants>$(DefineConstants);x64</DefineConstants>
 		<AssemblyName>SRTHost64</AssemblyName>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Platform)'=='x86'">
-		<DefineConstants>$(DefineConstants);x86</DefineConstants>
 		<AssemblyName>SRTHost32</AssemblyName>
 	</PropertyGroup>
 

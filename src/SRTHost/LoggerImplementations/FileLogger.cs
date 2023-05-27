@@ -15,7 +15,7 @@ namespace SRTHost.LoggerImplementations
             this.fileLoggerProducer = fileLoggerProducer;
         }
 
-        public IDisposable BeginScope<TState>(TState state)
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
         {
             return new NoopDisposable();
         }

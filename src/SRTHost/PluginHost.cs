@@ -226,7 +226,7 @@ namespace SRTHost
                     {
                         try
                         {
-                            PluginViewCompiler.Current.UnloadModuleCompiledViews(assembly);
+                            PluginViewCompiler.Current?.UnloadModuleCompiledViews(assembly);
                         }
                         catch
                         {
@@ -246,7 +246,7 @@ namespace SRTHost
                 {
                     try
                     {
-                        PluginViewCompiler.Current.UnloadModuleCompiledViews(assembly);
+                        PluginViewCompiler.Current?.UnloadModuleCompiledViews(assembly);
                     }
                     catch
                     {
@@ -279,7 +279,7 @@ namespace SRTHost
             try
             {
                 returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
-                PluginViewCompiler.Current.LoadModuleCompiledViews(returnValue);
+                PluginViewCompiler.Current?.LoadModuleCompiledViews(returnValue);
 				//LogLoadedPlugin(pluginPath.Replace(AppContext.BaseDirectory, string.Empty));
                 //GetSigningInfo(pluginPath);
                 //LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);

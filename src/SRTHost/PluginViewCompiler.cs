@@ -14,7 +14,13 @@ namespace SRTHost
 {
 	public class PluginViewCompiler : IViewCompiler
 	{
-		public static PluginViewCompiler Current;
+		protected ApplicationPartManager ApplicationPartManager { get; }
+		protected ILogger<PluginViewCompiler> Logger { get; }
+		protected IDictionary<string, CancellationTokenSource> CancellationTokenSources { get; }
+		protected IDictionary<string, string> NormalizedPathCache { get; }
+		protected IDictionary<string, CompiledViewDescriptor> CompiledViews { get; private set; }
+
+		public static PluginViewCompiler? Current { get; private set; }
 
 		public PluginViewCompiler(ApplicationPartManager applicationPartManager, ILoggerFactory loggerFactory)
 		{
@@ -22,31 +28,31 @@ namespace SRTHost
 			this.Logger = loggerFactory.CreateLogger<PluginViewCompiler>();
 			this.CancellationTokenSources = new Dictionary<string, CancellationTokenSource>();
 			this.NormalizedPathCache = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-			this.PopulateCompiledViews();
-			PluginViewCompiler.Current = this;
+
+			ViewsFeature feature = new ViewsFeature();
+			this.ApplicationPartManager.PopulateFeature(feature);
+			this.CompiledViews = new Dictionary<string, CompiledViewDescriptor>(feature.ViewDescriptors.Count, StringComparer.OrdinalIgnoreCase);
+			foreach (CompiledViewDescriptor compiledView in feature.ViewDescriptors)
+			{
+				if (this.CompiledViews.ContainsKey(compiledView.RelativePath))
+					continue;
+				this.CompiledViews.Add(compiledView.RelativePath, compiledView);
+			};
+
+			Current = this;
 		}
-
-		protected ApplicationPartManager ApplicationPartManager { get; }
-
-		protected ILogger Logger { get; }
-
-		protected Dictionary<string, CancellationTokenSource> CancellationTokenSources { get; }
-
-		protected ConcurrentDictionary<string, string> NormalizedPathCache { get; }
-
-		protected Dictionary<string, CompiledViewDescriptor> CompiledViews { get; private set; }
 
 		public void LoadModuleCompiledViews(Assembly moduleAssembly)
 		{
 			if (moduleAssembly == null)
 				throw new ArgumentNullException(nameof(moduleAssembly));
 			CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-			this.CancellationTokenSources.Add(moduleAssembly.FullName, cancellationTokenSource);
+			this.CancellationTokenSources.Add(moduleAssembly.FullName ?? string.Empty, cancellationTokenSource);
 			ViewsFeature feature = new ViewsFeature();
 			foreach (ApplicationPart applicationPart in CompiledRazorAssemblyApplicationPartFactory.GetDefaultApplicationParts(moduleAssembly))
 				this.ApplicationPartManager.ApplicationParts.Add(applicationPart);
 			this.ApplicationPartManager.PopulateFeature(feature);
-			foreach (CompiledViewDescriptor compiledView in feature.ViewDescriptors.Where(v => v.Type.Assembly == moduleAssembly))
+			foreach (CompiledViewDescriptor compiledView in feature.ViewDescriptors.Where(v => v.Type?.Assembly == moduleAssembly))
 			{
 				if (!this.CompiledViews.ContainsKey(compiledView.RelativePath))
 				{
@@ -60,38 +66,25 @@ namespace SRTHost
 		{
 			if (moduleAssembly == null)
 				throw new ArgumentNullException(nameof(moduleAssembly));
-			foreach (KeyValuePair<string, CompiledViewDescriptor> entry in this.CompiledViews.Where(kvp => kvp.Value.Type.Assembly == moduleAssembly))
+			foreach (KeyValuePair<string, CompiledViewDescriptor> entry in this.CompiledViews.Where(kvp => kvp.Value.Type?.Assembly == moduleAssembly))
 			{
 				this.CompiledViews.Remove(entry.Key);
 			}
 			foreach (ApplicationPart applicationPart in CompiledRazorAssemblyApplicationPartFactory.GetDefaultApplicationParts(moduleAssembly))
 				this.ApplicationPartManager.ApplicationParts.Remove(applicationPart);
-			if (this.CancellationTokenSources.TryGetValue(moduleAssembly.FullName, out CancellationTokenSource cancellationTokenSource))
+			if (this.CancellationTokenSources.TryGetValue(moduleAssembly.FullName ?? string.Empty, out CancellationTokenSource? cancellationTokenSource))
 			{
-				cancellationTokenSource.Cancel();
-				this.CancellationTokenSources.Remove(moduleAssembly.FullName);
+				cancellationTokenSource!.Cancel();
+				this.CancellationTokenSources.Remove(moduleAssembly.FullName ?? string.Empty);
 			}
-		}
-
-		private void PopulateCompiledViews()
-		{
-			ViewsFeature feature = new ViewsFeature();
-			this.ApplicationPartManager.PopulateFeature(feature);
-			this.CompiledViews = new Dictionary<string, CompiledViewDescriptor>(feature.ViewDescriptors.Count, StringComparer.OrdinalIgnoreCase);
-			foreach (CompiledViewDescriptor compiledView in feature.ViewDescriptors)
-			{
-				if (this.CompiledViews.ContainsKey(compiledView.RelativePath))
-					continue;
-				this.CompiledViews.Add(compiledView.RelativePath, compiledView);
-			};
 		}
 
 		public async Task<CompiledViewDescriptor> CompileAsync(string relativePath)
 		{
 			if (relativePath == null)
 				throw new ArgumentNullException(nameof(relativePath));
-			if (this.CompiledViews.TryGetValue(relativePath, out CompiledViewDescriptor cachedResult))
-				return cachedResult;
+			if (this.CompiledViews.TryGetValue(relativePath, out CompiledViewDescriptor? cachedResult))
+				return cachedResult!;
 			string normalizedPath = this.GetNormalizedPath(relativePath);
 			if (this.CompiledViews.TryGetValue(normalizedPath, out cachedResult))
 				return cachedResult;

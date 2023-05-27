@@ -160,7 +160,7 @@ namespace SRTHost
                 InitPlugin(pluginName, CancellationToken.None).GetAwaiter().GetResult();
         }
 
-        public async Task ReloadPlugin(string pluginName, CancellationToken cancellationToken)
+		public async Task ReloadPlugin(string pluginName, CancellationToken cancellationToken)
         {
             await UnloadPlugin(pluginName, cancellationToken);
             await InitPlugin(pluginName, cancellationToken);
@@ -221,7 +221,7 @@ namespace SRTHost
             {
                 if (loadedPlugins.Remove(pluginName, out IPluginStateValue<IPlugin>? pluginStateValue) && pluginStateValue is not null)
                 {
-                    pluginStateValue.Plugin.Dispose();
+                    //pluginStateValue.Plugin.Dispose();
                     foreach (Assembly assembly in pluginStateValue.LoadContext.Assemblies)
                     {
                         try
@@ -378,5 +378,5 @@ namespace SRTHost
             else
                 LogSigningInfoNotFound();
         }
-    }
+	}
 }

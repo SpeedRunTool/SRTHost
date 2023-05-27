@@ -59,7 +59,13 @@ namespace SRTHost.Controllers
         public IActionResult PluginGet()
         {
             LogPluginGet();
-            return Ok(pluginHost.LoadedPlugins.Keys);
+            return new JsonResult(
+                pluginHost.LoadedPlugins.Keys,
+                new JsonSerializerOptions()
+                {
+                    WriteIndented = true
+                }
+                );
         }
 
         // GET: api/v1/Plugin/Reload
@@ -107,7 +113,13 @@ namespace SRTHost.Controllers
 
             IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
             if (iPlugin != null)
-                return Ok(iPlugin);
+                return new JsonResult(
+                    iPlugin.Info,
+                    new JsonSerializerOptions()
+                    {
+                        WriteIndented = true
+                    }
+                    );
             else
                 return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
         }
@@ -123,7 +135,12 @@ namespace SRTHost.Controllers
 
             IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
             if (pluginStateValue != null && pluginStateValue.Plugin is IPluginProducer pluginProducer)
-                return Ok(pluginProducer.Refresh());
+                return new JsonResult(
+                    pluginProducer.Refresh(),
+                    new JsonSerializerOptions()
+                    {
+                        WriteIndented = true
+                    });
             else
                 return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
         }
@@ -146,8 +163,21 @@ namespace SRTHost.Controllers
                 else if (pluginStateValue.Plugin is IPluginConsumer pluginConsumer)
                     tags.Add("Consumer");
 
+                Version pluginVersion = pluginStateValue.Plugin.Info.Version;
                 return new JsonResult(
-                    new ManifestJson() { Contributors = pluginStateValue.Plugin.Info.Author.Split(new string[] { ",", "&", "and", "/", "\\" }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries), Tags = tags },
+                    new ManifestJson()
+                    {
+                        Contributors = pluginStateValue.Plugin.Info.Author.Split(new string[] { ",", "&", "and", "/", "\\" }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+                        Tags = tags,
+                        Releases = new ManifestReleaseJson[]
+                        {
+                            new ManifestReleaseJson()
+                            {
+                                Version = $"{pluginVersion}",
+                                DownloadURL = new Uri($"https://github.com/REPLACEME_YourUSERorORGANIZATION/{plugin}/releases/download/{pluginVersion}/{plugin}-v{pluginVersion}.zip"),
+                            },
+                        },
+                    },
                     new JsonSerializerOptions()
                     {
                         WriteIndented = true

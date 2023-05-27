@@ -19,11 +19,6 @@
                 <b>@pluginStateValue.Plugin.TypeName</b>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
-                    <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
-                    @if (pluginStateValue.Plugin is IPluginProducer)
-                    {
-                        <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
-                    }
                     @foreach (string registeredPage in pluginStateValue.Plugin.RegisteredPages.Keys.Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
                     {
                         <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/@registeredPage" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">@registeredPage</a>

@@ -2,10 +2,11 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SRTHost.LoggerImplementations
 {
-    public class FileLoggerProducer : ILoggerProvider
+    public partial class FileLoggerProducer : ILoggerProvider
     {
         private StreamWriter? logStreamWriter;
 
@@ -13,6 +14,7 @@ namespace SRTHost.LoggerImplementations
         public bool AutoFlush { get; init; }
         public Encoding Encoding { get; init; }
         public LogLevel LoggingLevel { get; init; }
+        public bool StripANSIColor { get; init; }
         public string TimestampFormat { get; init; }
         public bool UtcTime { get; init; }
 
@@ -22,7 +24,8 @@ namespace SRTHost.LoggerImplementations
             AutoFlush = fileLoggerOptions.AutoFlush;
             Encoding = fileLoggerOptions.Encoding;
             LoggingLevel = fileLoggerOptions.LoggingLevel;
-            TimestampFormat = fileLoggerOptions.TimestampFormat;
+            StripANSIColor = fileLoggerOptions.StripANSIColor;
+			TimestampFormat = fileLoggerOptions.TimestampFormat;
             UtcTime = fileLoggerOptions.UtcTime;
 
             this.logStreamWriter = new StreamWriter(new FileStream(Path.Combine(AppContext.BaseDirectory, string.Format("{0}.log", logName)), Append ? FileMode.Append : FileMode.Create, FileAccess.Write), Encoding)
@@ -34,7 +37,16 @@ namespace SRTHost.LoggerImplementations
 
         public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, this);
 
-        public void WriteLog(string message) => logStreamWriter?.WriteLine(message);
+		[GeneratedRegex(@"(?<ANSI>\x1b\[.*?m)", RegexOptions.CultureInvariant | RegexOptions.Singleline)]
+		private partial Regex CaptureANSIColor();
+
+		public void WriteLog(string message)
+        {
+            if (StripANSIColor)
+				logStreamWriter?.WriteLine(CaptureANSIColor().Replace(message, string.Empty));
+            else
+				logStreamWriter?.WriteLine(message);
+		}
 
         private bool disposedValue;
         protected virtual void Dispose(bool disposing)

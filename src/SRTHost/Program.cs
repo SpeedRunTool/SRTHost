@@ -48,10 +48,11 @@ namespace SRTHost
                 (FileLoggerOptions options) =>
                 {
                     options.Append = false;
-                    options.UtcTime = UTC_TIMESTAMP;
-                    options.TimestampFormat = TIMESTAMP_FORMAT;
-                    options.LoggingLevel = LogLevel.Information;
-                });
+					options.LoggingLevel = LogLevel.Information;
+                    options.StripANSIColor = true;
+					options.TimestampFormat = TIMESTAMP_FORMAT;
+					options.UtcTime = UTC_TIMESTAMP;
+				});
         }
     }
 }

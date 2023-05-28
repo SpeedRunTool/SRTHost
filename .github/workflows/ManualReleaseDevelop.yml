@@ -76,7 +76,7 @@ jobs:
         dotnet-quality: 'ga'
 
     - name: Restore
-      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} --verbosity normal
+      run: dotnet restore ${{steps.generated-variables-1.outputs.solution}} /p:"PublishProfile=${{matrix.publish-profile-name}}" --verbosity normal
         
     #- name: Build
     #  run: dotnet build ${{steps.generated-variables-1.outputs.solution}} /p:"Configuration=${{inputs.buildConfig}};Platform=$env:platform" --no-restore --verbosity normal

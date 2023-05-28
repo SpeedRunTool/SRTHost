@@ -68,15 +68,15 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#AppExe32Path}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppExe64Path}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#AppPublishDir}\appsettings.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "{#AppPublishDir}\appsettings.Production.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "{#AppPublishDir}\appsettings.Development.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
+Source: "{#AppPublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Dirs]
+Name: "{app}\.db"
 Name: "{app}\plugins"
 
 [Icons]

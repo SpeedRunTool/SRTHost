@@ -60,9 +60,9 @@ jobs:
         path: SRTPluginBase
         repository: SpeedRunTool/SRTPluginBase
 
-    # GITHUB_WORKSPACE pathing is ass. Move this directory down one level.
-    - name: Move SRTPluginBase down a folder to work with existing csproj pathing
-      run: Move-Item -Path SRTPluginBase -Destination ..\..\SpeedRunTool
+    - name: Visualize Directory
+      run: |
+        dir /B
 
     - name: Set the main environment variables based on other environment variables
       id: generated-variables-1

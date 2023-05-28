@@ -62,7 +62,7 @@ jobs:
 
     - name: Visualize Directory
       run: |
-        dir /B
+        dir
 
     - name: Set the main environment variables based on other environment variables
       id: generated-variables-1

@@ -41,11 +41,28 @@ jobs:
       version: ${{steps.project-version-string.outputs.Version}}
 
     steps:
+    # Create repo user folder for the dependencies
+    - name: Create repo user folder
+      run: New-Item -ItemType directory -Path ..\..\SpeedRunTool
+
     - name: Checkout
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
         ref: develop
+    
+    # Checkout latest dependencies code
+    - name: Checkout SRTPluginBase
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        ref: develop
+        path: SRTPluginBase
+        repository: SpeedRunTool/SRTPluginBase
+
+    # GITHUB_WORKSPACE pathing is ass. Move this directory down one level.
+    - name: Move SRTPluginBase down a folder to work with existing csproj pathing
+      run: Move-Item -Path SRTPluginBase -Destination ..\..\SpeedRunTool
 
     - name: Set the main environment variables based on other environment variables
       id: generated-variables-1

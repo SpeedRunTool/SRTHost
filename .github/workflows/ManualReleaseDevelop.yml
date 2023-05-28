@@ -61,10 +61,6 @@ jobs:
         path: SRTPluginBase
         repository: SpeedRunTool/SRTPluginBase
 
-    - name: Visualize Directory
-      run: |
-        dir
-
     - name: Set the main environment variables based on other environment variables
       id: generated-variables-1
       run: |

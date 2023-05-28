@@ -50,6 +50,7 @@ jobs:
       with:
         fetch-depth: 0
         ref: develop
+        path: ${{env.project-name}}
     
     # Checkout latest dependencies code
     - name: Checkout SRTPluginBase
@@ -67,9 +68,9 @@ jobs:
     - name: Set the main environment variables based on other environment variables
       id: generated-variables-1
       run: |
-        echo 'solution=${{env.project-name}}.sln' >> $env:GITHUB_OUTPUT
-        echo 'project=src/${{env.project-name}}/${{env.project-name}}.csproj' >> $env:GITHUB_OUTPUT
-        echo 'publish-directory=src/${{env.project-name}}/bin/Release/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
+        echo 'solution=${{env.project-name}}/${{env.project-name}}.sln' >> $env:GITHUB_OUTPUT
+        echo 'project=${{env.project-name}}/src/${{env.project-name}}/${{env.project-name}}.csproj' >> $env:GITHUB_OUTPUT
+        echo 'publish-directory=${{env.project-name}}/src/${{env.project-name}}/bin/Release/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
 
     - name: Get project version information
       id: project-versions

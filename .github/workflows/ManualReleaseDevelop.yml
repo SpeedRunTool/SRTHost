@@ -70,7 +70,7 @@ jobs:
       run: |
         echo 'solution=${{env.project-name}}/${{env.project-name}}.sln' >> $env:GITHUB_OUTPUT
         echo 'project=${{env.project-name}}/src/${{env.project-name}}/${{env.project-name}}.csproj' >> $env:GITHUB_OUTPUT
-        echo 'publish-directory=${{env.project-name}}/src/${{env.project-name}}/bin/Release/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
+        echo 'publish-directory=${{env.project-name}}/src/${{env.project-name}}/bin/${{inputs.buildConfig}}/net7.0-windows/publish/' >> $env:GITHUB_OUTPUT
 
     - name: Get project version information
       id: project-versions

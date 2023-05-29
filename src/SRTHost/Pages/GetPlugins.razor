@@ -1,0 +1,18 @@
+﻿@page "/GetPlugins"
+<PageTitle>SRT Host - Get Plugins</PageTitle>
+<h3>Get Plugins</h3>
+
+<div>
+    @if (pluginHost == null)
+    {
+        <em>Loading...</em>
+    }
+    else
+    {
+        
+    }
+</div>
+
+@code {
+    private string GetItemCssClass(int index) => index % 2 == 0 ? "even" : "odd";
+}

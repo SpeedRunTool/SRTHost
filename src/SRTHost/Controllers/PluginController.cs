@@ -165,7 +165,7 @@ namespace SRTHost.Controllers
 
                 Version pluginVersion = pluginStateValue.Plugin.Info.Version;
                 return new JsonResult(
-                    new ManifestJson()
+                    new ManifestPluginJson()
                     {
                         Contributors = pluginStateValue.Plugin.Info.Author.Split(new string[] { ",", "&", "and", "/", "\\" }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
                         Tags = tags,
@@ -210,6 +210,114 @@ namespace SRTHost.Controllers
             }
             else
                 return NotFound($"Plugin \"{plugin}\" not found.");
+        }
+
+        // GET: api/v1/Plugin/DebugMaster
+        [HttpGet("DebugMaster", Name = "DebugMasterGet")]
+        public IActionResult DebugMasterGet()
+        {
+            return new JsonResult(
+                new MasterJson()
+                {
+                    Host = new MasterHostEntry()
+                    {
+                        ManifestURL = new Uri("https://raw.githubusercontent.com/SpeedRunTool/SRTHost/develop/manifest.json")
+                    },
+                    Plugins = new MasterPluginEntry[]
+                    {
+                            new MasterPluginEntry()
+                            {
+                                Name = "SRTProducerTest1",
+                                Type = MasterPluginTypeEnum.Producer,
+                                Platform = MasterPluginPlatformEnum.x64,
+                                ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTProducerTest1/main/manifest.json")
+                            },
+                            new MasterPluginEntry()
+                            {
+                                Name = "SRTConsumerTest1",
+                                Type = MasterPluginTypeEnum.Consumer,
+                                Platform = MasterPluginPlatformEnum.x64,
+                                ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest1/main/manifest.json")
+                            },
+                            new MasterPluginEntry()
+                            {
+                                Name = "SRTConsumerTest2",
+                                Type = MasterPluginTypeEnum.Consumer,
+                                Platform = MasterPluginPlatformEnum.x64,
+                                ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest2/main/manifest.json")
+                            },
+                    }
+                },
+                new JsonSerializerOptions()
+                {
+                    WriteIndented = true
+                });
+        }
+
+        // GET: api/v1/Plugin/DebugManifestHost
+        [HttpGet("DebugManifestHost", Name = "DebugManifestHostGet")]
+        public IActionResult DebugManifestHostGet()
+        {
+            return new JsonResult(
+                new ManifestHostJson()
+                {
+                    Releases = new ManifestReleaseJson[]
+                    {
+                        new ManifestReleaseJson()
+                        {
+                            Version = "1.0.0.1",
+                            DownloadURL = new Uri("https://github.com/SpeedRunTool/SRTHost/releases/download/1.0.0.1/SRTHost-v1.0.0.1.zip")
+                        },
+                        new ManifestReleaseJson()
+                        {
+                            Version = "1.0.0.0",
+                            DownloadURL = new Uri("https://github.com/SpeedRunTool/SRTHost/releases/download/1.0.0.0/SRTHost-v1.0.0.0.zip")
+                        }
+                    }
+                },
+                new JsonSerializerOptions()
+                {
+                    WriteIndented = true
+                });
+        }
+
+        // GET: api/v1/Plugin/DebugManifestPlugin
+        [HttpGet("DebugManifestPlugin", Name = "DebugManifestPluginGet")]
+        public IActionResult DebugManifestPluginGet()
+        {
+            return new JsonResult(
+                new ManifestPluginJson()
+                {
+                    Contributors = new string[]
+                    {
+                        "TestAuthor1",
+                        "TestAuthor2"
+                    },
+                    Tags = new string[]
+                    {
+                        "Consumer",
+                        "UI",
+                        "Overlay",
+                        "DirectX",
+                    },
+                    Releases = new ManifestReleaseJson[]
+                    {
+                        new ManifestReleaseJson()
+                        {
+                            Version = "1.0.0.1",
+                            DownloadURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest1/releases/download/1.0.0.1/SRTConsumerTest1-v1.0.0.1.zip")
+                        },
+                        new ManifestReleaseJson()
+                        {
+                            Version = "1.0.0.0",
+                            DownloadURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest1/releases/download/1.0.0.0/SRTConsumerTest1-v1.0.0.0.zip")
+                        }
+                    }
+                },
+                new JsonSerializerOptions()
+                {
+                    WriteIndented = true
+                });
         }
     }
 }

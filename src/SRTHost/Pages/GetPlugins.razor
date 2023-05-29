@@ -7,18 +7,25 @@
 <h3>Get Plugins</h3>
 
 <div>
-    @if (pluginHost is null || MasterJson is null || ManifestHost is null || MasterPlugins is null || ManifestPlugins is null)
+    @if (pluginHost is null || MainJson is null || ManifestHost is null || ManifestPlugins is null)
     {
         <em>Loading...</em>
     }
     else
     {
-        @foreach ((MasterPluginEntry masterPluginEntry, int index) in (MasterJson?.Plugins ?? Enumerable.Empty<MasterPluginEntry>()).Select((masterPluginEntry, index) => (masterPluginEntry, index)))
+        @foreach (((MainPluginEntry mainPluginEntry, ManifestPluginJson? manifestPluginJson), int index) in ManifestPlugins.Select((mainPluginEntry, index) => (mainPluginEntry.Value, index)))
         {
             <div class="@GetItemCssClass(index) w-100 d-flex flex-wrap justify-content-between align-items-center p-2 gap-1">
-                <b>@masterPluginEntry.Name</b> (@masterPluginEntry.Platform.ToString()) @masterPluginEntry.Type.ToString()
+                <b>@mainPluginEntry.Name</b> (@mainPluginEntry.Platform.ToString()) @mainPluginEntry.Type.ToString()
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="api/v1/Plugin/@masterPluginEntry.Name/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Load</a>
+                    @if (pluginHost.LoadedPlugins.ContainsKey(mainPluginEntry.Name))
+                    {
+                        <a href="api/v1/Plugin/@mainPluginEntry.Name/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
+                    }
+                    else
+                    {
+                        <a href="api/v1/Plugin/@mainPluginEntry.Name/Load" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Load</a>
+                    }
                 </div>
         </div>
         }
@@ -28,28 +35,25 @@
 @code {
     private string GetItemCssClass(int index) => index % 2 == 0 ? "even" : "odd";
 
-    private MasterJson? MasterJson { get; set; }
+    private MainJson? MainJson { get; set; }
     private ManifestHostJson? ManifestHost { get; set; }
-    private IDictionary<string, MasterPluginEntry>? MasterPlugins { get; set; }
-    private IDictionary<string, ManifestPluginJson?>? ManifestPlugins { get; set; }
+    private IDictionary<string, (MainPluginEntry, ManifestPluginJson?)>? ManifestPlugins { get; set; }
     protected override async Task OnInitializedAsync()
     {
         using (HttpClient httpClient = httpClientFactory.CreateClient())
         {
             httpClient.BaseAddress = new Uri(NavigationManager.BaseUri);
 
-            //MasterJson = await httpClient.GetFromJsonAsync<MasterJson>("https://raw.githubusercontent.com/SpeedRunTool/SRTPlugins/main/master.json", System.Text.Json.JsonSerializerOptions.Default);
-            MasterJson = await httpClient.GetFromJsonAsync<MasterJson>("/api/v1/Plugin/DebugMaster", System.Text.Json.JsonSerializerOptions.Default);
+            //MainJson = await httpClient.GetFromJsonAsync<MainJson>("https://raw.githubusercontent.com/SpeedRunTool/SRTPlugins/main/main.json", System.Text.Json.JsonSerializerOptions.Default);
+            MainJson = await httpClient.GetFromJsonAsync<MainJson>("/api/v1/Plugin/DebugMain", System.Text.Json.JsonSerializerOptions.Default);
 
             //ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>(MasterJson?.Host.ManifestURL, System.Text.Json.JsonSerializerOptions.Default);
             ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>("/api/v1/Plugin/DebugManifestHost", System.Text.Json.JsonSerializerOptions.Default);
 
-            MasterPlugins = MasterJson?.Plugins.ToDictionary(mpe => mpe.Name, mpe => mpe);
-
-            //ManifestPlugins = MasterPlugins?.ToDictionary(kvp => kvp.Key, (kvp) => httpClient.GetFromJsonAsync<ManifestPluginJson>(kvp.Value.ManifestURL, System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult());
-            ManifestPlugins = new Dictionary<string, ManifestPluginJson?>()
+            //ManifestPlugins = MainJson?.Plugins.ToDictionary(kvp => kvp.Name, (kvp) => (kvp, httpClient.GetFromJsonAsync<ManifestPluginJson>(kvp.ManifestURL, System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()));
+            ManifestPlugins = new Dictionary<string, (MainPluginEntry, ManifestPluginJson?)>()
             {
-                { "SRTConsumerTest1", httpClient.GetFromJsonAsync<ManifestPluginJson>("/api/v1/Plugin/DebugManifestPlugin", System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult() }
+                { "SRTConsumerTest1", (MainJson!.Plugins.First(p => p.Name == "SRTConsumerTest1"), httpClient.GetFromJsonAsync<ManifestPluginJson>("/api/v1/Plugin/DebugManifestPlugin", System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()) }
             };
         }
 

@@ -212,38 +212,38 @@ namespace SRTHost.Controllers
                 return NotFound($"Plugin \"{plugin}\" not found.");
         }
 
-        // GET: api/v1/Plugin/DebugMaster
-        [HttpGet("DebugMaster", Name = "DebugMasterGet")]
-        public IActionResult DebugMasterGet()
+        // GET: api/v1/Plugin/DebugMain
+        [HttpGet("DebugMain", Name = "DebugMainGet")]
+        public IActionResult DebugMainGet()
         {
             return new JsonResult(
-                new MasterJson()
+                new MainJson()
                 {
-                    Host = new MasterHostEntry()
+                    Host = new MainHostEntry()
                     {
-                        ManifestURL = new Uri("https://raw.githubusercontent.com/SpeedRunTool/SRTHost/develop/manifest.json")
+                        ManifestURL = new Uri("https://raw.githubusercontent.com/SpeedRunTool/SRTHost/develop/main.json")
                     },
-                    Plugins = new MasterPluginEntry[]
+                    Plugins = new MainPluginEntry[]
                     {
-                            new MasterPluginEntry()
+                            new MainPluginEntry()
                             {
                                 Name = "SRTProducerTest1",
-                                Type = MasterPluginTypeEnum.Producer,
-                                Platform = MasterPluginPlatformEnum.x64,
+                                Type = MainPluginTypeEnum.Producer,
+                                Platform = MainPluginPlatformEnum.x64,
                                 ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTProducerTest1/main/manifest.json")
                             },
-                            new MasterPluginEntry()
+                            new MainPluginEntry()
                             {
                                 Name = "SRTConsumerTest1",
-                                Type = MasterPluginTypeEnum.Consumer,
-                                Platform = MasterPluginPlatformEnum.x64,
+                                Type = MainPluginTypeEnum.Consumer,
+                                Platform = MainPluginPlatformEnum.x64,
                                 ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest1/main/manifest.json")
                             },
-                            new MasterPluginEntry()
+                            new MainPluginEntry()
                             {
                                 Name = "SRTConsumerTest2",
-                                Type = MasterPluginTypeEnum.Consumer,
-                                Platform = MasterPluginPlatformEnum.x64,
+                                Type = MainPluginTypeEnum.Consumer,
+                                Platform = MainPluginPlatformEnum.x64,
                                 ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest2/main/manifest.json")
                             },
                     }

@@ -1,5 +1,5 @@
 ﻿@page "/"
-<PageTitle>SRT Host - Home</PageTitle>
+<PageTitle>Home</PageTitle>
 <h3>Plugins</h3>
 
 <div>
@@ -12,15 +12,15 @@
         <div class="btn-group btn-group-gap mb-8">
             <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
         </div>
-        @foreach ((IPluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
+        @foreach ((IPluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Where(psv => psv.IsInstantiated && psv.Plugin is not null).Select((psv, i) => (psv, i)))
         {
             <div class="@GetItemCssClass(index) w-100 d-flex flex-wrap justify-content-between align-items-center p-2 gap-1">
-                <b>@pluginStateValue.Plugin.TypeName</b>
+                <b>@pluginStateValue.Plugin!.TypeName</b>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
-                    @foreach (string registeredPage in pluginStateValue.Plugin.RegisteredPages.Keys.Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
+                    <a href="api/v1/Plugin/@pluginStateValue.Plugin!.TypeName/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
+                    @foreach (string registeredPage in pluginStateValue.Plugin!.RegisteredPages.Keys.Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
                     {
-                        <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/@registeredPage" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">@registeredPage</a>
+                        <a href="api/v1/Plugin/@pluginStateValue.Plugin!.TypeName/@registeredPage" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">@registeredPage</a>
                     }
                 </div>
             </div>

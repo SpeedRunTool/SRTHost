@@ -188,12 +188,12 @@ namespace SRTHost
                 {
                     PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory!);
                     Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
-                    return ((pluginAssembly is not null) ? CreatePlugins(pluginLoadContext, pluginAssembly, pluginName, cancellationToken) : Enumerable.Empty<IPluginStateValue<IPlugin>>()).ToArray();
+                    return ((pluginAssembly is not null) ? InstantiatePlugins(pluginLoadContext, pluginAssembly, pluginName, cancellationToken) : Enumerable.Empty<IPluginStateValue<IPlugin>>()).ToArray();
                 })
                 .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues);
 
-                foreach (IPluginStateValue<IPlugin> pluginStateValue in pluginStateValues)
-                    loadedPlugins.Add(pluginStateValue.Plugin.TypeName, pluginStateValue);
+                foreach (IPluginStateValue<IPlugin> pluginStateValue in pluginStateValues.Where(psv => psv.IsInstantiated && psv.Plugin is not null))
+                    loadedPlugins.Add(pluginStateValue.Plugin!.TypeName, pluginStateValue);
 
                 if (loadedPlugins.Count == 0)
                     LogNoPlugins();
@@ -263,7 +263,7 @@ namespace SRTHost
             {
                 foreach (IPluginStateValue<IPlugin> pluginStateValue in loadedPlugins.Values)
                 {
-                    pluginStateValue.Plugin.Dispose();
+                    pluginStateValue.Plugin?.Dispose();
                     pluginStateValue.LoadContext.Unload();
                 }
 
@@ -300,7 +300,7 @@ namespace SRTHost
             return returnValue;
         }
 
-        private IEnumerable<PluginStateValue<IPlugin>> CreatePlugins(PluginLoadContext plc, Assembly assembly, string pluginName, CancellationToken cancellationToken)
+        private IEnumerable<PluginStateValue<IPlugin>> InstantiatePlugins(PluginLoadContext plc, Assembly assembly, string pluginName, CancellationToken cancellationToken)
         {
             Type[]? typesInAssembly = null;
 
@@ -324,17 +324,17 @@ namespace SRTHost
                         if (type.GetInterface(nameof(IPluginProducer)) != null)
                         {
                             IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
-                            plugins.Add(new PluginStateValue<IPlugin>(plc, result));
+                            plugins.Add(new PluginStateValue<IPlugin>(plc, true, result));
                         }
                         else if (type.GetInterface(nameof(IPluginConsumer)) != null)
                         {
                             IPluginConsumer result = (IPluginConsumer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
-                            plugins.Add(new PluginStateValue<IPlugin>(plc, result));
+                            plugins.Add(new PluginStateValue<IPlugin>(plc, true, result));
                         }
                         else if (type.GetInterface(nameof(IPlugin)) != null)
                         {
                             IPlugin result = (IPlugin)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
-                            plugins.Add(new PluginStateValue<IPlugin>(plc, result));
+                            plugins.Add(new PluginStateValue<IPlugin>(plc, true, result));
                         }
                     }
                     LogLoadedPlugin(assembly.Location.Replace(AppContext.BaseDirectory, string.Empty));

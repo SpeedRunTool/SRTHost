@@ -1,21 +1,21 @@
 ﻿@page "/Debug"
-<PageTitle>SRT Host - Debug</PageTitle>
+<PageTitle>Debug</PageTitle>
 <h3>Debug</h3>
 
 <div class="btn-group btn-group-gap mb-8">
     <span><a href="api/v1/Plugin" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Loaded Plugins</b></a></span><br />
 </div>
-@foreach ((IPluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
+@foreach ((IPluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Where(psv => psv.IsInstantiated && psv.Plugin is not null).Select((psv, i) => (psv, i)))
 {
     <div class="@GetItemCssClass(index) w-100 d-flex flex-wrap justify-content-between align-items-center p-2 gap-1">
-        <b>@pluginStateValue.Plugin.TypeName</b>
+        <b>@pluginStateValue.Plugin!.TypeName</b>
         <div class="d-flex flex-wrap gap-2">
-            <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
-            @if (pluginStateValue.Plugin is IPluginProducer)
+            <a href="api/v1/Plugin/@pluginStateValue.Plugin!.TypeName/Info" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Info</a>
+            @if (pluginStateValue.Plugin! is IPluginProducer)
             {
-                <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
+                <a href="api/v1/Plugin/@pluginStateValue.Plugin!.TypeName/Data" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Data</a>
             }
-            <a href="api/v1/Plugin/@pluginStateValue.Plugin.TypeName/GenerateManifest" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Generate Manifest</a>
+            <a href="api/v1/Plugin/@pluginStateValue.Plugin!.TypeName/GenerateManifest" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Generate Manifest</a>
         </div>
     </div>
 }

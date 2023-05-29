@@ -7,25 +7,28 @@ namespace SRTHost
     public interface IPluginStateValue<T> : IEquatable<PluginStateValue<T>> where T : IPlugin
     {
         PluginLoadContext LoadContext { get; init; }
-        T Plugin { get; init; }
+        bool IsInstantiated { get; }
+        T? Plugin { get; }
     }
 
     [DebuggerDisplay("[{Plugin.TypeName,nq}]")]
     public class PluginStateValue<T> : IPluginStateValue<T>, IEquatable<PluginStateValue<T>> where T : IPlugin
     {
         public PluginLoadContext LoadContext { get; init; }
-        public T Plugin { get; init; }
+        public bool IsInstantiated { get; protected set; }
+        public T? Plugin { get; protected set; }
 
-        public PluginStateValue(PluginLoadContext loadContext, T plugin)
+        public PluginStateValue(PluginLoadContext loadContext, bool isInstantiated = false, T? plugin = default)
         {
             LoadContext = loadContext;
+            IsInstantiated = isInstantiated;
             Plugin = plugin;
         }
 
-        public bool Equals(PluginStateValue<T>? other) => Plugin.Info.Name == other?.Plugin.Info.Name;
+        public bool Equals(PluginStateValue<T>? other) => Plugin?.Info.Name == other?.Plugin?.Info.Name;
 
         public override bool Equals(object? obj) => Equals(obj as PluginStateValue<T>);
 
-        public override int GetHashCode() => HashCode.Combine(LoadContext, Plugin);
+        public override int GetHashCode() => HashCode.Combine(LoadContext, IsInstantiated, Plugin);
     }
 }

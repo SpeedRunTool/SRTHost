@@ -7,9 +7,15 @@
 
 <MudLayout Class="mud-height-full">
         <MudAppBar>
-            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => SetOpen())" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => setOpen())" />
             <MudSpacer />
-            <MudSwitch @bind-Checked="@isDarkMode" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
+            <MudSwitch 
+                @bind-Checked="@isDarkMode" 
+                Color="Color.Primary" 
+                Class="ma-4" T="bool"
+                   Label="@getLabel()"
+                   ThumbIcon="@(isDarkMode==true ? Icons.Material.Filled.Brightness3 : Icons.Material.Filled.WbSunny)"
+                   ThumbIconColor="Color.Tertiary" />
         </MudAppBar>
         <MudDrawer Class="mud-height-full" @bind-Open="@open">
                 <NavMenu />
@@ -23,9 +29,17 @@
     private bool open = true;
     private bool isDarkMode = true;
 
-    void SetOpen()
+    void setOpen()
     {
         open = !open;
+    }
+
+    private string getLabel()
+    {
+        if (isDarkMode == true)
+            return "Toggle Light Mode";
+        else
+            return "Toggle Dark Mode";
     }
 
     private MudTheme theme = new MudTheme()
@@ -34,6 +48,7 @@
             {
                 Primary = Colors.Shades.White,
                 Secondary = Colors.DeepPurple.Lighten1,
+                Tertiary = Colors.DeepPurple.Lighten1,
                 Dark = Colors.Shades.White,
                 Background = Colors.DeepPurple.Lighten5,
                 AppbarBackground = Colors.DeepPurple.Darken1,
@@ -44,6 +59,7 @@
             {
                 Primary = Colors.DeepPurple.Lighten1,
                 Secondary = Colors.DeepPurple.Lighten1,
+                Tertiary = Colors.Shades.White,
                 Dark = Colors.Grey.Darken3,
                 Background = Colors.Grey.Darken3,
                 AppbarBackground = Colors.Grey.Darken4,

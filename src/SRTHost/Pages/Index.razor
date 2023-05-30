@@ -10,7 +10,7 @@
     else
     {
         <div class="btn-group btn-group-gap mb-8">
-            <span><a href="api/v1/Plugin/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
+            <span><a href="api/v1/Plugin/ReloadAll" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
         </div>
         @foreach ((IPluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Where(psv => psv.IsInstantiated && psv.Plugin is not null).Select((psv, i) => (psv, i)))
         {

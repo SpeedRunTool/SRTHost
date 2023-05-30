@@ -29,30 +29,6 @@ namespace SRTHost.Controllers
             this.pluginHost = pluginHost;
         }
 
-        // Plugins events
-        private const string PLUGIN_CONTROLLER_EVENT_NAME = "Plugin Controller";
-        [LoggerMessage(EventIds.PluginController + 0, LogLevel.Information, "PluginGet()", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginGet();
-
-        [LoggerMessage(EventIds.PluginController + 1, LogLevel.Information, "PluginReloadAllGet()", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginReloadAllGet();
-
-        [LoggerMessage(EventIds.PluginController + 2, LogLevel.Information, "PluginReloadGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginReloadGet(string plugin);
-
-        [LoggerMessage(EventIds.PluginController + 3, LogLevel.Information, "PluginInfoGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginInfoGet(string plugin);
-
-        [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginDataGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginDataGet(string plugin);
-
-        [LoggerMessage(EventIds.PluginController + 5, LogLevel.Information, "PluginGenerateManifestGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginGenerateManifestGet(string plugin);
-
-        [LoggerMessage(EventIds.PluginController + 6, LogLevel.Information, "PluginHttpHandlerGet({plugin}, {command})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginHttpHandlerGet(string plugin, string? command);
-
-
         // GET: api/v1/Plugin
         // Gets all plugins loaded by the system.
         [HttpGet(Name = "PluginGet")]
@@ -68,8 +44,8 @@ namespace SRTHost.Controllers
                 );
         }
 
-        // GET: api/v1/Plugin/Reload
-        [HttpGet("Reload", Name = "PluginReloadAllGet")]
+        // GET: api/v1/Plugin/ReloadAll
+        [HttpGet("ReloadAll", Name = "PluginReloadAllGet")]
         public async Task<IActionResult> PluginReloadAllGet()
         {
             LogPluginReloadAllGet();
@@ -77,6 +53,44 @@ namespace SRTHost.Controllers
             try
             {
                 await pluginHost.ReloadPlugins(CancellationToken.None);
+                return Ok("Success");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, ex);
+            }
+        }
+
+        // GET: api/v1/Plugin/SRTPluginProducerRE2/Load
+        [HttpGet("{Plugin}/Load", Name = "PluginLoadGet")]
+        public async Task<IActionResult> PluginLoadGet(string plugin)
+        {
+            LogPluginLoadGet(plugin);
+
+            try
+            {
+                // TODO: Implement load but not instantiate and expose either internal or public.
+                //await pluginHost.LoadPlugin(plugin, CancellationToken.None);
+                await Task.CompletedTask;
+                return Ok("Success");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, ex);
+            }
+        }
+
+        // GET: api/v1/Plugin/SRTPluginProducerRE2/Unload
+        [HttpGet("{Plugin}/Unload", Name = "PluginUnloadGet")]
+        public async Task<IActionResult> PluginUnloadGet(string plugin)
+        {
+            LogPluginUnloadGet(plugin);
+
+            try
+            {
+                // TODO: Implement unload and expose either internal or public.
+                //await pluginHost.UnloadPlugin(plugin, CancellationToken.None);
+                await Task.CompletedTask;
                 return Ok("Success");
             }
             catch (Exception ex)

@@ -4,9 +4,8 @@
 
 <div class="btn-group btn-group-gap mb-8">
     <span><a href="api/v1/Plugin" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Loaded Plugins</b></a></span><br />
-    <span><a href="api/v1/Plugin/DebugMaster" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Debug Master</b></a></span><br />
-    <span><a href="api/v1/Plugin/DebugManifestHost" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Debug Manifest Host</b></a></span><br />
-    <span><a href="api/v1/Plugin/DebugManifestPlugin" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Debug Manifest Plugin</b></a></span>
+    <span><a href="api/v1/Debug/GenerateMainJson" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Debug Main</b></a></span><br />
+    <span><a href="api/v1/Debug/GenerateManifestHost" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Debug Manifest Host</b></a></span><br />
 </div>
 @foreach ((IPluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Where(psv => psv.IsInstantiated && psv.Plugin is not null).Select((psv, i) => (psv, i)))
 {

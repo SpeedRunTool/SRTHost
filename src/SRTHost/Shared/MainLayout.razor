@@ -7,7 +7,7 @@
 
 <MudLayout Class="mud-height-full">
         <MudAppBar>
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => setOpen())" />
+        <MudIconButton Icon="@(open ? Icons.Material.Filled.Close : Icons.Material.Filled.Menu)" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => setOpen())" />
             <MudSpacer />
             <MudSwitch 
                 @bind-Checked="@isDarkMode" 

@@ -8,7 +8,7 @@
 <div class="w-full h-full">
     @if (pluginHost is null || MainJson is null || ManifestHost is null || ManifestPlugins is null)
     {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
     }
     else
     {
@@ -23,7 +23,7 @@
                         <div class="flex justify-center items-center font-bold">@mainPluginEntry.Name</div>
                         (@mainPluginEntry.Platform.ToString()) @mainPluginEntry.Type.ToString()
                     </div>
-                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled">
+                    <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
                         @if (pluginHost.LoadedPlugins.ContainsKey(mainPluginEntry.Name))
                         {
                             <MudButton Href="@GetPluginName(@mainPluginEntry.Name, "Reload")" Target="_blank">

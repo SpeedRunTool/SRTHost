@@ -4,7 +4,7 @@
 <div class="w-full h-full">
     @if (pluginHost == null)
     {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
     }
     else
     {
@@ -12,8 +12,7 @@
             <MudToolBar>
                 <h3>Plugins</h3>
                 <MudSpacer />
-                <MudButton 
-                    Color="Color.Primary"
+                <MudButton Color="Color.Secondary"
                     Variant="Variant.Filled"
                     Href="api/v1/Plugin/ReloadAll"
                     Target="_blank"
@@ -25,12 +24,12 @@
                 {
                     <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-1">
                         <div class="flex items-center gap-4">
-                            <MudAvatar Color="@GetRunningStatusColor(pluginStateValue)" Variant="Variant.Outlined">
-                                <MudIcon Icon="@GetRunningStatusIcon(pluginStateValue)" />
+                        <MudAvatar Color="@GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
+                            <MudIcon Color="Color.Dark" Icon="@GetRunningStatusIcon(pluginStateValue)" />
                             </MudAvatar>
                             <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType.Name</div>
                         </div>
-                        <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled">
+                        <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
                             <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, "Reload")"
                                        Target="_blank">
                                 Reload

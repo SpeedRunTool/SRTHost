@@ -27,6 +27,28 @@
         open = !open;
     }
 
-    private MudTheme theme = new();
+    private MudTheme theme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = Colors.Shades.White,
+                Secondary = Colors.DeepPurple.Lighten1,
+                Dark = Colors.Shades.White,
+                Background = Colors.DeepPurple.Lighten5,
+                AppbarBackground = Colors.DeepPurple.Darken1,
+                DrawerBackground = Colors.DeepPurple.Darken1,
+                DrawerText = Colors.Shades.White,
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = Colors.DeepPurple.Lighten1,
+                Secondary = Colors.DeepPurple.Lighten1,
+                Dark = Colors.Grey.Darken3,
+                Background = Colors.Grey.Darken3,
+                AppbarBackground = Colors.Grey.Darken4,
+                DrawerBackground = Colors.Grey.Darken4,
+                DrawerText = Colors.Shades.White,
+            },
+        };
     private bool isDarkMode;
 }

@@ -1,38 +1,9 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">SRT Host</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
-
-<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
-            </NavLink>
-            <NavLink class="nav-link" href="/GetPlugins" Match="NavLinkMatch.All">
-                <span class="oi oi-data-transfer-download" aria-hidden="true"></span> Get Plugins
-            </NavLink>
-            <NavLink class="nav-link" href="/Settings" Match="NavLinkMatch.All">
-                <span class="oi oi-cog" aria-hidden="true"></span> Settings
-            </NavLink>
-            <NavLink class="nav-link" href="/Debug" Match="NavLinkMatch.All">
-                <span class="oi oi-bug" aria-hidden="true"></span> Debug
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
-@code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
-}
+﻿<MudNavMenu Class="h-full">
+    <MudText Typo="Typo.h6" Class="px-4">SRT Host</MudText>
+    <MudText Typo="Typo.body2" Class="px-4">by the SpeedRunTool team.</MudText>
+    <MudDivider Class="my-2" />
+    <MudNavLink Href="" Match="NavLinkMatch.All">Home</MudNavLink>
+    <MudNavLink Href="/GetPlugins" Match="NavLinkMatch.All">Get Plugins</MudNavLink>
+    <MudNavLink Href="/Settings" Match="NavLinkMatch.All">Settings</MudNavLink>
+    <MudNavLink Href="/Debug" Match="NavLinkMatch.All">Debug</MudNavLink>
+</MudNavMenu>

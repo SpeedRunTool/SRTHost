@@ -1,19 +1,32 @@
-﻿@inherits LayoutComponentBase
+﻿@using MudBlazor;
+@inherits LayoutComponentBase
 
-<PageTitle>SRT Host</PageTitle>
+<MudThemeProvider @bind-IsDarkMode="@isDarkMode" Theme="theme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            by the SpeedRunTool team.
-        </div>
-
-        <article class="content px-4">
+<MudLayout Class="mud-height-full">
+        <MudAppBar>
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => SetOpen())" />
+            <MudSpacer />
+            <MudSwitch @bind-Checked="@isDarkMode" Color="Color.Primary" Class="ma-4" T="bool" Label="Toggle Light/Dark Mode" />
+        </MudAppBar>
+        <MudDrawer Class="mud-height-full" @bind-Open="@open">
+                <NavMenu />
+            </MudDrawer>
+        <MudMainContent Class="mud-height-full">
             @Body
-        </article>
-    </main>
-</div>
+        </MudMainContent>
+</MudLayout>
+
+@code {
+    bool open = true;
+
+    void SetOpen()
+    {
+        open = !open;
+    }
+
+    private MudTheme theme = new();
+    private bool isDarkMode;
+}

@@ -1,9 +1,18 @@
 ﻿@page "/Settings"
 <PageTitle>Settings</PageTitle>
-<h3>Settings</h3>
 
-<span><InputCheckbox @bind-Value="ShowDebugMenu" />Show Debug Menu</span><br />
-<button class="btn btn-primary" @onclick="SaveSettings">Save Settings</button>
+<div class="w-full h-full">
+    <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
+        <MudToolBar>
+            <h3>Settings</h3>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings">
+                Save Settings
+            </MudButton>
+        </MudToolBar>
+        <MudCheckBox @bind-Checked="@ShowDebugMenu" Color="Color.Primary">Show Debug Menu</MudCheckBox>
+    </MudPaper>
+</div>
 
 @code
 {

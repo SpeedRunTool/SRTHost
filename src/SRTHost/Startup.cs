@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 using SRTPluginBase;
 using System;
 using System.Collections.Generic;
@@ -48,6 +49,7 @@ namespace SRTHost
                 .AddRazorRuntimeCompilation();
 
             services.AddServerSideBlazor();
+            services.AddMudServices();
 
             services.AddHttpClient();
 

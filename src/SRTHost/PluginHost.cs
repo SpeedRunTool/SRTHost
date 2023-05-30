@@ -259,13 +259,10 @@ namespace SRTHost
 
         private async Task UnloadPlugins(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
+            await Task.Run(async () =>
             {
                 foreach (IPluginStateValue<IPlugin> pluginStateValue in loadedPlugins.Values)
-                {
-                    pluginStateValue.Plugin?.Dispose();
-                    pluginStateValue.LoadContext.Unload();
-                }
+                    await UnloadPlugin(pluginStateValue.LoadContext, cancellationToken);
 
                 loadedPlugins.Clear();
             }, cancellationToken);

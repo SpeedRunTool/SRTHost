@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
+using MudBlazor;
+using SRTPluginBase;
 
 namespace SRTHost
 {
@@ -17,5 +19,47 @@ namespace SRTHost
 
         internal static string? GetIPv4() => GetIPs().FirstOrDefault(ip => ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)?.Address?.ToString();
         internal static string? GetIPv6() => GetIPs().FirstOrDefault(ip => ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)?.Address?.ToString();
+
+        internal static string GetPluginName(string name, string page) => $"api/v1/Plugin/{name}/{page}";
+
+        internal static string GetRunningStatusIcon(PluginStateValue<IPlugin> pluginStateValue)
+        {
+            switch (pluginStateValue.Status)
+            {
+                case PluginStatusEnum.NotLoaded:
+                    return Icons.Material.Filled.DoNotDisturbOn;
+
+                case PluginStatusEnum.Loaded:
+                case PluginStatusEnum.Instantiated:
+                    return Icons.Material.Filled.CheckCircle;
+
+                case PluginStatusEnum.LoadingError:
+                case PluginStatusEnum.InstantiationError:
+                    return Icons.Material.Filled.Warning;
+
+                default:
+                    return Icons.Material.Filled.QuestionMark;
+            }
+        }
+
+        internal static Color GetRunningStatusColor(PluginStateValue<IPlugin> pluginStateValue)
+        {
+            switch (pluginStateValue.Status)
+            {
+                case PluginStatusEnum.NotLoaded:
+                    return Color.Tertiary;
+
+                case PluginStatusEnum.Loaded:
+                case PluginStatusEnum.Instantiated:
+                    return Color.Success;
+
+                case PluginStatusEnum.LoadingError:
+                case PluginStatusEnum.InstantiationError:
+                    return Color.Error;
+
+                default:
+                    return Color.Warning;
+            }
+        }
     }
 }

@@ -24,19 +24,19 @@
                 {
                     <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-1">
                         <div class="flex items-center gap-4">
-                        <MudAvatar Color="@GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
-                            <MudIcon Color="Color.Dark" Icon="@GetRunningStatusIcon(pluginStateValue)" />
+                        <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
+                            <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
                             </MudAvatar>
-                            <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType.Name</div>
+                            <div class="flex justify-center items-center font-bold">@(pluginStateValue.PluginType?.Name ?? "Unknown")</div>
                         </div>
                         <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
-                            <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, "Reload")"
+                        <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")"
                                        Target="_blank">
                                 Reload
                             </MudButton>
                             @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
                             {
-                                <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, @registeredPage)"
+                            <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)"
                                            Target="_blank">
                                     @registeredPage
                                 </MudButton>
@@ -47,9 +47,3 @@
         </MudPaper>
     }
 </div>
-
-@code {
-    private string GetPluginName(string name, string page) => $"api/v1/Plugin/{name}/{page}";
-    private string GetRunningStatusIcon(PluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.IsInstantiated ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning;
-    private Color GetRunningStatusColor(PluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.IsInstantiated ? Color.Success : Color.Warning;
-}

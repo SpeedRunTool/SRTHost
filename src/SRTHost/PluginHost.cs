@@ -115,7 +115,7 @@ namespace SRTHost
 				pluginDbDir.Create();
 
             // Initialize and start plugins.
-            await foreach (PluginStateValue<IPlugin>? pluginStateValue in LoadPluginsAsync(cancellationToken))
+            await foreach (PluginStateValue<IPlugin> pluginStateValue in LoadPluginsAsync(cancellationToken))
                 await InitializeAsync(pluginStateValue, cancellationToken);
 
             ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:DevelopmentHttp:Url"));
@@ -159,26 +159,28 @@ namespace SRTHost
 
         private FileInfo GetPluginFileInfoByName(string pluginName) => new FileInfo(Path.Combine(Directory.GetCurrentDirectory(), "plugins", pluginName, $"{pluginName}.dll"));
 
-        public async IAsyncEnumerable<PluginStateValue<IPlugin>?> LoadPluginsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+        public async IAsyncEnumerable<PluginStateValue<IPlugin>> LoadPluginsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
         {
             foreach (string pluginName in GetPluginNames())
                 yield return await LoadPluginAsync(pluginName, cancellationToken);
         }
 
-        public async Task<PluginStateValue<IPlugin>?> LoadPluginAsync(string pluginName, CancellationToken cancellationToken)
+        public async Task<PluginStateValue<IPlugin>> LoadPluginAsync(string pluginName, CancellationToken cancellationToken)
         {
             return await Task.Run(() =>
             {
-                PluginLoadContext? pluginLoadContext = default;
-                Assembly? pluginAssembly = default;
+                PluginStateValue<IPlugin> pluginStateValue = new PluginStateValue<IPlugin>();
 
                 FileInfo pluginFileInfo = GetPluginFileInfoByName(pluginName);
                 if (pluginFileInfo.Exists)
                 {
                     try
                     {
-                        pluginLoadContext = new PluginLoadContext(pluginFileInfo.Directory!);
-                        pluginAssembly = pluginLoadContext.LoadFromAssemblyPath(pluginFileInfo.FullName);
+                        pluginStateValue.LoadContext = new PluginLoadContext(pluginFileInfo.Directory!);
+                        Assembly? pluginAssembly = pluginStateValue.LoadContext.LoadFromAssemblyPath(pluginFileInfo.FullName);
+                        pluginStateValue.Status = PluginStatusEnum.Loaded;
+                        pluginStateValue.SubStatus = PluginSubStatusEnum.None;
+                        pluginStateValue.PluginType = GetPluginType(pluginAssembly);
                         PluginViewCompiler.Current?.LoadModuleCompiledViews(pluginAssembly);
                         LogLoadedPlugin(pluginName);
                         GetSigningInfo(pluginFileInfo.FullName);
@@ -188,30 +190,22 @@ namespace SRTHost
                     catch (FileLoadException ex)
 #pragma warning restore CS0168 // Variable is declared but never used
                     {
+                        pluginStateValue.Status = PluginStatusEnum.LoadingError;
+                        pluginStateValue.SubStatus = PluginSubStatusEnum.IncorrectArchitecture;
                         LogIncorrectArchitecturePlugin(pluginFileInfo.FullName);
                         GetSigningInfo(pluginFileInfo.FullName);
                         LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginFileInfo.FullName).ProductVersion);
                     }
                     catch (Exception ex)
                     {
+                        pluginStateValue.Status = PluginStatusEnum.LoadingError;
+                        pluginStateValue.SubStatus = PluginSubStatusEnum.None;
                         LogException(ex?.GetType()?.Name, ex?.ToString());
                     }
                 }
 
-                if (pluginLoadContext is not null && pluginAssembly is not null)
-                    return CreatePluginStateValue(pluginLoadContext, pluginAssembly);
-                else
-                    return default;
+                return pluginStateValue;
             }, cancellationToken);
-        }
-
-        private PluginStateValue<IPlugin>? CreatePluginStateValue(PluginLoadContext pluginLoadContext, Assembly pluginAssembly)
-        {
-            Type? pluginType = GetPluginType(pluginAssembly);
-            if (pluginType is not null)
-                return new PluginStateValue<IPlugin>(pluginLoadContext, pluginType!);
-            else
-                return default;
         }
 
         private Type? GetPluginType(Assembly pluginAssembly)
@@ -229,29 +223,51 @@ namespace SRTHost
             return default;
         }
 
-        public Task<PluginStateValue<IPlugin>?> InitializeAsync(PluginStateValue<IPlugin>? pluginStateValue, CancellationToken cancellationToken)
+        public Task<PluginStateValue<IPlugin>> InitializeAsync(PluginStateValue<IPlugin> pluginStateValue, CancellationToken cancellationToken)
         {
             return Task.Run(() =>
             {
-                if (pluginStateValue is null)
-                    return pluginStateValue;
+                switch (pluginStateValue.Status)
+                {
+                    case PluginStatusEnum.NotLoaded: // Not loaded, there is nothing to instantiate.
+                    case PluginStatusEnum.LoadingError: // Loading error, retry loading.
+                    case PluginStatusEnum.Instantiated: // Instantiated, we're already running.
+                        return pluginStateValue; // Invalid state to continue;
+
+                    case PluginStatusEnum.Loaded: // Loaded, normal condition.
+                    case PluginStatusEnum.InstantiationError: // Instantiation error, we're likely retrying this plugin.
+                        break;
+                }
 
                 object? pluginInstance = default;
                 try
                 {
-                    pluginInstance = Activator.CreateInstance(pluginStateValue.PluginType, CreatePluginCtorArgs(pluginStateValue.PluginType.Name, pluginStateValue.PluginType))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
+                    pluginInstance = Activator.CreateInstance(pluginStateValue.PluginType!, CreatePluginCtorArgs(pluginStateValue.PluginType!.Name, pluginStateValue.PluginType!))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
                     if (pluginInstance is not null)
-                        pluginStateValue.IsInstantiated = true;
+                    {
+                        pluginStateValue.Status = PluginStatusEnum.Instantiated;
+                        pluginStateValue.SubStatus = PluginSubStatusEnum.None;
+                    }
                     else
-                        pluginStateValue.IsInstantiated = false;
+                    {
+                        pluginStateValue.Status = PluginStatusEnum.InstantiationError;
+                        pluginStateValue.SubStatus = PluginSubStatusEnum.None;
+                    }
                 }
-                catch (TargetInvocationException ex) when (ex.InnerException is PluginInitializationException || ex.InnerException is PluginNotFoundException)
+                catch (TargetInvocationException ex) when (ex.InnerException is PluginInitializationException)
                 {
-                    pluginStateValue.IsInstantiated = false;
+                    pluginStateValue.Status = PluginStatusEnum.InstantiationError;
+                    pluginStateValue.SubStatus = PluginSubStatusEnum.PluginInitializationException;
+                }
+                catch (TargetInvocationException ex) when (ex.InnerException is PluginNotFoundException)
+                {
+                    pluginStateValue.Status = PluginStatusEnum.InstantiationError;
+                    pluginStateValue.SubStatus = PluginSubStatusEnum.PluginNotFoundException;
                 }
                 catch
                 {
-                    pluginStateValue.IsInstantiated = false;
+                    pluginStateValue.Status = PluginStatusEnum.InstantiationError;
+                    pluginStateValue.SubStatus = PluginSubStatusEnum.UndefinedException;
                     throw;
                 }
 
@@ -262,7 +278,7 @@ namespace SRTHost
                 else if (pluginInstance is IPlugin)
                     pluginStateValue.Plugin = (IPlugin)pluginInstance;
 
-                loadedPlugins.Add(pluginStateValue.PluginType.Name, pluginStateValue);
+                loadedPlugins.Add(pluginStateValue.PluginType!.Name, pluginStateValue);
                 return pluginStateValue;
             }, cancellationToken);
         }
@@ -294,13 +310,17 @@ namespace SRTHost
             return args;
         }
 
-        public async Task UnloadPluginAsync(string pluginName, CancellationToken cancellationToken)
+        public async Task<PluginStateValue<IPlugin>?> UnloadPluginAsync(string pluginName, CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
+            return await Task.Run(() =>
             {
-                if (loadedPlugins.Remove(pluginName, out PluginStateValue<IPlugin>? pluginStateValue) && pluginStateValue is not null)
+                PluginStateValue<IPlugin>? pluginStateValue;
+                if (loadedPlugins.Remove(pluginName, out pluginStateValue))
                 {
-                    foreach (Assembly assembly in pluginStateValue.LoadContext.Assemblies)
+                    if (pluginStateValue.Status == PluginStatusEnum.NotLoaded || pluginStateValue.Status == PluginStatusEnum.LoadingError)
+                        return pluginStateValue;
+
+                    foreach (Assembly assembly in pluginStateValue.LoadContext!.Assemblies)
                     {
                         try
                         {
@@ -312,7 +332,11 @@ namespace SRTHost
                         }
                     }
                     pluginStateValue.LoadContext.Unload();
+                    pluginStateValue.Status = PluginStatusEnum.NotLoaded;
+                    pluginStateValue.SubStatus = PluginSubStatusEnum.None;
                 }
+
+                return pluginStateValue;
             }, cancellationToken);
         }
 
@@ -330,7 +354,7 @@ namespace SRTHost
         public async Task ReloadPluginAsync(string pluginName, CancellationToken cancellationToken)
         {
             await UnloadPluginAsync(pluginName, cancellationToken);
-            PluginStateValue<IPlugin>? pluginStateValue;
+            PluginStateValue<IPlugin> pluginStateValue;
             if ((pluginStateValue = await LoadPluginAsync(pluginName, cancellationToken)) is not null)
                 await InitializeAsync(pluginStateValue, cancellationToken);
         }

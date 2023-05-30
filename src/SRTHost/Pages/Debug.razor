@@ -24,24 +24,24 @@
             <MudToolBar>
                 <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-1">
                     <div class="flex items-center gap-4">
-                        <MudAvatar Color="@GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
-                            <MudIcon Color="Color.Dark" Icon="@GetRunningStatusIcon(pluginStateValue)" />
+                        <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
+                            <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
                         </MudAvatar>
-                        <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType.Name</div>
+                        <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType?.Name</div>
                     </div>
                     <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
-                        <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, "Info")"
+                        <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Info")"
                                    Target="_blank">
                             Info
                         </MudButton>
                         @if (pluginStateValue.Plugin! is IPluginProducer)
                         {
-                            <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, "Data")"
+                            <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Data")"
                                        Target="_blank">
                                 Data
                             </MudButton>
                         }
-                        <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, "GenerateManifest")"
+                        <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "GenerateManifest")"
                                    Target="_blank">
                             Generate Manifest
                         </MudButton>
@@ -51,19 +51,3 @@
         }
     </MudPaper>
 </div>
-
-@code {
-    private string GetPluginName(string name, string page) => $"api/v1/Plugin/{name}/{page}";
-    // TODO REFACTOR TO USE ENUM LATER
-    private string GetRunningStatusIcon(PluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.IsInstantiated ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning;
-    private Color GetRunningStatusColor(PluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.IsInstantiated ? Color.Success : Color.Warning;
-    // private string GetItemCssClass(int index) => index % 2 == 0 ? "even" : "odd";
-    // public enum PluginStatusEnum : int
-    // {
-    // NotLoaded = 0, // Icons.Material.Filled.Warning Color.Warning
-    // Loaded = 1, // Icons.Material.Filled.Folder Color.Success
-    // Instantiated = 2, // Icons.Material.Filled.CheckCircle Color.Success
-    // LoadingError = 3, // Icons.Material.Filled.FolderOff Color.Error
-    // InstantiationError = 4, // Icons.Material.Filled.Dangerous Color.Error
-    // }
-}

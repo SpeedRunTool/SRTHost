@@ -5,6 +5,7 @@ using SRTPluginBase;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading;
@@ -169,19 +170,19 @@ namespace SRTHost.Controllers
                 return BadRequest("A plugin name must be provided.");
 
             IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
-            if (pluginStateValue is not null && pluginStateValue.IsInstantiated && pluginStateValue.Plugin is not null)
+            if (pluginStateValue is not null && pluginStateValue.Status == PluginStatusEnum.Loaded)
             {
                 List<string> tags = new List<string>();
-                if (pluginStateValue.Plugin is IPluginProducer pluginProducer)
+                if (pluginStateValue.PluginType?.IsAssignableTo(typeof(IPluginProducer)) ?? false)
                     tags.Add("Producer");
-                else if (pluginStateValue.Plugin is IPluginConsumer pluginConsumer)
+                else if (pluginStateValue.PluginType?.IsAssignableTo(typeof(IPluginConsumer)) ?? false)
                     tags.Add("Consumer");
 
-                Version pluginVersion = pluginStateValue.Plugin.Info.Version;
+                Version pluginVersion = pluginStateValue.Plugin?.Info.Version ?? new Version();
                 return new JsonResult(
                     new ManifestPluginJson()
                     {
-                        Contributors = pluginStateValue.Plugin.Info.Author.Split(new string[] { ",", "&", "and", "/", "\\" }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+                        Contributors = pluginStateValue.Plugin?.Info.Author.Split(new string[] { ",", "&", "and", "/", "\\" }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? Enumerable.Empty<string>(),
                         Tags = tags,
                         Releases = new ManifestReleaseJson[]
                         {
@@ -198,7 +199,7 @@ namespace SRTHost.Controllers
                     }
                     );
             }
-            else if (pluginStateValue is not null && (!pluginStateValue.IsInstantiated || pluginStateValue.Plugin is null))
+            else if (pluginStateValue is not null && pluginStateValue.Plugin is null)
                 return UnprocessableEntity($"Plugin \"{plugin}\" is loaded but is either not instantiated or is null.");
             else
                 return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));

@@ -1,34 +1,56 @@
 ﻿@page "/"
 <PageTitle>Home</PageTitle>
-<h3>Plugins</h3>
 
-<div>
+<div class="w-full h-full">
     @if (pluginHost == null)
     {
-        <em>Loading...</em>
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
     }
     else
     {
-        <div class="btn-group btn-group-gap mb-8">
-            <span><a href="api/v1/Plugin/ReloadAll" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank"><b>Reload Plugins</b></a></span>
-        </div>
-        @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
-        {
-            <div class="@GetItemCssClass(index) w-100 d-flex flex-wrap justify-content-between align-items-center p-2 gap-1">
-                <b>@pluginStateValue.PluginType.Name</b> (@GetRunningStatus(pluginStateValue))
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="api/v1/Plugin/@pluginStateValue.PluginType.Name/Reload" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">Reload</a>
-                    @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
-                    {
-                        <a href="api/v1/Plugin/@pluginStateValue.PluginType.Name/@registeredPage" class="btn btn-primary btn-custom-width" rel="noreferrer" target="_blank">@registeredPage</a>
-                    }
-                </div>
-            </div>
-        }
+        <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
+            <MudToolBar>
+                <h3>Plugins</h3>
+                <MudSpacer />
+                <MudButton 
+                    Color="Color.Primary"
+                    Variant="Variant.Filled"
+                    Href="api/v1/Plugin/ReloadAll"
+                    Target="_blank"
+                >
+                    Reload Plugins
+                </MudButton>
+            </MudToolBar>
+                @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
+                {
+                    <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-1">
+                        <div class="flex items-center gap-4">
+                            <MudAvatar Color="@GetRunningStatusColor(pluginStateValue)" Variant="Variant.Outlined">
+                                <MudIcon Icon="@GetRunningStatusIcon(pluginStateValue)" />
+                            </MudAvatar>
+                            <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType.Name</div>
+                        </div>
+                        <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled">
+                            <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, "Reload")"
+                                       Target="_blank">
+                                Reload
+                            </MudButton>
+                            @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
+                            {
+                                <MudButton Href="@GetPluginName(@pluginStateValue.PluginType.Name, @registeredPage)"
+                                           Target="_blank">
+                                    @registeredPage
+                                </MudButton>
+                            }
+                        </MudButtonGroup>
+                    </div>
+                }
+        </MudPaper>
     }
 </div>
 
 @code {
-    private string GetItemCssClass(int index) => index % 2 == 0 ? "even" : "odd";
-    private string GetRunningStatus(PluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.IsInstantiated ? "Running" : "Not Running";
+    private string GetPluginName(string name, string page) => $"api/v1/Plugin/{name}/{page}";
+    private string GetRunningStatusIcon(PluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.IsInstantiated ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning;
+    private Color GetRunningStatusColor(PluginStateValue<IPlugin> pluginStateValue) => pluginStateValue.IsInstantiated ? Color.Success : Color.Warning;
 }

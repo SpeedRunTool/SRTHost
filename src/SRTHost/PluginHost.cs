@@ -18,6 +18,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Runtime.Loader;
+using System.Drawing.Text;
+using System.Runtime.CompilerServices;
 
 namespace SRTHost
 {
@@ -36,11 +38,11 @@ namespace SRTHost
 #endif
 		public const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
-        private IDictionary<string, IPluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, IPluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
-        public IReadOnlyDictionary<string, IPluginStateValue<IPlugin>> LoadedPlugins => loadedPlugins.AsReadOnly();
+        private IDictionary<string, PluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, PluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
+        public IReadOnlyDictionary<string, PluginStateValue<IPlugin>> LoadedPlugins => loadedPlugins.AsReadOnly();
 
-        private HashSet<string> failedPlugins = new HashSet<string>();
-        public IReadOnlySet<string> FailedPlugins => failedPlugins;
+        //private HashSet<string> failedPlugins = new HashSet<string>();
+        //public IReadOnlySet<string> FailedPlugins => failedPlugins;
 
         public T? GetPluginReference<T>(string pluginName) where T : class, IPlugin
         {
@@ -55,14 +57,14 @@ namespace SRTHost
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
-        private readonly Timer failedPluginRetryTimer;
+        //private readonly Timer failedPluginRetryTimer;
 
         public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
         {
             this.logger = logger;
             this.serviceProvider = serviceProvider;
             this.configuration = configuration;
-            this.failedPluginRetryTimer = new Timer(RetryFailedPluginsAsync, FailedPlugins, 0, 5 * 1000);
+            //this.failedPluginRetryTimer = new Timer(RetryFailedPluginsAsync, FailedPlugins, 0, 5 * 1000);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
@@ -112,8 +114,9 @@ namespace SRTHost
 			if (!pluginDbDir.Exists)
 				pluginDbDir.Create();
 
-			// Initialize and start plugins.
-			await InitPlugins(cancellationToken);
+            // Initialize and start plugins.
+            await foreach (PluginStateValue<IPlugin>? pluginStateValue in LoadPluginsAsync(cancellationToken))
+                await InitializeAsync(pluginStateValue, cancellationToken);
 
             ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:DevelopmentHttp:Url"));
             ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:DevelopmentHttps:Url"));
@@ -123,7 +126,7 @@ namespace SRTHost
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            await UnloadPlugins(cancellationToken);
+            await UnloadPluginsAsync(cancellationToken);
         }
 
         [GeneratedRegex(@"^(?<Protocol>https?)://(?<Host>.*?):?(?<Port>\d+)?$", RegexOptions.CultureInvariant | RegexOptions.Singleline)]
@@ -154,74 +157,149 @@ namespace SRTHost
             LogApplicationWebSeverURL(returnValue);
         }
 
-        private void RetryFailedPluginsAsync(object? state)
+        private FileInfo GetPluginFileInfoByName(string pluginName) => new FileInfo(Path.Combine(Directory.GetCurrentDirectory(), "plugins", pluginName, $"{pluginName}.dll"));
+
+        public async IAsyncEnumerable<PluginStateValue<IPlugin>?> LoadPluginsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            foreach (string pluginName in FailedPlugins)
-                InitPlugin(pluginName, CancellationToken.None).GetAwaiter().GetResult();
+            foreach (string pluginName in GetPluginNames())
+                yield return await LoadPluginAsync(pluginName, cancellationToken);
         }
 
-		public async Task ReloadPlugin(string pluginName, CancellationToken cancellationToken)
+        public async Task<PluginStateValue<IPlugin>?> LoadPluginAsync(string pluginName, CancellationToken cancellationToken)
         {
-            await UnloadPlugin(pluginName, cancellationToken);
-            await InitPlugin(pluginName, cancellationToken);
-        }
-
-        public async Task ReloadPlugins(CancellationToken cancellationToken)
-        {
-            await UnloadPlugins(cancellationToken);
-            await InitPlugins(cancellationToken);
-        }
-
-        private async Task InitPlugin(string pluginName, CancellationToken cancellationToken)
-        {
-            await Task.Run(() =>
+            return await Task.Run(() =>
             {
-                DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins", pluginName));
+                PluginLoadContext? pluginLoadContext = default;
+                Assembly? pluginAssembly = default;
 
-                if (!pluginsDir.Exists)
-                    throw new DirectoryNotFoundException($"{nameof(pluginName)} directory {pluginName} was not found in the plugins folder");
-
-                // Load plugin.
-                IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues = pluginsDir
-                .EnumerateFiles(string.Format("{0}.dll", pluginName), SearchOption.TopDirectoryOnly)
-                .Select((FileInfo pluginAssemblyFileInfo) =>
+                FileInfo pluginFileInfo = GetPluginFileInfoByName(pluginName);
+                if (pluginFileInfo.Exists)
                 {
-                    PluginLoadContext pluginLoadContext = new PluginLoadContext(pluginAssemblyFileInfo.Directory!);
-                    Assembly? pluginAssembly = LoadPlugin(pluginLoadContext, pluginAssemblyFileInfo.FullName);
-                    return ((pluginAssembly is not null) ? InstantiatePlugins(pluginLoadContext, pluginAssembly, pluginName, cancellationToken) : Enumerable.Empty<IPluginStateValue<IPlugin>>()).ToArray();
-                })
-                .SelectMany((IEnumerable<IPluginStateValue<IPlugin>> pluginStateValues) => pluginStateValues);
+                    try
+                    {
+                        pluginLoadContext = new PluginLoadContext(pluginFileInfo.Directory!);
+                        pluginAssembly = pluginLoadContext.LoadFromAssemblyPath(pluginFileInfo.FullName);
+                        PluginViewCompiler.Current?.LoadModuleCompiledViews(pluginAssembly);
+                        LogLoadedPlugin(pluginName);
+                        GetSigningInfo(pluginFileInfo.FullName);
+                        LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginFileInfo.FullName).ProductVersion);
+                    }
+#pragma warning disable CS0168 // Variable is declared but never used
+                    catch (FileLoadException ex)
+#pragma warning restore CS0168 // Variable is declared but never used
+                    {
+                        LogIncorrectArchitecturePlugin(pluginFileInfo.FullName);
+                        GetSigningInfo(pluginFileInfo.FullName);
+                        LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginFileInfo.FullName).ProductVersion);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogException(ex?.GetType()?.Name, ex?.ToString());
+                    }
+                }
 
-                foreach (IPluginStateValue<IPlugin> pluginStateValue in pluginStateValues.Where(psv => psv.IsInstantiated && psv.Plugin is not null))
-                    loadedPlugins.Add(pluginStateValue.Plugin!.TypeName, pluginStateValue);
-
-                if (loadedPlugins.Count == 0)
-                    LogNoPlugins();
+                if (pluginLoadContext is not null && pluginAssembly is not null)
+                    return CreatePluginStateValue(pluginLoadContext, pluginAssembly);
+                else
+                    return default;
             }, cancellationToken);
         }
 
-        private async Task InitPlugins(CancellationToken cancellationToken)
+        private PluginStateValue<IPlugin>? CreatePluginStateValue(PluginLoadContext pluginLoadContext, Assembly pluginAssembly)
         {
-			DirectoryInfo pluginsDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "plugins"));
-
-            // (Re-)discover plugins.
-            if (!string.IsNullOrWhiteSpace(loadSpecificProducer))
-                await InitPlugin(loadSpecificProducer!, cancellationToken);
+            Type? pluginType = GetPluginType(pluginAssembly);
+            if (pluginType is not null)
+                return new PluginStateValue<IPlugin>(pluginLoadContext, pluginType!);
             else
-                foreach (DirectoryInfo pluginDir in pluginsDir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
-                    await InitPlugin(pluginDir.Name, cancellationToken);
-
-            if (loadedPlugins.Count == 0)
-                LogNoPlugins();
+                return default;
         }
 
-        private async Task UnloadPlugin(string pluginName, CancellationToken cancellationToken)
+        private Type? GetPluginType(Assembly pluginAssembly)
+        {
+            Type[] pluginTypes = pluginAssembly.GetTypes();
+
+            foreach (Type pluginType in pluginTypes)
+                if (
+                    pluginType.GetInterface(nameof(IPluginProducer)) is not null ||
+                    pluginType.GetInterface(nameof(IPluginConsumer)) is not null ||
+                    pluginType.GetInterface(nameof(IPlugin)) is not null
+                    )
+                    return pluginType;
+
+            return default;
+        }
+
+        public Task<PluginStateValue<IPlugin>?> InitializeAsync(PluginStateValue<IPlugin>? pluginStateValue, CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+            {
+                if (pluginStateValue is null)
+                    return pluginStateValue;
+
+                object? pluginInstance = default;
+                try
+                {
+                    pluginInstance = Activator.CreateInstance(pluginStateValue.PluginType, CreatePluginCtorArgs(pluginStateValue.PluginType.Name, pluginStateValue.PluginType))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
+                    if (pluginInstance is not null)
+                        pluginStateValue.IsInstantiated = true;
+                    else
+                        pluginStateValue.IsInstantiated = false;
+                }
+                catch (TargetInvocationException ex) when (ex.InnerException is PluginInitializationException || ex.InnerException is PluginNotFoundException)
+                {
+                    pluginStateValue.IsInstantiated = false;
+                }
+                catch
+                {
+                    pluginStateValue.IsInstantiated = false;
+                    throw;
+                }
+
+                if (pluginInstance is IPluginProducer)
+                    pluginStateValue.Plugin = (IPluginProducer)pluginInstance;
+                else if (pluginInstance is IPluginConsumer)
+                    pluginStateValue.Plugin = (IPluginConsumer)pluginInstance;
+                else if (pluginInstance is IPlugin)
+                    pluginStateValue.Plugin = (IPlugin)pluginInstance;
+
+                loadedPlugins.Add(pluginStateValue.PluginType.Name, pluginStateValue);
+                return pluginStateValue;
+            }, cancellationToken);
+        }
+
+        private object?[]? CreatePluginCtorArgs(string pluginName, Type type)
+        {
+            object?[]? args = null;
+            ParameterInfo[]? ctorArgTypes = type.GetConstructors().FirstOrDefault()?.GetParameters();
+            if (ctorArgTypes is not null && ctorArgTypes!.Length > 0)
+            {
+                args = new object?[ctorArgTypes!.Length];
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    try
+                    {
+                        args[i] = serviceProvider.GetService(ctorArgTypes![i].ParameterType);
+                        if (args[i] is null)
+                            args[i] = Activator.CreateInstance(ctorArgTypes![i].ParameterType);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogLoadPluginUnableToCreateCtorArgsType(pluginName, ctorArgTypes![i].ParameterType, ex);
+                    }
+
+                    if (args[i] is null)
+                        LogLoadPluginUnableToCreateCtorArgsType(pluginName, ctorArgTypes![i].ParameterType, default);
+                }
+            }
+            return args;
+        }
+
+        public async Task UnloadPluginAsync(string pluginName, CancellationToken cancellationToken)
         {
             await Task.Run(() =>
             {
-                if (loadedPlugins.Remove(pluginName, out IPluginStateValue<IPlugin>? pluginStateValue) && pluginStateValue is not null)
+                if (loadedPlugins.Remove(pluginName, out PluginStateValue<IPlugin>? pluginStateValue) && pluginStateValue is not null)
                 {
-                    //pluginStateValue.Plugin.Dispose();
                     foreach (Assembly assembly in pluginStateValue.LoadContext.Assemblies)
                     {
                         try
@@ -238,128 +316,29 @@ namespace SRTHost
             }, cancellationToken);
         }
 
-        private async Task UnloadPlugin(PluginLoadContext plc, CancellationToken cancellationToken)
-        {
-            await Task.Run(() =>
-            {
-                foreach (Assembly assembly in plc.Assemblies)
-                {
-                    try
-                    {
-                        PluginViewCompiler.Current?.UnloadModuleCompiledViews(assembly);
-                    }
-                    catch
-                    {
-                        throw;
-                    }
-                }
-                plc.Unload();
-            }, cancellationToken);
-        }
-
-        private async Task UnloadPlugins(CancellationToken cancellationToken)
+        public async Task UnloadPluginsAsync(CancellationToken cancellationToken)
         {
             await Task.Run(async () =>
             {
-                foreach (IPluginStateValue<IPlugin> pluginStateValue in loadedPlugins.Values)
-                    await UnloadPlugin(pluginStateValue.LoadContext, cancellationToken);
-
-                loadedPlugins.Clear();
+                foreach (string pluginName in loadedPlugins.Keys.ToArray())
+                    await UnloadPluginAsync(pluginName, cancellationToken);
             }, cancellationToken);
         }
 
+        private IEnumerable<string> GetPluginNames() => new DirectoryInfo(Path.Combine(Directory.GetCurrentDirectory(), "plugins")).EnumerateDirectories("*", SearchOption.TopDirectoryOnly).SelectMany(d => d.EnumerateFiles($"{d.Name}.dll", SearchOption.TopDirectoryOnly)).Select(f => Path.GetFileNameWithoutExtension(f.Name));
 
-        private Assembly? LoadPlugin(PluginLoadContext loadContext, string pluginPath)
+        public async Task ReloadPluginAsync(string pluginName, CancellationToken cancellationToken)
         {
-            Assembly? returnValue = null;
-
-            try
-            {
-                returnValue = loadContext.LoadFromAssemblyPath(pluginPath);
-                PluginViewCompiler.Current?.LoadModuleCompiledViews(returnValue);
-				//LogLoadedPlugin(pluginPath.Replace(AppContext.BaseDirectory, string.Empty));
-                //GetSigningInfo(pluginPath);
-                //LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
-            }
-#pragma warning disable CS0168 // Variable is declared but never used
-            catch (FileLoadException ex)
-#pragma warning restore CS0168 // Variable is declared but never used
-            {
-                LogIncorrectArchitecturePlugin(pluginPath);
-                GetSigningInfo(pluginPath);
-                LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginPath).ProductVersion);
-            }
-            catch (Exception ex)
-            {
-                LogException(ex?.GetType()?.Name, ex?.ToString());
-            }
-
-            return returnValue;
+            await UnloadPluginAsync(pluginName, cancellationToken);
+            PluginStateValue<IPlugin>? pluginStateValue;
+            if ((pluginStateValue = await LoadPluginAsync(pluginName, cancellationToken)) is not null)
+                await InitializeAsync(pluginStateValue, cancellationToken);
         }
 
-        private IEnumerable<PluginStateValue<IPlugin>> InstantiatePlugins(PluginLoadContext plc, Assembly assembly, string pluginName, CancellationToken cancellationToken)
+        public async Task ReloadPluginsAsync(CancellationToken cancellationToken)
         {
-            Type[]? typesInAssembly = null;
-
-            try
-            {
-                typesInAssembly = assembly.GetTypes();
-            }
-            catch (Exception ex)
-            {
-                LogException(ex?.GetType()?.Name, ex?.ToString());
-                typesInAssembly = null;
-            }
-
-            if (typesInAssembly != null)
-            {
-                List<PluginStateValue<IPlugin>> plugins = new List<PluginStateValue<IPlugin>>();
-                try
-                {
-                    foreach (Type type in typesInAssembly)
-                    {
-                        if (type.GetInterface(nameof(IPluginProducer)) != null)
-                        {
-                            IPluginProducer result = (IPluginProducer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!; // If this throws an exception, the plugin may be targeting a different version of SRTPluginBase.
-                            plugins.Add(new PluginStateValue<IPlugin>(plc, true, result));
-                        }
-                        else if (type.GetInterface(nameof(IPluginConsumer)) != null)
-                        {
-                            IPluginConsumer result = (IPluginConsumer)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
-                            plugins.Add(new PluginStateValue<IPlugin>(plc, true, result));
-                        }
-                        else if (type.GetInterface(nameof(IPlugin)) != null)
-                        {
-                            IPlugin result = (IPlugin)Activator.CreateInstance(type, CreatePluginCtorArgs(type))!;
-                            plugins.Add(new PluginStateValue<IPlugin>(plc, true, result));
-                        }
-                    }
-                    LogLoadedPlugin(assembly.Location.Replace(AppContext.BaseDirectory, string.Empty));
-                    GetSigningInfo(assembly.Location);
-                    LogPluginVersion(FileVersionInfo.GetVersionInfo(assembly.Location).ProductVersion);
-                    return plugins;
-                }
-                catch (Exception ex) when (ex is TargetInvocationException or PluginInitializationException or PluginNotFoundException)
-                {
-                    failedPlugins.Add(pluginName);
-                    UnloadPlugin(plc, cancellationToken).GetAwaiter().GetResult();
-                }
-            }
-
-            return Enumerable.Empty<PluginStateValue<IPlugin>>();
-        }
-
-        private object?[]? CreatePluginCtorArgs(Type type)
-        {
-            object?[]? args = null;
-            ParameterInfo[]? ctorArgTypes = type.GetConstructors().FirstOrDefault()?.GetParameters();
-            if (ctorArgTypes is not null && ctorArgTypes!.Length > 0)
-            {
-                args = new object?[ctorArgTypes!.Length];
-                for (int i = 0; i < args.Length; ++i)
-                    args[i] = serviceProvider.GetService(ctorArgTypes![i].ParameterType);
-            }
-            return args;
+            foreach (string pluginName in GetPluginNames())
+                await ReloadPluginAsync(pluginName, cancellationToken);
         }
 
         private void GetSigningInfo(string location)

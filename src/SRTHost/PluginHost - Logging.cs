@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using System;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 
@@ -48,6 +49,9 @@ namespace SRTHost
 
         [LoggerMessage(EventIds.PluginSystem + 10, LogLevel.Error, "Unable to find any plugins located in the \"plugins\" folder that implement IPlugin", EventName = LOADED_PLUGIN_EVENT_NAME)]
         private partial void LogNoPlugins();
+
+        [LoggerMessage(EventIds.PluginSystem + 26, LogLevel.Error, "Unable to create an instance of type {pluginCtorArgType} for plugin {pluginName}.", EventName = LOADED_PLUGIN_EVENT_NAME)]
+        private partial void LogLoadPluginUnableToCreateCtorArgsType(string pluginName, Type pluginCtorArgType, Exception? ex);
 
         // Signing Info events
         private const string SIGNING_INFO_EVENT_NAME = "Signing Info";

@@ -52,7 +52,7 @@ namespace SRTHost.Controllers
 
             try
             {
-                await pluginHost.ReloadPlugins(CancellationToken.None).ConfigureAwait(false);
+                await pluginHost.ReloadPluginsAsync(CancellationToken.None).ConfigureAwait(false);
                 return Ok("Success");
             }
             catch (Exception ex)
@@ -107,7 +107,7 @@ namespace SRTHost.Controllers
 
             try
             {
-                await pluginHost.ReloadPlugin(plugin, CancellationToken.None);
+                await pluginHost.ReloadPluginAsync(plugin, CancellationToken.None);
                 return Ok("Success");
             }
             catch (Exception ex)

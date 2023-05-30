@@ -20,7 +20,8 @@
 </MudLayout>
 
 @code {
-    bool open = true;
+    private bool open = true;
+    private bool isDarkMode = true;
 
     void SetOpen()
     {
@@ -50,5 +51,5 @@
                 DrawerText = Colors.Shades.White,
             },
         };
-    private bool isDarkMode;
+    
 }

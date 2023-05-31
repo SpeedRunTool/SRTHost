@@ -57,15 +57,15 @@
             httpClient.BaseAddress = new Uri(NavigationManager.BaseUri);
 
             //MainJson = await httpClient.GetFromJsonAsync<MainJson>("https://raw.githubusercontent.com/SpeedRunTool/SRTPlugins/main/main.json", System.Text.Json.JsonSerializerOptions.Default);
-            MainJson = await httpClient.GetFromJsonAsync<MainJson>("/api/v1/Plugin/DebugMain", System.Text.Json.JsonSerializerOptions.Default);
+            MainJson = await httpClient.GetFromJsonAsync<MainJson>("/api/v1/Debug/GenerateMainJson", System.Text.Json.JsonSerializerOptions.Default);
 
             //ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>(MasterJson?.Host.ManifestURL, System.Text.Json.JsonSerializerOptions.Default);
-            ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>("/api/v1/Plugin/DebugManifestHost", System.Text.Json.JsonSerializerOptions.Default);
+            ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>("/api/v1/Debug/GenerateManifestHost", System.Text.Json.JsonSerializerOptions.Default);
 
             //ManifestPlugins = MainJson?.Plugins.ToDictionary(kvp => kvp.Name, (kvp) => (kvp, httpClient.GetFromJsonAsync<ManifestPluginJson>(kvp.ManifestURL, System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()));
             ManifestPlugins = new Dictionary<string, (MainPluginEntry, ManifestPluginJson?)>()
             {
-                { "SRTConsumerTest1", (MainJson!.Plugins.First(p => p.Name == "SRTConsumerTest1"), httpClient.GetFromJsonAsync<ManifestPluginJson>("/api/v1/Plugin/DebugManifestPlugin", System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()) }
+                { "SRTConsumerTest1", (MainJson!.Plugins.First(p => p.Name == "SRTConsumerTest1"), httpClient.GetFromJsonAsync<ManifestPluginJson>("/api/v1/Debug/GenerateManifestPlugin", System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()) }
             };
         }
 

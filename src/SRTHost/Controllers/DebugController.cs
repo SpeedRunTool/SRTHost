@@ -102,5 +102,44 @@ namespace SRTHost.Controllers
                     WriteIndented = true
                 });
         }
+
+        // GET: api/v1/Debug/GenerateManifestPlugin
+        [HttpGet("GenerateManifestPlugin", Name = "DebugGenerateManifestPluginGet")]
+        public IActionResult DebugGenerateManifestPluginGet()
+        {
+            return new JsonResult(
+                new ManifestPluginJson()
+                {
+                    Contributors = new string[]
+                    {
+                        "TestAuthor1",
+                        "TestAuthor2"
+                    },
+                    Tags = new string[]
+                    {
+                        "Consumer",
+                        "UI",
+                        "Overlay",
+                        "DirectX",
+                    },
+                    Releases = new ManifestReleaseJson[]
+                    {
+                        new ManifestReleaseJson()
+                        {
+                            Version = "1.0.0.1",
+                            DownloadURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest1/releases/download/1.0.0.1/SRTConsumerTest1-v1.0.0.1.zip")
+                        },
+                        new ManifestReleaseJson()
+                        {
+                            Version = "1.0.0.0",
+                            DownloadURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest1/releases/download/1.0.0.0/SRTConsumerTest1-v1.0.0.0.zip")
+                        }
+                    }
+                },
+                new JsonSerializerOptions()
+                {
+                    WriteIndented = true
+                });
+        }
     }
 }

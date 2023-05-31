@@ -14,8 +14,7 @@
     {
         <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
             <MudToolBar>
-                <MudText Typo="Typo.h5">Plugins</MudText>
-                <h3>Get Plugins</h3>
+                <MudText Typo="Typo.h5">Get Plugins</MudText>
             </MudToolBar>
             @foreach (((MainPluginEntry mainPluginEntry, ManifestPluginJson? manifestPluginJson), int index) in ManifestPlugins.Select((mainPluginEntry, index) => (mainPluginEntry.Value, index)))
             {

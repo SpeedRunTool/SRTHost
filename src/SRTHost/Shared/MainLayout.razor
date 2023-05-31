@@ -12,10 +12,10 @@
             <MudSwitch 
                 @bind-Checked="@isDarkMode" 
                 Color="Color.Primary" 
-                Class="ma-4" T="bool"
-                   Label="@getLabel()"
-                   ThumbIcon="@(isDarkMode==true ? Icons.Material.Filled.Brightness3 : Icons.Material.Filled.WbSunny)"
-                   ThumbIconColor="Color.Tertiary" />
+                T="bool"
+                Label="@getLabel()"
+                ThumbIcon="@(isDarkMode==true ? Icons.Material.Filled.Brightness3 : Icons.Material.Filled.WbSunny)"
+                ThumbIconColor="Color.Tertiary" />
         </MudAppBar>
         <MudDrawer Class="mud-height-full" @bind-Open="@open">
                 <NavMenu />

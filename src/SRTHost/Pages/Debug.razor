@@ -17,6 +17,9 @@
                 <MudButton Href="api/v1/Debug/GenerateManifestHost" Target="_blank">
                     Debug Manifest Host
                 </MudButton>
+                <MudButton Href="api/v1/Debug/GenerateManifestPlugin" Target="_blank">
+                    Debug Manifest Plugin
+                </MudButton>
             </MudButtonGroup>
         </MudToolBar>
         @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))

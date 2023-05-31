@@ -40,7 +40,7 @@ namespace SRTHost
                     productVersion.ProductPrivatePart;
                 }).FirstOrDefault();
 
-            if (pluginLocation != null) // Always prefer assemblies found in the plugin's folder first.
+            if (pluginLocation is not null) // Always prefer assemblies found in the plugin's folder first.
                 return pluginLocation.FullName;
             else // We did not find what we were looking for.
                 return null;
@@ -53,17 +53,17 @@ namespace SRTHost
                 return Default.LoadFromAssemblyName(assemblyName);
 
             // If the requested assembly is a producer and the assembly name does not match our folder name, do not load it from our folder. Load it from the other load contexts. This fixes issue #26 (ref: https://github.com/Squirrelies/SRTHost/issues/26).
-            if (assemblyName.Name != null && (assemblyName.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase) && !pluginDirectory.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase)))
+            if (assemblyName.Name is not null && (assemblyName.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase) && !pluginDirectory.Name.StartsWith("SRTPluginProducer", StringComparison.InvariantCultureIgnoreCase)))
                 return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName);
 
             // Attempt to let let the AssemblyDependencyResolver handle it first.
             string? assemblyPath = pluginResolver.ResolveAssemblyToPath(assemblyName);
 
             // If that failed, no problem. Check our folder.
-            if (assemblyPath == null)
+            if (assemblyPath is null)
                 assemblyPath = DetectAssemblyLocation(assemblyName.Name);
 
-            if (assemblyPath != null) // Return the assembly we found.
+            if (assemblyPath is not null) // Return the assembly we found.
                 return LoadFromAssemblyPath(assemblyPath);
             else if (All.Any(a => a.Name == assemblyName.Name)) // Are there any LoadContexts that match this AssemblyName? If so, maybe we can enlist their help!
                 return All.First(a => a.Name == assemblyName.Name).LoadFromAssemblyName(assemblyName); // TODO: Is this needed anymore with the new producer diversion above?

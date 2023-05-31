@@ -48,13 +48,13 @@ namespace SRTHost.LoggerImplementations
             if (!IsEnabled(logLevel))
                 return;
 
-            if (formatter == null)
+            if (formatter is null)
                 throw new ArgumentNullException(nameof(formatter));
 
             string message = formatter(state, exception);
 
             // Don't log empty messages?
-            if (string.IsNullOrWhiteSpace(message) && exception == null)
+            if (string.IsNullOrWhiteSpace(message) && exception is null)
                 return;
 
             StringBuilder logMessage = new StringBuilder();
@@ -66,7 +66,7 @@ namespace SRTHost.LoggerImplementations
             if (!string.IsNullOrWhiteSpace(message))
                 logMessage.AppendFormat("{0}", message);
             
-            if (exception != null)
+            if (exception is not null)
                 logMessage.AppendFormat("{0}{1}", Environment.NewLine, exception);
 
             fileLoggerProducer.WriteLog(logMessage.ToString());

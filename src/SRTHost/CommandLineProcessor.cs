@@ -13,7 +13,7 @@ namespace SRTHost
 
         public CommandLineProcessor(string[] args)
         {
-            keyValueDictionary = new ReadOnlyDictionary<string, string?>((args != null) ?
+            keyValueDictionary = new ReadOnlyDictionary<string, string?>((args is not null) ?
                 args.ToDictionary(
                     (string input) => (input.Contains('=')) ? input.Split('=', StringSplitOptions.RemoveEmptyEntries)[0].TrimStart('-') : input.TrimStart('-'),
                     (string input) => (input.Contains('=')) ? input.Split('=', StringSplitOptions.RemoveEmptyEntries)[1] : null,
@@ -22,7 +22,7 @@ namespace SRTHost
                 );
         }
 
-        public string? GetValue(string? key) => (key != null && keyValueDictionary.ContainsKey(key)) ? keyValueDictionary[key] : null;
+        public string? GetValue(string? key) => (key is not null && keyValueDictionary.ContainsKey(key)) ? keyValueDictionary[key] : null;
 
         public IEnumerator<KeyValuePair<string, string?>> GetEnumerator() => keyValueDictionary.GetEnumerator();
 

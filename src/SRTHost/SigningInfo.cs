@@ -21,7 +21,7 @@ namespace SRTHost
             try
             {
                 X509Certificate? signInfo = GetSigningInfo(location);
-                if (signInfo != null)
+                if (signInfo is not null)
                     return new X509Certificate2(signInfo);
                 else
                     return null;

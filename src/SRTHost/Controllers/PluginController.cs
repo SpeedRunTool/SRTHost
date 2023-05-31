@@ -126,15 +126,17 @@ namespace SRTHost.Controllers
             if (string.IsNullOrWhiteSpace(plugin))
                 return BadRequest("A plugin name must be provided.");
 
-            IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
-            if (iPlugin != null)
+            IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
+            if (pluginStateValue is not null && pluginStateValue.Status == PluginStatusEnum.Instantiated)
                 return new JsonResult(
-                    iPlugin.Info,
+                    pluginStateValue.Plugin!.Info,
                     new JsonSerializerOptions()
                     {
                         WriteIndented = true
                     }
                     );
+            else if (pluginStateValue is not null && pluginStateValue.Plugin is null)
+                return UnprocessableEntity($"Plugin \"{plugin}\" is loaded but is either not instantiated or is null.");
             else
                 return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
         }
@@ -149,13 +151,15 @@ namespace SRTHost.Controllers
                 return BadRequest("A plugin name must be provided.");
 
             IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
-            if (pluginStateValue != null && pluginStateValue.Plugin is IPluginProducer pluginProducer)
+            if (pluginStateValue is not null && pluginStateValue.Plugin is IPluginProducer pluginProducer)
                 return new JsonResult(
                     pluginProducer.Refresh(),
                     new JsonSerializerOptions()
                     {
                         WriteIndented = true
                     });
+            else if (pluginStateValue is not null && pluginStateValue.Plugin is null)
+                return UnprocessableEntity($"Plugin \"{plugin}\" is loaded but is either not instantiated or is null.");
             else
                 return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
         }
@@ -170,7 +174,7 @@ namespace SRTHost.Controllers
                 return BadRequest("A plugin name must be provided.");
 
             IPluginStateValue<IPlugin>? pluginStateValue = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin] : null;
-            if (pluginStateValue is not null && pluginStateValue.Status == PluginStatusEnum.Loaded)
+            if (pluginStateValue is not null && pluginStateValue.Status == PluginStatusEnum.Instantiated)
             {
                 List<string> tags = new List<string>();
                 if (pluginStateValue.PluginType?.IsAssignableTo(typeof(IPluginProducer)) ?? false)
@@ -216,7 +220,7 @@ namespace SRTHost.Controllers
                 return BadRequest("A plugin name must be provided.");
 
             IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
-            if (iPlugin != null)
+            if (iPlugin is not null)
             {
                 if (command is not null && iPlugin.RegisteredPages.ContainsKey(command))
                     return await iPlugin.RegisteredPages[command].Invoke(this);

@@ -72,7 +72,7 @@ namespace SRTHost
             foreach (KeyValuePair<string, string?> kvp in new CommandLineProcessor(args))
             {
                 LogCommandLineBanner();
-                if (kvp.Value != null)
+                if (kvp.Value is not null)
                     LogCommandLineKeyValue(kvp.Key, kvp.Value);
                 else
                     LogCommandLineKey(kvp.Key);
@@ -368,7 +368,7 @@ namespace SRTHost
         private void GetSigningInfo(string location)
         {
             X509Certificate2? cert2;
-            if ((cert2 = SigningInfo.GetSigningInfo2(location)) != null)
+            if ((cert2 = SigningInfo.GetSigningInfo2(location)) is not null)
             {
                 if (cert2.Verify())
                     LogSigningInfoVerified(cert2.GetNameInfo(X509NameType.SimpleName, false), cert2.Thumbprint);

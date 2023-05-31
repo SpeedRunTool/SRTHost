@@ -44,7 +44,7 @@ namespace SRTHost
 
 		public void LoadModuleCompiledViews(Assembly moduleAssembly)
 		{
-			if (moduleAssembly == null)
+			if (moduleAssembly is null)
 				throw new ArgumentNullException(nameof(moduleAssembly));
 			CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 			this.CancellationTokenSources.Add(moduleAssembly.FullName ?? string.Empty, cancellationTokenSource);
@@ -64,7 +64,7 @@ namespace SRTHost
 
 		public void UnloadModuleCompiledViews(Assembly moduleAssembly)
 		{
-			if (moduleAssembly == null)
+			if (moduleAssembly is null)
 				throw new ArgumentNullException(nameof(moduleAssembly));
 			foreach (KeyValuePair<string, CompiledViewDescriptor> entry in this.CompiledViews.Where(kvp => kvp.Value.Type?.Assembly == moduleAssembly))
 			{
@@ -81,7 +81,7 @@ namespace SRTHost
 
 		public async Task<CompiledViewDescriptor> CompileAsync(string relativePath)
 		{
-			if (relativePath == null)
+			if (relativePath is null)
 				throw new ArgumentNullException(nameof(relativePath));
 			if (this.CompiledViews.TryGetValue(relativePath, out CompiledViewDescriptor? cachedResult))
 				return cachedResult!;

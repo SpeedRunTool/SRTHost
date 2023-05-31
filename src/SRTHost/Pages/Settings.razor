@@ -1,18 +1,18 @@
 ﻿@page "/Settings"
 <PageTitle>Settings</PageTitle>
 
-<div class="w-full h-full">
+<Container>
     <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-        <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
+        <PageHeader>
             <MudText Typo="Typo.h5">Settings</MudText>
             <MudSpacer />
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveSettings">
                 Save Settings
             </MudButton>
-        </div>
+        </PageHeader>
         <MudCheckBox @bind-Checked="@ShowDebugMenu" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
     </MudPaper>
-</div>
+</Container>
 
 @code
 {

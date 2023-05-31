@@ -13,16 +13,16 @@
     else
     {
         <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-            <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
+            <PageHeader>
                 <MudText Typo="Typo.h5">Get Plugins</MudText>
-            </div>
+            </PageHeader>
             @foreach (((MainPluginEntry mainPluginEntry, ManifestPluginJson? manifestPluginJson), int index) in ManifestPlugins.Select((mainPluginEntry, index) => (mainPluginEntry.Value, index)))
             {
-                <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-1">
-                    <div class="flex items-center gap-4">
-                        <div class="flex justify-center items-center font-bold">@mainPluginEntry.Name</div>
+                <PluginBar>
+                    <PluginHeader>
+                        <PluginTitle>@mainPluginEntry.Name</PluginTitle>
                         (@mainPluginEntry.Platform.ToString()) @mainPluginEntry.Type.ToString()
-                    </div>
+                    </PluginHeader>
                     <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
                         @if (pluginHost.LoadedPlugins.ContainsKey(mainPluginEntry.Name))
                         {
@@ -37,7 +37,7 @@
                             </MudButton>
                         }
                     </MudButtonGroup>
-                </div>
+                </PluginBar>
             }
         </MudPaper>
     }

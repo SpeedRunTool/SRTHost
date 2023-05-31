@@ -9,56 +9,52 @@
     else
     {
         <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-            <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
+            <PageHeader>
                 <MudText Typo="Typo.h5">Plugins</MudText>
                 <MudSpacer />
-                <MudButton Color="Color.Secondary"
-                    Variant="Variant.Filled"
-                    Href="api/v1/Plugin/ReloadAll"
-                    Target="_blank"
-                >
+                <MudButton Color="Color.Secondary" Variant="Variant.Filled" Href="api/v1/Plugin/ReloadAll" Target="_blank">
                     Reload Plugins
                 </MudButton>
-            </div>
-                @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
-                {
-                    <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-4">
-                        <div class="flex items-center gap-4">
-                            <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
-                                <MudTooltip Text="@pluginStateValue.Status.ToString()">
-                                    <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
-                                </MudTooltip>
-                            </MudAvatar>
-                            <div class="flex justify-center items-center font-bold">@(pluginStateValue.PluginType?.Name ?? "Unknown")</div>
-                        </div>
-                        <MudHidden Breakpoint="Breakpoint.Xs">
-                            <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
-                                <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")"
-                                           Target="_blank">
-                                    Reload
-                                </MudButton>
-                                @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
-                                {
-                                    <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)"
-                                               Target="_blank">
-                                        @registeredPage
-                                    </MudButton>
-                                }
-                            </MudButtonGroup>
-                        </MudHidden>
-                        <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
-                            <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")" Target="_blank">
+            </PageHeader>
+            @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
+            {
+                <PluginBar>
+                    <PluginHeader>
+                        <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
+                            <MudTooltip Text="@pluginStateValue.Status.ToString()">
+                                <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
+                            </MudTooltip>
+                        </MudAvatar>
+                        <PluginTitle>
+                            @(pluginStateValue.PluginType?.Name ?? "Unknown")
+                        </PluginTitle>
+                    </PluginHeader>
+                    <MudHidden Breakpoint="Breakpoint.Xs">
+                        <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
+                            <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")" Target="_blank">
                                 Reload
                             </MudButton>
                             @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
                             {
-                            <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)" Target="_blank">
+                                <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)" Target="_blank">
                                     @registeredPage
                                 </MudButton>
                             }
-                        </MudHidden>
-                    </div>
-                }
+                        </MudButtonGroup>
+                    </MudHidden>
+                    <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
+                        <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")" Target="_blank">
+                            Reload
+                        </MudButton>
+                        @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
+                        {
+                            <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)" Target="_blank">
+                                @registeredPage
+                            </MudButton>
+                        }
+                    </MudHidden>
+                </PluginBar>
+            }
         </MudPaper>
     }
 </div>

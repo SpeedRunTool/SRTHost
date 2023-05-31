@@ -1,9 +1,9 @@
 ﻿@page "/Debug"
 <PageTitle>Debug</PageTitle>
 
-<div class="w-full h-full">
+<Container>
     <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-        <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
+        <PageHeader>
             <MudText Typo="Typo.h5">Debug</MudText>
             <MudSpacer />
             <MudHidden Breakpoint="Breakpoint.Xs">
@@ -36,16 +36,18 @@
                     Debug Manifest Plugin
                 </MudButton>
             </MudHidden>
-        </div>
+        </PageHeader>
         @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
         {
-            <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-4">
-                <div class="flex items-center gap-4">
+            <PluginBar>
+                <PluginHeader>
                     <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
                         <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
                     </MudAvatar>
-                    <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType?.Name</div>
-                </div>
+                    <PluginTitle>
+                        @pluginStateValue.PluginType?.Name
+                    </PluginTitle>
+                </PluginHeader>
                 <MudHidden Breakpoint="Breakpoint.Xs">
                     <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
                         <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Info")"
@@ -79,7 +81,7 @@
                         Generate Manifest
                     </MudButton>
                 </MudHidden>
-            </div>
+            </PluginBar>
         }
     </MudPaper>
-</div>
+</Container>

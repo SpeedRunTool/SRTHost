@@ -2,15 +2,12 @@
 @using System.Timers;
 @inject NavigationManager NavigationManager;
 
-
-<div class="min-h-screen flex items-center justify-center">
-    <div class="text-center">
-        <MudText Typo="Typo.h4">Operation @(Operation ?? "") completed @(Status ?? "").</MudText>
-        <MudText Typo="Typo.body1">
-            Redirecting to the home page in @((secondsDiff >= 0d ? secondsDiff : 0d).ToString("F0", CultureInfo.InvariantCulture)) @secondsString.
-        </MudText>
-    </div>
-</div>
+<FlexColContainer>
+    <MudText Typo="Typo.h4">Operation @(Operation ?? "") completed @(Status ?? "").</MudText>
+    <MudText Typo="Typo.body1">
+        Redirecting to the home page in @((secondsDiff >= 0d ? secondsDiff : 0d).ToString("F0", CultureInfo.InvariantCulture)) @secondsString.
+    </MudText>
+</FlexColContainer>
 
 @code {
     [Parameter] public string? Operation { get; set; }

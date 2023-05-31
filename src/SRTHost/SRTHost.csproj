@@ -68,6 +68,12 @@
 		<PackageReference Include="MudBlazor" Version="6.3.1" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Content Update="wwwroot\**">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
 	<Choose>
 		<When Condition="'$(Configuration)'=='Debug'">
 			<ItemGroup>

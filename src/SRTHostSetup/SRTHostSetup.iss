@@ -71,8 +71,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#AppPublishDir}\appsettings.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "{#AppPublishDir}\appsettings.Production.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "{#AppPublishDir}\appsettings.Development.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
-Source: "{#AppPublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#AppPublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Dirs]

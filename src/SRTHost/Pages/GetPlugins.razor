@@ -13,9 +13,9 @@
     else
     {
         <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-            <MudToolBar>
+            <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
                 <MudText Typo="Typo.h5">Get Plugins</MudText>
-            </MudToolBar>
+            </div>
             @foreach (((MainPluginEntry mainPluginEntry, ManifestPluginJson? manifestPluginJson), int index) in ManifestPlugins.Select((mainPluginEntry, index) => (mainPluginEntry.Value, index)))
             {
                 <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-1">

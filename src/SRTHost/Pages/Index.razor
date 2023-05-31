@@ -9,7 +9,7 @@
     else
     {
         <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-            <MudToolBar>
+            <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
                 <MudText Typo="Typo.h5">Plugins</MudText>
                 <MudSpacer />
                 <MudButton Color="Color.Secondary"
@@ -19,7 +19,7 @@
                 >
                     Reload Plugins
                 </MudButton>
-            </MudToolBar>
+            </div>
                 @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
                 {
                     <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-4">

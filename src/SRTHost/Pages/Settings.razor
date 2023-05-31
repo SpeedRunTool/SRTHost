@@ -3,13 +3,13 @@
 
 <div class="w-full h-full">
     <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-        <MudToolBar>
+        <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
             <MudText Typo="Typo.h5">Settings</MudText>
             <MudSpacer />
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveSettings">
                 Save Settings
             </MudButton>
-        </MudToolBar>
+        </div>
         <MudCheckBox @bind-Checked="@ShowDebugMenu" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
     </MudPaper>
 </div>

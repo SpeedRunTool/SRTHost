@@ -1,37 +1,52 @@
 ﻿@page "/Debug"
 <PageTitle>Debug</PageTitle>
 
-
 <div class="w-full h-full">
     <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
-        <MudToolBar>
+        <div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
             <MudText Typo="Typo.h5">Debug</MudText>
             <MudSpacer />
-            <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
-                <MudButton Href="api/v1/Plugin" Target="_blank">
+            <MudHidden Breakpoint="Breakpoint.Xs">
+                <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
+                    <MudButton Href="api/v1/Plugin" Target="_blank">
+                        Loaded Plugins
+                    </MudButton>
+                    <MudButton Href="api/v1/Debug/GenerateMainJson" Target="_blank">
+                        Debug Main
+                    </MudButton>
+                    <MudButton Href="api/v1/Debug/GenerateManifestHost" Target="_blank">
+                        Debug Manifest Host
+                    </MudButton>
+                    <MudButton Href="api/v1/Debug/GenerateManifestPlugin" Target="_blank">
+                        Debug Manifest Plugin
+                    </MudButton>
+                </MudButtonGroup>
+            </MudHidden>
+            <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
+                <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="api/v1/Plugin" Target="_blank">
                     Loaded Plugins
                 </MudButton>
-                <MudButton Href="api/v1/Debug/GenerateMainJson" Target="_blank">
+                <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="api/v1/Debug/GenerateMainJson" Target="_blank">
                     Debug Main
                 </MudButton>
-                <MudButton Href="api/v1/Debug/GenerateManifestHost" Target="_blank">
+                <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="api/v1/Debug/GenerateManifestHost" Target="_blank">
                     Debug Manifest Host
                 </MudButton>
-                <MudButton Href="api/v1/Debug/GenerateManifestPlugin" Target="_blank">
+                <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="api/v1/Debug/GenerateManifestPlugin" Target="_blank">
                     Debug Manifest Plugin
                 </MudButton>
-            </MudButtonGroup>
-        </MudToolBar>
+            </MudHidden>
+        </div>
         @foreach ((PluginStateValue<IPlugin> pluginStateValue, int index) in pluginHost.LoadedPlugins.Values.Select((psv, i) => (psv, i)))
         {
-            <MudToolBar>
-                <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-1">
-                    <div class="flex items-center gap-4">
-                        <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
-                            <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
-                        </MudAvatar>
-                        <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType?.Name</div>
-                    </div>
+            <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-4">
+                <div class="flex items-center gap-4">
+                    <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
+                        <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
+                    </MudAvatar>
+                    <div class="flex justify-center items-center font-bold">@pluginStateValue.PluginType?.Name</div>
+                </div>
+                <MudHidden Breakpoint="Breakpoint.Xs">
                     <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
                         <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Info")"
                                    Target="_blank">
@@ -49,8 +64,22 @@
                             Generate Manifest
                         </MudButton>
                     </MudButtonGroup>
-                </div>
-            </MudToolBar>
+                </MudHidden>
+                <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
+                    <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Info")" Target="_blank">
+                        Info
+                    </MudButton>
+                    @if (pluginStateValue.Plugin! is IPluginProducer)
+                    {
+                        <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Data")" Target="_blank">
+                            Data
+                        </MudButton>
+                    }
+                    <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "GenerateManifest")" Target="_blank">
+                        Generate Manifest
+                    </MudButton>
+                </MudHidden>
+            </div>
         }
     </MudPaper>
 </div>

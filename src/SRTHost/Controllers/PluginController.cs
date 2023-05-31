@@ -54,7 +54,7 @@ namespace SRTHost.Controllers
             try
             {
                 await pluginHost.ReloadPluginsAsync(CancellationToken.None).ConfigureAwait(false);
-                return Ok("Success");
+                return LocalRedirect("/OperationStatus/reload%20all/successfully");
             }
             catch (Exception ex)
             {
@@ -73,7 +73,7 @@ namespace SRTHost.Controllers
                 // TODO: Implement load but not instantiate and expose either internal or public.
                 //await pluginHost.LoadPlugin(plugin, CancellationToken.None);
                 await Task.CompletedTask;
-                return Ok("Success");
+                return LocalRedirect("/OperationStatus/load/successfully");
             }
             catch (Exception ex)
             {
@@ -92,7 +92,7 @@ namespace SRTHost.Controllers
                 // TODO: Implement unload and expose either internal or public.
                 //await pluginHost.UnloadPlugin(plugin, CancellationToken.None);
                 await Task.CompletedTask;
-                return Ok("Success");
+                return LocalRedirect("/OperationStatus/unload/successfully");
             }
             catch (Exception ex)
             {
@@ -109,7 +109,7 @@ namespace SRTHost.Controllers
             try
             {
                 await pluginHost.ReloadPluginAsync(plugin, CancellationToken.None);
-                return Ok("Success");
+                return LocalRedirect("/OperationStatus/reload/successfully");
             }
             catch (Exception ex)
             {
@@ -225,114 +225,6 @@ namespace SRTHost.Controllers
             }
             else
                 return NotFound($"Plugin \"{plugin}\" not found.");
-        }
-
-        // GET: api/v1/Plugin/DebugMain
-        [HttpGet("DebugMain", Name = "DebugMainGet")]
-        public IActionResult DebugMainGet()
-        {
-            return new JsonResult(
-                new MainJson()
-                {
-                    Host = new MainHostEntry()
-                    {
-                        ManifestURL = new Uri("https://raw.githubusercontent.com/SpeedRunTool/SRTHost/develop/main.json")
-                    },
-                    Plugins = new MainPluginEntry[]
-                    {
-                            new MainPluginEntry()
-                            {
-                                Name = "SRTProducerTest1",
-                                Type = MainPluginTypeEnum.Producer,
-                                Platform = MainPluginPlatformEnum.x64,
-                                ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTProducerTest1/main/manifest.json")
-                            },
-                            new MainPluginEntry()
-                            {
-                                Name = "SRTConsumerTest1",
-                                Type = MainPluginTypeEnum.Consumer,
-                                Platform = MainPluginPlatformEnum.x64,
-                                ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest1/main/manifest.json")
-                            },
-                            new MainPluginEntry()
-                            {
-                                Name = "SRTConsumerTest2",
-                                Type = MainPluginTypeEnum.Consumer,
-                                Platform = MainPluginPlatformEnum.x64,
-                                ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest2/main/manifest.json")
-                            },
-                    }
-                },
-                new JsonSerializerOptions()
-                {
-                    WriteIndented = true
-                });
-        }
-
-        // GET: api/v1/Plugin/DebugManifestHost
-        [HttpGet("DebugManifestHost", Name = "DebugManifestHostGet")]
-        public IActionResult DebugManifestHostGet()
-        {
-            return new JsonResult(
-                new ManifestHostJson()
-                {
-                    Releases = new ManifestReleaseJson[]
-                    {
-                        new ManifestReleaseJson()
-                        {
-                            Version = "1.0.0.1",
-                            DownloadURL = new Uri("https://github.com/SpeedRunTool/SRTHost/releases/download/1.0.0.1/SRTHost-v1.0.0.1.zip")
-                        },
-                        new ManifestReleaseJson()
-                        {
-                            Version = "1.0.0.0",
-                            DownloadURL = new Uri("https://github.com/SpeedRunTool/SRTHost/releases/download/1.0.0.0/SRTHost-v1.0.0.0.zip")
-                        }
-                    }
-                },
-                new JsonSerializerOptions()
-                {
-                    WriteIndented = true
-                });
-        }
-
-        // GET: api/v1/Plugin/DebugManifestPlugin
-        [HttpGet("DebugManifestPlugin", Name = "DebugManifestPluginGet")]
-        public IActionResult DebugManifestPluginGet()
-        {
-            return new JsonResult(
-                new ManifestPluginJson()
-                {
-                    Contributors = new string[]
-                    {
-                        "TestAuthor1",
-                        "TestAuthor2"
-                    },
-                    Tags = new string[]
-                    {
-                        "Consumer",
-                        "UI",
-                        "Overlay",
-                        "DirectX",
-                    },
-                    Releases = new ManifestReleaseJson[]
-                    {
-                        new ManifestReleaseJson()
-                        {
-                            Version = "1.0.0.1",
-                            DownloadURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest1/releases/download/1.0.0.1/SRTConsumerTest1-v1.0.0.1.zip")
-                        },
-                        new ManifestReleaseJson()
-                        {
-                            Version = "1.0.0.0",
-                            DownloadURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest1/releases/download/1.0.0.0/SRTConsumerTest1-v1.0.0.0.zip")
-                        }
-                    }
-                },
-                new JsonSerializerOptions()
-                {
-                    WriteIndented = true
-                });
         }
     }
 }

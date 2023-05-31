@@ -1,0 +1,54 @@
+﻿@page "/OperationStatus/{operation}/{status}"
+@using System.Timers;
+@inject NavigationManager NavigationManager;
+
+
+<div class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+        <MudText Typo="Typo.h4">Operation @(Operation ?? "") completed @(Status ?? "").</MudText>
+        <MudText Typo="Typo.body1">
+            Redirecting to the home page in @((secondsDiff >= 0d ? secondsDiff : 0d).ToString("F0", CultureInfo.InvariantCulture)) @secondsString.
+        </MudText>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Operation { get; set; }
+    [Parameter] public string? Status { get; set; }
+
+    private const int DELAY_TIME_SECONDS = 5;
+
+    private int delayCount = DELAY_TIME_SECONDS;
+    private Timer timer = new Timer(100);
+    private DateTime startDateTime = DateTime.Now;
+    private double secondsDiff = DELAY_TIME_SECONDS;
+    private string secondsString = "seconds";
+
+    // Ref(s): https://stackoverflow.com/a/58077203
+    // Timer on OnAfterRender rather than OnInitialized
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            timer.Elapsed += TimerElapsed;
+            timer.Start();
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    private async void TimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        secondsDiff = delayCount - (e.SignalTime - startDateTime).TotalSeconds;
+        if (secondsDiff < 2 && secondsDiff > 0)
+            secondsString = "second";
+        else if (secondsDiff <= 0)
+        {
+            timer.Stop();
+            await InvokeAsync(() => NavigationManager.NavigateTo("/", true));
+        }
+        else
+            secondsString = "seconds";
+
+        await InvokeAsync(StateHasChanged);
+    }
+}

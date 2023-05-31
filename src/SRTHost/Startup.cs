@@ -81,7 +81,11 @@ namespace SRTHost
                 OnPrepareResponse = (StaticFileResponseContext staticFileResponseContext) =>
                 {
                     staticFileResponseContext.Context.Response.Headers.TryAdd("X-SRT-Host", FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, PluginHost.APP_EXE_NAME)).ProductVersion);
-                }
+                },
+                FileProvider = new CompositeFileProvider(
+                    new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
+                    new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "plugins"))
+                    )
             });
             app.UseStaticFiles();
 

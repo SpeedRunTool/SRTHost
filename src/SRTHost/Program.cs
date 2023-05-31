@@ -13,9 +13,6 @@ namespace SRTHost
         private const bool UTC_TIMESTAMP = true;
         private const string TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss.fff K";
 
-		public static string ContentRoot => Directory.GetCurrentDirectory();
-		public static string WebRoot => Path.Combine(Directory.GetCurrentDirectory(), "plugins");
-
 		public static async Task Main(params string[] args)
         {
             using (IWebHost host = CreateBuilder(args).Build())
@@ -25,8 +22,6 @@ namespace SRTHost
         public static IWebHostBuilder CreateBuilder(string[] args) =>
             WebHost
             .CreateDefaultBuilder(args)
-			.UseContentRoot(ContentRoot)
-			.UseWebRoot(WebRoot) // Set the Web Root to the same folder as the Content Root + "/plugins".
 			.ConfigureLogging(ConfigureLogging)
 			.UseStaticWebAssets()
 			.UseStartup<Startup>();

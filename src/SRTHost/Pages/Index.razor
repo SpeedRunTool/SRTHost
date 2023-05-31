@@ -24,8 +24,10 @@
                 {
                     <div class="w-full flex flex-wrap justify-between items-center px-6 py-2 gap-4">
                         <div class="flex items-center gap-4">
-                        <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
-                            <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
+                            <MudAvatar Color="@SRTHost.Helpers.GetRunningStatusColor(pluginStateValue)" Variant="Variant.Filled">
+                                <MudTooltip Text="@pluginStateValue.Status.ToString()">
+                                    <MudIcon Color="Color.Dark" Icon="@SRTHost.Helpers.GetRunningStatusIcon(pluginStateValue)" />
+                                </MudTooltip>
                             </MudAvatar>
                             <div class="flex justify-center items-center font-bold">@(pluginStateValue.PluginType?.Name ?? "Unknown")</div>
                         </div>

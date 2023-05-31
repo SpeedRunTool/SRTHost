@@ -1,0 +1,10 @@
+﻿@inherits Microsoft.AspNetCore.Components.ComponentBase
+
+<div class="w-full h-full">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

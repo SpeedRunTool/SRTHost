@@ -1,0 +1,10 @@
+﻿@inherits Microsoft.AspNetCore.Components.ComponentBase
+
+<div class="w-full flex flex-wrap justify-between items-center px-6 py-4 gap-4">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

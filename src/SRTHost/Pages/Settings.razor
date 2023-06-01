@@ -1,4 +1,5 @@
 ﻿@page "/Settings"
+
 <PageTitle>Settings</PageTitle>
 
 <Container>
@@ -10,19 +11,24 @@
                 Save Settings
             </MudButton>
         </PageHeader>
-        <MudCheckBox @bind-Checked="@ShowDebugMenu" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
+        <MudCheckBox @bind-Checked="@HostConfiguration.ShowDebugMenu" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
     </MudPaper>
 </Container>
 
 @code
 {
-    public bool ShowDebugMenu { get; set; }
+    public HostConfiguration HostConfiguration { get; set; } = new HostConfiguration();
+
+    protected override Task OnInitializedAsync()
+    {
+        if (pluginHost.ConfigurationDB is not null)
+            HostConfiguration = pluginHost.ConfigurationDB.DbLoadConfiguration().ConfigDictionaryToModel<HostConfiguration>();
+        return base.OnInitializedAsync();
+    }
 
     public void SaveSettings()
     {
-        Debugger.Break();
+        if (pluginHost.ConfigurationDB is not null)
+            pluginHost.ConfigurationDB.DbSaveConfiguration(HostConfiguration.ModelToConfigDictionary());
     }
-
-    //Configuration = (IPluginConfiguration)DbLoadConfiguration().ConfigDictionaryToModel<PluginConfiguration>()
-    //DbSaveConfiguration(((PluginConfiguration)Configuration).ModelToConfigDictionary());
 }

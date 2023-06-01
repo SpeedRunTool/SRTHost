@@ -1,14 +1,9 @@
-﻿using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -17,8 +12,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
-using System.Runtime.Loader;
-using System.Drawing.Text;
 using System.Runtime.CompilerServices;
 
 namespace SRTHost
@@ -27,21 +20,20 @@ namespace SRTHost
     {
 		// Constants
 		public const string APP_NAME = "SRT Host";
-		public const string APP_ARCHITECTURE_X64 = "64-bit (x64)";
+        public const string APP_EXE_PREFIX = "SRTHost";
+        public const string APP_ARCHITECTURE_X64 = "64-bit (x64)";
 		public const string APP_ARCHITECTURE_X86 = "32-bit (x86)";
 #if x64
-		public const string APP_EXE_NAME = "SRTHost64.exe";
+		public const string APP_EXE_NAME = $"{APP_EXE_PREFIX}64.exe";
 		public const string APP_ARCHITECTURE = APP_ARCHITECTURE_X64;
 #else
-        public const string APP_EXE_NAME = "SRTHost32.exe";
+        public const string APP_EXE_NAME = $"{APP_EXE_PREFIX}32.exe";
         public const string APP_ARCHITECTURE = APP_ARCHITECTURE_X86;
 #endif
-		public const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
+        public const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
-        private IDictionary<string, PluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, PluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
+        public ConfigurationDB<PluginHost>? ConfigurationDB => configurationDB;
         public IReadOnlyDictionary<string, PluginStateValue<IPlugin>> LoadedPlugins => loadedPlugins.AsReadOnly();
-
-        //private HashSet<string> failedPlugins = new HashSet<string>();
         //public IReadOnlySet<string> FailedPlugins => failedPlugins;
 
         public T? GetPluginReference<T>(string pluginName) where T : class, IPlugin
@@ -56,8 +48,11 @@ namespace SRTHost
         // Misc. variables
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
+        private ConfigurationDB<PluginHost>? configurationDB;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
         //private readonly Timer failedPluginRetryTimer;
+        private IDictionary<string, PluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, PluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
+        //private HashSet<string> failedPlugins = new HashSet<string>();
 
         public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
         {
@@ -109,10 +104,12 @@ namespace SRTHost
 			if (!pluginsDir.Exists)
 				pluginsDir.Create();
 
-			// Create .plugindb directory if it does not exist.
-			DirectoryInfo pluginDbDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, ".plugindb"));
-			if (!pluginDbDir.Exists)
-				pluginDbDir.Create();
+			// Create configuration database directory if it does not exist.
+			DirectoryInfo configDbDir = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, ConfigurationDB<PluginHost>.DB_CONFIGURATION_FOLDER_NAME));
+			if (!configDbDir.Exists)
+				configDbDir.Create();
+
+            configurationDB = new ConfigurationDB<PluginHost>(APP_EXE_PREFIX);
 
             // Initialize and start plugins.
             await foreach (PluginStateValue<IPlugin> pluginStateValue in LoadPluginsAsync(cancellationToken))
@@ -127,6 +124,9 @@ namespace SRTHost
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             await UnloadPluginsAsync(cancellationToken);
+            if (configurationDB is not null)
+                await configurationDB.DisposeAsync();
+            configurationDB = default;
         }
 
         [GeneratedRegex(@"^(?<Protocol>https?)://(?<Host>.*?):?(?<Port>\d+)?$", RegexOptions.CultureInvariant | RegexOptions.Singleline)]

@@ -58,8 +58,8 @@ namespace SRTHost
             if (descriptor is not null)
                 services.Remove(descriptor);
 			services.AddSingleton<IViewCompilerProvider, PluginViewCompilerProvider>();
-
-			services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
+            services.AddScoped<CascadingStateChanger>();
+            services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
 			services.AddSingleton<IPluginHost>(s => s.GetRequiredService<PluginHost>());
 			services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
         }

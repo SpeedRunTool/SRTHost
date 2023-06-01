@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Runtime.CompilerServices;
+using System.Configuration;
 
 namespace SRTHost
 {
@@ -32,7 +33,7 @@ namespace SRTHost
 #endif
         public const string APP_DISPLAY_NAME = APP_NAME + " " + APP_ARCHITECTURE;
 
-        public ConfigurationDB<PluginHost>? ConfigurationDB => configurationDB;
+        public HostConfiguration HostConfiguration { get; private set; } = new HostConfiguration();
         public IReadOnlyDictionary<string, PluginStateValue<IPlugin>> LoadedPlugins => loadedPlugins.AsReadOnly();
         //public IReadOnlySet<string> FailedPlugins => failedPlugins;
 
@@ -110,6 +111,7 @@ namespace SRTHost
 				configDbDir.Create();
 
             configurationDB = new ConfigurationDB<PluginHost>(APP_EXE_PREFIX);
+            HostConfiguration = configurationDB.DbLoadConfiguration().ConfigDictionaryToModel<HostConfiguration>();
 
             // Initialize and start plugins.
             await foreach (PluginStateValue<IPlugin> pluginStateValue in LoadPluginsAsync(cancellationToken))
@@ -125,8 +127,17 @@ namespace SRTHost
         {
             await UnloadPluginsAsync(cancellationToken);
             if (configurationDB is not null)
+            {
+                SaveConfigDB();
                 await configurationDB.DisposeAsync();
+            }
             configurationDB = default;
+        }
+
+        public void SaveConfigDB()
+        {
+            if (configurationDB is not null)
+                configurationDB.DbSaveConfiguration(HostConfiguration.ModelToConfigDictionary());
         }
 
         [GeneratedRegex(@"^(?<Protocol>https?)://(?<Host>.*?):?(?<Port>\d+)?$", RegexOptions.CultureInvariant | RegexOptions.Singleline)]

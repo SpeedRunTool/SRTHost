@@ -13,7 +13,7 @@
                 Save Settings
             </MudButton>
         </PageHeader>
-        <MudCheckBox T="bool" Checked=pluginHost.HostConfiguration.ShowDebugMenu CheckedChanged="(value) => SettingChanged(nameof(pluginHost.HostConfiguration.ShowDebugMenu), value)" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
+        <MudCheckBox T="bool" Checked=pluginHost.HostConfiguration.ShowDebugMenu CheckedChanged="(value) => SRTPluginBase.Helpers.MudSettingChanged(cascadingStateChanger, () => SettingChanged(nameof(pluginHost.HostConfiguration.ShowDebugMenu), value))" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
     </MudPaper>
 </Container>
 
@@ -22,17 +22,12 @@
     private static PropertyInfo[] hostConfigurationProperties => typeof(HostConfiguration).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
     private static IReadOnlyDictionary<string, MethodInfo?> hostConfigurationPropertySetters = hostConfigurationProperties.ToDictionary(p => p.Name, p => p.SetMethod);
 
-    private Task SettingChanged<T>(string propertyName, T value)
+    private void SettingChanged<T>(string propertyName, T value)
     {
         if (hostConfigurationPropertySetters.ContainsKey(propertyName))
             hostConfigurationPropertySetters[propertyName]?.Invoke(pluginHost.HostConfiguration, new object?[] { value });
         SaveSettings();
-        cascadingStateChanger.NotifyStateChanged(); // Allows us to re-render another component (NavMenu) from this component. StateHasChanged alone does not allow us to do that.
-        return Task.CompletedTask;
     }
 
-    public void SaveSettings()
-    {
-        pluginHost.SaveConfigDB();
-    }
+    public void SaveSettings() => pluginHost.SaveConfigDB();
 }

@@ -13,7 +13,7 @@
                 Save Settings
             </MudButton>
         </PageHeader>
-        <MudCheckBox T="bool" Checked=pluginHost.HostConfiguration.ShowDebugMenu CheckedChanged="(value) => SRTPluginBase.Helpers.MudSettingChanged(cascadingStateChanger, () => SettingChanged(nameof(pluginHost.HostConfiguration.ShowDebugMenu), value))" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
+        <MudCheckBox T="bool" Checked=pluginHost.HostConfiguration.ShowDebugMenu CheckedChanged="(value) => SRTPluginBase.Helpers.MudSettingChanged(SettingChanged, nameof(pluginHost.HostConfiguration.ShowDebugMenu), value, cascadingStateChanger)" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
     </MudPaper>
 </Container>
 

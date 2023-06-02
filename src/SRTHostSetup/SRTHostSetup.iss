@@ -23,13 +23,17 @@
 #define AppCopyright GetFileCopyright(AppExe64Path)
 #endif
 
-#ifndef AppVersion
-#define AppVersion GetFileProductVersion(AppExe64Path)
+#ifndef AppFileVersion
+#define AppFileVersion GetFileVersionString(AppExe64Path)
+#endif
+
+#ifndef AppProductVersion
+#define AppProductVersion GetFileProductVersion(AppExe64Path)
 #endif
 
 ; This is defined via command-line in the CI/CD pipeline as either -alpha, -beta, -RC, or an empty string
 #ifndef VersionTag
-#define VersionTag AppVersion
+#define VersionTag AppProductVersion
 #endif
 
 [Setup]
@@ -37,15 +41,15 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{B10F5521-C2F3-4A9D-AB05-1E0BF0A27AC1}
 AppName={#AppName}
-AppVersion={#AppVersion}
-;AppVerName={#AppName} {#AppVersion}
+AppVersion={#AppProductVersion}
+;AppVerName={#AppName} {#AppProductVersion}
 AppPublisher={#AppCompany}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
 VersionInfoCompany={#AppCompany}
 VersionInfoCopyright={#AppCopyright}
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#AppFileVersion}
 DefaultDirName={localappdata}\{#AppCompany}\{#AppExeNamePrefix}
 DisableProgramGroupPage=yes
 UsePreviousAppDir=yes

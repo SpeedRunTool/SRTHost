@@ -31,24 +31,24 @@
                     </PluginHeader>
                     <MudHidden Breakpoint="Breakpoint.Xs">
                         <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
-                            <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")" Target="_blank">
+                            <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")" Target="_self">
                                 Reload
                             </MudButton>
                             @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
                             {
-                                <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)" Target="_blank">
+                                <MudButton Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)" Target="_self">
                                     @registeredPage
                                 </MudButton>
                             }
                         </MudButtonGroup>
                     </MudHidden>
                     <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
-                        <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")" Target="_blank">
+                        <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", "Reload")" Target="_self">
                             Reload
                         </MudButton>
                         @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
                         {
-                            <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)" Target="_blank">
+                            <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" Href="@SRTHost.Helpers.GetPluginName(@pluginStateValue.PluginType?.Name ?? "Unknown", @registeredPage)" Target="_self">
                                 @registeredPage
                             </MudButton>
                         }

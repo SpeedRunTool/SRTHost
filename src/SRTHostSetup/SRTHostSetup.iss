@@ -88,3 +88,66 @@ Name: "{userprograms}\{#AppName} {#SuffixText32Bit}"; Filename: "{app}\{#AppExeN
 Name: "{userprograms}\{#AppName} {#SuffixText64Bit}"; Filename: "{app}\{#AppExeNamePrefix}64.exe"
 Name: "{userdesktop}\{#AppName} {#SuffixText32Bit}"; Filename: "{app}\{#AppExeNamePrefix}32.exe"; Tasks: desktopicon
 Name: "{userdesktop}\{#AppName} {#SuffixText64Bit}"; Filename: "{app}\{#AppExeNamePrefix}64.exe"; Tasks: desktopicon
+
+[Code]
+
+function OnDownloadProgress(const Url, FileName: String; const Progress, ProgressMax: Int64): Boolean;
+begin
+  if Progress = ProgressMax then
+    Log(Format('Successfully downloaded file to {tmp}: %s', [FileName]));
+  Result := True;
+end;
+
+procedure InitializeWizard;
+begin
+  DownloadPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), SetupMessage(msgPreparingDesc), @OnDownloadProgress);
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  if CurPageID = wpReady then begin
+    DownloadPage.Clear;
+
+    if (not IsDotNetInstalled('Microsoft.AspNetCore.App', '7.0.0', 'x64')) OR (not IsDotNetInstalled('Microsoft.AspNetCore.App', '7.0.0', 'x86'))
+    begin
+        DownloadPage.Add('https://aka.ms/dotnet/7.0/dotnet-hosting-win.exe', 'dotnet-hosting-win.exe', '');
+    end
+
+    if not IsDotNetInstalled('Microsoft.WindowsDesktop.App', '7.0.0', 'x64')
+    begin
+        DownloadPage.Add('https://aka.ms/dotnet/7.0/windowsdesktop-runtime-win-x64.exe', 'windowsdesktop-runtime-win-x64.exe', '');
+    end
+
+    if not IsDotNetInstalled('Microsoft.WindowsDesktop.App', '7.0.0', 'x86')
+    begin
+        DownloadPage.Add('https://aka.ms/dotnet/7.0/windowsdesktop-runtime-win-x86.exe', 'windowsdesktop-runtime-win-x86.exe', '');
+    end
+
+    DownloadPage.Show;
+    try
+      try
+        DownloadPage.Download; // This downloads the files to {tmp}
+        Result := True;
+      except
+        if DownloadPage.AbortedByUser then
+          Log('Aborted by user.')
+        else
+          SuppressibleMsgBox(AddPeriod(GetExceptionMessage), mbCriticalError, MB_OK, IDOK);
+        Result := False;
+      end;
+    finally
+      DownloadPage.Hide;
+    end;
+  end else
+    Result := True;
+end;
+
+function IsDotNetInstalled(const ProductName, ProductVersion, ProductArch: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  if not FileExists(ExpandConstant('{tmp}{\}') + 'netcorecheck' + ProductArch + '.exe') then begin
+    ExtractTemporaryFile('netcorecheck' + ProductArch + '.exe');
+  end;
+  Result := ShellExec('', ExpandConstant('{tmp}{\}') + 'netcorecheck' + ProductArch + '.exe', '-n ' + ProductName + ' -v ' + ProductVersion, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;

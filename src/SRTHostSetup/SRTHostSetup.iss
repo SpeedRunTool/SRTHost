@@ -78,6 +78,8 @@ Source: "{#AppPublishDir}\appsettings.Production.json"; DestDir: "{app}"; Flags:
 Source: "{#AppPublishDir}\appsettings.Development.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#AppPublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "NetCoreCheck_x64.exe"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "NetCoreCheck_x86.exe"; DestDir: "{tmp}"; Flags: dontcopy
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Dirs]
@@ -116,6 +118,24 @@ begin
   Result := ShellExec('', ExpandConstant('{tmp}{\}') + 'netcorecheck_' + ProductArch + '.exe', '-n ' + ProductName + ' -v ' + ProductVersion, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
 end;
 
+function RunProgram(const Filename, Params: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := False;
+  if ShellExec('', Filename, Params, '', SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode) then begin
+    if ResultCode = 0 then begin // ERROR_SUCCESS
+      Result := True;
+    end
+    else if ResultCode = 1641 then begin // ERROR_SUCCESS_REBOOT_INITIATED
+      Result := True; // Reboot needed.
+    end
+    else if ResultCode = 3010 then begin // ERROR_SUCCESS_REBOOT_REQUIRED
+      Result := True; // Reboot needed.
+    end;
+  end;
+end;
+
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   if CurPageID = wpReady then begin
@@ -137,6 +157,19 @@ begin
     try
       try
         DownloadPage.Download; // This downloads the files to {tmp}
+        
+        if FileExists(ExpandConstant('{tmp}{\}') + 'dotnet-hosting-win.exe') then begin
+          RunProgram(ExpandConstant('{tmp}{\}') + 'dotnet-hosting-win.exe', 'lcid ' + IntToStr(GetUILanguage) + ' /passive /norestart');
+        end;
+        
+        if FileExists(ExpandConstant('{tmp}{\}') + 'windowsdesktop-runtime-win-x64.exe') then begin
+          RunProgram(ExpandConstant('{tmp}{\}') + 'windowsdesktop-runtime-win-x64.exe', 'lcid ' + IntToStr(GetUILanguage) + ' /passive /norestart');
+        end;
+        
+        if FileExists(ExpandConstant('{tmp}{\}') + 'windowsdesktop-runtime-win-x86.exe') then begin
+          RunProgram(ExpandConstant('{tmp}{\}') + 'windowsdesktop-runtime-win-x86.exe', 'lcid ' + IntToStr(GetUILanguage) + ' /passive /norestart');
+        end;
+        
         Result := True;
       except
         if DownloadPage.AbortedByUser then

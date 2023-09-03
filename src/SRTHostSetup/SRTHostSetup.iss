@@ -29,6 +29,7 @@
 
 #ifndef AppProductVersion
 #define AppProductVersion GetFileProductVersion(AppExe64Path)
+;#define AppProductVersion "4.0.0-beta"
 #endif
 
 ; This is defined via command-line in the CI/CD pipeline as either -alpha, -beta, -RC, or an empty string
@@ -90,6 +91,8 @@ Name: "{userdesktop}\{#AppName} {#SuffixText32Bit}"; Filename: "{app}\{#AppExeNa
 Name: "{userdesktop}\{#AppName} {#SuffixText64Bit}"; Filename: "{app}\{#AppExeNamePrefix}64.exe"; Tasks: desktopicon
 
 [Code]
+var
+  DownloadPage: TDownloadWizardPage;
 
 function OnDownloadProgress(const Url, FileName: String; const Progress, ProgressMax: Int64): Boolean;
 begin
@@ -103,25 +106,32 @@ begin
   DownloadPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), SetupMessage(msgPreparingDesc), @OnDownloadProgress);
 end;
 
+function IsDotNetInstalled(const ProductName, ProductVersion, ProductArch: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  if not FileExists(ExpandConstant('{tmp}{\}') + 'netcorecheck_' + ProductArch + '.exe') then begin
+    ExtractTemporaryFile('netcorecheck_' + ProductArch + '.exe');
+  end;
+  Result := ShellExec('', ExpandConstant('{tmp}{\}') + 'netcorecheck_' + ProductArch + '.exe', '-n ' + ProductName + ' -v ' + ProductVersion, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   if CurPageID = wpReady then begin
     DownloadPage.Clear;
 
-    if (not IsDotNetInstalled('Microsoft.AspNetCore.App', '7.0.0', 'x64')) OR (not IsDotNetInstalled('Microsoft.AspNetCore.App', '7.0.0', 'x86'))
-    begin
+    if (not IsDotNetInstalled('Microsoft.AspNetCore.App', '7.0.0', 'x64') OR not IsDotNetInstalled('Microsoft.AspNetCore.App', '7.0.0', 'x86')) then begin
         DownloadPage.Add('https://aka.ms/dotnet/7.0/dotnet-hosting-win.exe', 'dotnet-hosting-win.exe', '');
-    end
+    end;
 
-    if not IsDotNetInstalled('Microsoft.WindowsDesktop.App', '7.0.0', 'x64')
-    begin
+    if (not IsDotNetInstalled('Microsoft.WindowsDesktop.App', '7.0.0', 'x64')) then begin
         DownloadPage.Add('https://aka.ms/dotnet/7.0/windowsdesktop-runtime-win-x64.exe', 'windowsdesktop-runtime-win-x64.exe', '');
-    end
+    end;
 
-    if not IsDotNetInstalled('Microsoft.WindowsDesktop.App', '7.0.0', 'x86')
-    begin
+    if not IsDotNetInstalled('Microsoft.WindowsDesktop.App', '7.0.0', 'x86') then begin
         DownloadPage.Add('https://aka.ms/dotnet/7.0/windowsdesktop-runtime-win-x86.exe', 'windowsdesktop-runtime-win-x86.exe', '');
-    end
+    end;
 
     DownloadPage.Show;
     try
@@ -140,14 +150,4 @@ begin
     end;
   end else
     Result := True;
-end;
-
-function IsDotNetInstalled(const ProductName, ProductVersion, ProductArch: String): Boolean;
-var
-  ResultCode: Integer;
-begin
-  if not FileExists(ExpandConstant('{tmp}{\}') + 'netcorecheck' + ProductArch + '.exe') then begin
-    ExtractTemporaryFile('netcorecheck' + ProductArch + '.exe');
-  end;
-  Result := ShellExec('', ExpandConstant('{tmp}{\}') + 'netcorecheck' + ProductArch + '.exe', '-n ' + ProductName + ' -v ' + ProductVersion, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
 end;

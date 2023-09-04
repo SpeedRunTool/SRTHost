@@ -146,6 +146,11 @@ jobs:
             & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CODE_SIGN_CERTIFICATE_PASS}}" /fd SHA256 /as "$fileToSign"
             & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "CodeSign.pfx" /p "${{secrets.CODE_SIGN_CERTIFICATE_PASS}}" /fd SHA512 /as "$fileToSign"
         }
+
+    - name: Download NetCoreCheck Latest
+      run: |
+        ./src/SRTHostSetup/DownloadNetCoreCheckLatest.ps1
+        Move-Item -Path .\NetCoreCheck_*.exe -Destination src/SRTHostSetup
       
     - name: Create setup
       run: ."${Env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" "/DVersionTag=${{needs.build.outputs.version}}" "src/SRTHostSetup/SRTHostSetup.iss"

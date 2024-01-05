@@ -1,15 +1,15 @@
 ﻿using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using SRTPluginBase;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using SRTHost.Structures;
+using SRTPluginBase;
 
 namespace SRTHost.Controllers
 {
@@ -46,8 +46,8 @@ namespace SRTHost.Controllers
         }
 
         // GET: api/v1/Plugin/ReloadAll
-        [HttpGet("ReloadAll", Name = "PluginReloadAllGet")]
-        public async Task<IActionResult> PluginReloadAllGet()
+        [HttpPost("ReloadAll", Name = "PluginReloadAllPost")]
+        public async Task<IActionResult> PluginReloadAllPost()
         {
             LogPluginReloadAllGet();
 
@@ -63,8 +63,8 @@ namespace SRTHost.Controllers
         }
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Load
-        [HttpGet("{Plugin}/Load", Name = "PluginLoadGet")]
-        public async Task<IActionResult> PluginLoadGet(string plugin)
+        [HttpPost("{Plugin}/Load", Name = "PluginLoadPost")]
+        public async Task<IActionResult> PluginLoadPost(string plugin)
         {
             LogPluginLoadGet(plugin);
 
@@ -82,8 +82,8 @@ namespace SRTHost.Controllers
         }
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Unload
-        [HttpGet("{Plugin}/Unload", Name = "PluginUnloadGet")]
-        public async Task<IActionResult> PluginUnloadGet(string plugin)
+        [HttpPost("{Plugin}/Unload", Name = "PluginUnloadPost")]
+        public async Task<IActionResult> PluginUnloadPost(string plugin)
         {
             LogPluginUnloadGet(plugin);
 
@@ -101,8 +101,8 @@ namespace SRTHost.Controllers
         }
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Reload
-        [HttpGet("{Plugin}/Reload", Name = "PluginReloadGet")]
-        public async Task<IActionResult> PluginReloadGet(string plugin)
+        [HttpPost("{Plugin}/Reload", Name = "PluginReloadPost")]
+        public async Task<IActionResult> PluginReloadPost(string plugin)
         {
             LogPluginReloadGet(plugin);
 
@@ -164,9 +164,9 @@ namespace SRTHost.Controllers
                 return NotFound(string.Format("Producer plugin \"{0}\" not found.", plugin));
         }
 
-        // GET: api/v1/Plugin/SRTPluginProducerRE2/GenerateManifest
-        [HttpGet("{Plugin}/GenerateManifest", Name = "PluginGenerateManifestGet")]
-        public IActionResult PluginGenerateManifestGet(string plugin)
+        // GET: api/v1/Plugin/SRTPluginProducerRE2/Manifest
+        [HttpGet("{Plugin}/Manifest", Name = "PluginManifestGet")]
+        public IActionResult PluginManifestGet(string plugin)
         {
             LogPluginGenerateManifestGet(plugin);
 
@@ -182,21 +182,9 @@ namespace SRTHost.Controllers
                 else if (pluginStateValue.PluginType?.IsAssignableTo(typeof(IPluginConsumer)) ?? false)
                     tags.Add("Consumer");
 
-                Version pluginVersion = pluginStateValue.Plugin?.Info.Version ?? new Version();
+                ManifestPluginJson manifest = pluginHost.githubAPIHandler.GetPluginManifest(plugin);
                 return new JsonResult(
-                    new ManifestPluginJson()
-                    {
-                        Contributors = pluginStateValue.Plugin?.Info.Author.Split(new string[] { ",", "&", "and", "/", "\\" }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? Enumerable.Empty<string>(),
-                        Tags = tags,
-                        Releases = new ManifestReleaseJson[]
-                        {
-                            new ManifestReleaseJson()
-                            {
-                                Version = $"{pluginVersion}",
-                                DownloadURL = new Uri($"https://github.com/REPLACEME_YourUSERorORGANIZATION/{plugin}/releases/download/{pluginVersion}/{plugin}-v{pluginVersion}.zip"),
-                            },
-                        },
-                    },
+                    manifest,
                     new JsonSerializerOptions()
                     {
                         WriteIndented = true
@@ -211,8 +199,8 @@ namespace SRTHost.Controllers
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Roar?Name=Burrito
         // SRTPluginProducerRE2.HttpHandler(this);
-        [HttpGet("{Plugin}/{**Command}", Name = "PluginHttpHandlerGet")]
-        public async Task<IActionResult> PluginHttpHandlerGet(string plugin, string? command)
+        [HttpPost("{Plugin}/{**Command}", Name = "PluginHttpHandlerPost")]
+        public async Task<IActionResult> PluginHttpHandlerPost(string plugin, string? command)
         {
             LogPluginHttpHandlerGet(plugin, command);
 

@@ -1,6 +1,7 @@
 ﻿@page "/GetPlugins"
 @using System.Net.Http.Json;
 @using System.Text.Json;
+@using SRTHost.Structures;
 @inject NavigationManager NavigationManager;
 @inject IHttpClientFactory httpClientFactory;
 <PageTitle>Get Plugins</PageTitle>
@@ -26,13 +27,13 @@
                     <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
                         @if (pluginHost.LoadedPlugins.ContainsKey(mainPluginEntry.Name))
                         {
-                            <MudButton Href="@GetPluginName(@mainPluginEntry.Name, "Reload")" Target="_blank">
+                            <MudButton Href="@GetPluginName(@mainPluginEntry.Name, "Reload")">
                                 Reload
                             </MudButton>
                         }
                         else
                         {
-                            <MudButton Href="@GetPluginName(@mainPluginEntry.Name, "Load")" Target="_blank">
+                            <MudButton Href="@GetPluginName(@mainPluginEntry.Name, "Load")">
                                 Load
                             </MudButton>
                         }

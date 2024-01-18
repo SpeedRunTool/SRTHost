@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SRTHost.LoggerImplementations;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace SRTHost

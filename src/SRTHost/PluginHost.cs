@@ -13,7 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Runtime.CompilerServices;
-using System.Configuration;
+using SRTHost.APIs;
 
 namespace SRTHost
 {
@@ -47,6 +47,7 @@ namespace SRTHost
         }
 
         // Misc. variables
+        internal readonly GithubAPIHandler githubAPIHandler = new GithubAPIHandler();
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
         private ConfigurationDB<PluginHost>? configurationDB;

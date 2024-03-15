@@ -3,8 +3,8 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Collections.Generic;
 using System.Linq;
-using SRTHost.Structures;
 using SRTHost.Exceptions.HTTP;
+using SRTPluginBase;
 
 namespace SRTHost.APIs
 {

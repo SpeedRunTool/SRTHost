@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using SRTPluginBase;
 using System;
 using System.Diagnostics;
 using System.Text.Json;
-using SRTHost.Structures;
 
 namespace SRTHost.Controllers
 {

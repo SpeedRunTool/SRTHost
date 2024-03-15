@@ -21,11 +21,14 @@ Install the edition of `VS2022` you prefer with the previously mentioned workloa
 
 Open a command-line terminal to a new folder and enter:
 
+<!-- List of code fence languages supported by GitHub: https://github.com/github-linguist/linguist/blob/master/lib/linguist/languages.yml -->
 ```pwsh
+New-Item -Path .\SpeedRunTool -ItemType Directory
+Set-Location .\SpeedRunTool
 git clone https://github.com/SpeedRunTool/SRTHost --branch develop
 git clone https://github.com/SpeedRunTool/SRTPluginBase --branch develop
+Set-Location .\SRTHost
+.\SRTHost.sln
 ```
-
-Then open `VS2022` and select the `SRTHost.sln` solution at the root of the `SRTHost` repo folder you cloned.
 
 Select `Build Solution` from the `Build` menu. It should build successfully unless someone broke the branch you're working on or you're missing dependencies. `SRTHost` uses ASP.NET Core, Razor, and Blazor components and so those options must be selected when installing `VS2022`. They should be automatically included if you selected the workloan `ASP.NET and web development`.

@@ -77,7 +77,7 @@ namespace SRTHost.Controllers
             LogDebugGenerateManifestHostGet();
 
             return new JsonResult(
-                new ManifestHostJson()
+                new ManifestEntryJson()
                 {
                     Releases = new ManifestReleaseJson[]
                     {

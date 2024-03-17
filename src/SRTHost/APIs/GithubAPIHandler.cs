@@ -1,40 +1,77 @@
 ﻿using System;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Collections.Generic;
 using System.Linq;
 using SRTHost.Exceptions.HTTP;
 using SRTPluginBase;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace SRTHost.APIs
 {
     internal class GithubAPIHandler : BaseAPIHandler
     {
+        private MainJson? main = default;
+        private MainHostEntry[]? hosts = default;
+        private MainPluginEntry[]? plugins = default;
+
         internal GithubAPIHandler() : base()
         {
             client.BaseAddress = new Uri("https://github.com/");
             client.DefaultRequestHeaders.Add("Accept", "application/json");
         }
 
-        internal ManifestPluginJson GetPluginManifest(string pluginName)
+        internal async Task RefreshAsync(ILogger logger)
         {
-            // Get the list of manifests
-            HttpResponseMessage manifestsResult = client.GetAsync("SpeedRunTool/SRTPlugins/plugins.json").Result;
-            manifestsResult.EnsureSuccessStatusCode();
+            main = await SRTPluginBase.Helpers.GetSRTJsonAsync<MainJson>(client, "SpeedRunTool/SRTPlugins/manifest.json");
 
-            List<ManifestPluginJson>? manifests = manifestsResult.Content.ReadFromJsonAsync<List<ManifestPluginJson>>().Result;
-            ManifestPluginJson manifest = (manifests?.First(a => a.Name == pluginName)) ?? throw new HTTPPluginNotFoundException(pluginName);
+            hosts = main?.Hosts.Select(async a =>
+            {
+                try
+                {
+                    await a.SetManifestAsync(client);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError($"Error occurred trying to set manifest on host [{a.Name}]({a.ManifestURL})!{Environment.NewLine}{ex}");
+                }
+                return a;
+            }).Select(a => a.Result).ToArray();
 
-            // Get the list of versions for the plugin from the plugin repo
-            HttpResponseMessage versionsResult = client.GetAsync($"{manifest.RepoURL}/versions.json").Result;
-            versionsResult.EnsureSuccessStatusCode();
+            plugins = main?.Plugins.Select(async a =>
+            {
+                try
+                {
+                    await a.SetManifestAsync(client);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError($"Error occurred trying to set manifest on plugin [{a.Name}]({a.ManifestURL})!{Environment.NewLine}{ex}");
+                }
+                return a;
+            }).Select(a => a.Result).ToArray();
+        }
 
-            manifest.Releases = new List<ManifestReleaseJson>();
-            List<ManifestReleaseJson>? versions = versionsResult.Content.ReadFromJsonAsync<List<ManifestReleaseJson>>().Result;
-            if (versions != null && versions.Count > 0)
-                manifest.Releases = versions;
+        internal async Task<MainJson> GetMainEntryAsync(ILogger logger)
+        {
+            if (main is null)
+                await RefreshAsync(logger);
 
-            return manifest;
+            return main ?? throw new HTTPManifestNotFoundException();
+        }
+
+        internal async Task<MainHostEntry> GetHostEntryAsync(ILogger logger, string hostName)
+        {
+            if (hosts is null)
+                await RefreshAsync(logger);
+
+            return hosts?.First(a => a.Name == hostName) ?? throw new HTTPHostNotFoundException(hostName);
+        }
+
+        internal async Task<MainPluginEntry> GetPluginEntryAsync(ILogger logger, string pluginName)
+        {
+            if (plugins is null)
+                await RefreshAsync(logger);
+
+            return plugins?.First(a => a.Name == pluginName) ?? throw new HTTPPluginNotFoundException(pluginName);
         }
     }
 }

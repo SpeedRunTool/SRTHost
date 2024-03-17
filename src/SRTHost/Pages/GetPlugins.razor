@@ -42,7 +42,7 @@
                     <PluginHeader>
                         <PluginTitle>@mainPluginEntry.DisplayName</PluginTitle>
                         @mainPluginEntry.Name<br />
-                        (@mainPluginEntry.Platform.ToString()) @mainPluginEntry.Type.ToString()
+                        (@mainPluginEntry.Platform.ToString()) @mainPluginEntry.Type.ToString() by @mainPluginEntry.Manifest?.Contributors.Aggregate((o, n) => $"{o}, {n}")<br />
                     </PluginHeader>
                     <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
                         @if (pluginHost.LoadedPlugins.ContainsKey(mainPluginEntry.Name))
@@ -53,9 +53,12 @@
                         }
                         else
                         {
-                            <MudButton Href="@GetPluginName(@mainPluginEntry.Name, "Load")">
-                                Load
-                            </MudButton>
+                            @foreach (IManifestReleaseJson manifestRelease in (mainPluginEntry.Manifest?.Releases.Cast<IManifestReleaseJson>() ?? Enumerable.Empty<IManifestReleaseJson>()).OrderByDescending(a => new Version(a.Version)))
+                            {
+                                <MudButton Href="@manifestRelease.DownloadURL.ToString()">
+                                    Install @manifestRelease.Version
+                                </MudButton>
+                            }
                         }
                     </MudButtonGroup>
                 </PluginBar>
@@ -73,13 +76,23 @@
     private IDictionary<string, IMainPluginEntry>? ManifestPluginEntries { get; set; }
     protected override async Task OnInitializedAsync()
     {
-        using (HttpClient httpClient = httpClientFactory.CreateClient().ConfigureHttpClient(new Uri(NavigationManager.BaseUri)))
+        using (HttpClient httpClient = httpClientFactory.CreateClient().ConfigureHttpClient())
         {
-            MainJson = await httpClient.GetFromJsonAsync<MainJson>("https://raw.githubusercontent.com/SpeedRunTool/SRTPlugins/main/manifest.json", System.Text.Json.JsonSerializerOptions.Default);
-            ManifestHostEntries = MainJson?.Hosts.Cast<IMainHostEntry>().ToList();
-            ManifestPluginEntries = MainJson?.Plugins.Cast<IMainPluginEntry>().ToDictionary(kvp => kvp.Name, (kvp) => kvp);
+            MainJson = await httpClient.GetFromJsonAsync<MainJson>("https://raw.githubusercontent.com/SpeedRunTool/SRTPlugins/main/manifest.json", System.Text.Json.JsonSerializerOptions.Default).ConfigureAwait(false);
+            ManifestHostEntries = MainJson?.Hosts.Cast<IMainHostEntry>().Select(async a =>
+            {
+                await a.SetManifestAsync(httpClient).ConfigureAwait(false);
+                return a;
+            }).Select(a => a.Result)
+            .ToList();
+            ManifestPluginEntries = MainJson?.Plugins.Cast<IMainPluginEntry>().Select(async a =>
+            {
+                await a.SetManifestAsync(httpClient).ConfigureAwait(false);
+                return a;
+            }).Select(a => a.Result)
+            .ToDictionary(kvp => kvp.Name, (kvp) => kvp);
         }
 
-        await base.OnInitializedAsync();
+        await base.OnInitializedAsync().ConfigureAwait(false);
     }
 }

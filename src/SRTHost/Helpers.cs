@@ -16,9 +16,11 @@ namespace SRTHost
         {
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, PluginHost.APP_EXE_NAME));
             httpClient.DefaultRequestHeaders.Add("User-Agent", $"{srtHostFileVersionInfo.ProductName} v{srtHostFileVersionInfo.ProductVersion} {PluginHost.APP_ARCHITECTURE}");
+            httpClient.DefaultRequestHeaders.Add("Accept", acceptHeader);
+            httpClient.Timeout = new TimeSpan(0, 0, 10); // Might be too low but we'll see. May make this configurable.
             if (baseUri is not null)
                 httpClient.BaseAddress = baseUri;
-            httpClient.DefaultRequestHeaders.Add("Accept", acceptHeader);
+            
             return httpClient;
         }
 

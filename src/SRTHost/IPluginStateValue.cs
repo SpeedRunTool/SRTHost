@@ -1,4 +1,4 @@
-﻿using SRTPluginBase;
+﻿using SRTPluginBase.Interfaces;
 using System;
 
 namespace SRTHost

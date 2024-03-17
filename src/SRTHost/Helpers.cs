@@ -1,13 +1,27 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Net.NetworkInformation;
 using MudBlazor;
-using SRTPluginBase;
+using SRTPluginBase.Interfaces;
 
 namespace SRTHost
 {
     internal static class Helpers
     {
+        internal static HttpClient ConfigureHttpClient(this HttpClient httpClient, Uri? baseUri = default, string acceptHeader = "application/json")
+        {
+            FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, PluginHost.APP_EXE_NAME));
+            httpClient.DefaultRequestHeaders.Add("User-Agent", $"{srtHostFileVersionInfo.ProductName} v{srtHostFileVersionInfo.ProductVersion} {PluginHost.APP_ARCHITECTURE}");
+            if (baseUri is not null)
+                httpClient.BaseAddress = baseUri;
+            httpClient.DefaultRequestHeaders.Add("Accept", acceptHeader);
+            return httpClient;
+        }
+
         private static IEnumerable<UnicastIPAddressInformation> GetIPs() => NetworkInterface
                 .GetAllNetworkInterfaces()
                 .Where(a => a.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 || a.NetworkInterfaceType == NetworkInterfaceType.Ethernet)

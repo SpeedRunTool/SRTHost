@@ -1,33 +1,35 @@
 ﻿using System;
 using System.Linq;
 using SRTHost.Exceptions.HTTP;
-using SRTPluginBase;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using SRTPluginBase.Implementations;
+using SRTPluginBase.Interfaces;
+using System.Net.Http;
 
 namespace SRTHost.APIs
 {
-    internal class GithubAPIHandler : BaseAPIHandler
+    internal class GithubAPIHandler
     {
-        private MainJson? main = default;
-        private MainHostEntry[]? hosts = default;
-        private MainPluginEntry[]? plugins = default;
+        private IMainJson? main = default;
+        private IMainHostEntry[]? hosts = default;
+        private IMainPluginEntry[]? plugins = default;
 
-        internal GithubAPIHandler() : base()
+        private readonly HttpClient httpClient;
+        internal GithubAPIHandler(IHttpClientFactory httpClientFactory)
         {
-            client.BaseAddress = new Uri("https://github.com/");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            httpClient = httpClientFactory.CreateClient().ConfigureHttpClient(new Uri("https://github.com/"));
         }
 
         internal async Task RefreshAsync(ILogger logger)
         {
-            main = await SRTPluginBase.Helpers.GetSRTJsonAsync<MainJson>(client, "SpeedRunTool/SRTPlugins/manifest.json");
+            main = await SRTPluginBase.Helpers.GetSRTJsonAsync<MainJson>(httpClient, "SpeedRunTool/SRTPlugins/manifest.json");
 
             hosts = main?.Hosts.Select(async a =>
             {
                 try
                 {
-                    await a.SetManifestAsync(client);
+                    await a.SetManifestAsync(httpClient);
                 }
                 catch (Exception ex)
                 {
@@ -40,7 +42,7 @@ namespace SRTHost.APIs
             {
                 try
                 {
-                    await a.SetManifestAsync(client);
+                    await a.SetManifestAsync(httpClient);
                 }
                 catch (Exception ex)
                 {
@@ -50,7 +52,7 @@ namespace SRTHost.APIs
             }).Select(a => a.Result).ToArray();
         }
 
-        internal async Task<MainJson> GetMainEntryAsync(ILogger logger)
+        internal async Task<IMainJson> GetMainEntryAsync(ILogger logger)
         {
             if (main is null)
                 await RefreshAsync(logger);
@@ -58,7 +60,7 @@ namespace SRTHost.APIs
             return main ?? throw new HTTPManifestNotFoundException();
         }
 
-        internal async Task<MainHostEntry> GetHostEntryAsync(ILogger logger, string hostName)
+        internal async Task<IMainHostEntry> GetHostEntryAsync(ILogger logger, string hostName)
         {
             if (hosts is null)
                 await RefreshAsync(logger);
@@ -66,7 +68,7 @@ namespace SRTHost.APIs
             return hosts?.First(a => a.Name == hostName) ?? throw new HTTPHostNotFoundException(hostName);
         }
 
-        internal async Task<MainPluginEntry> GetPluginEntryAsync(ILogger logger, string pluginName)
+        internal async Task<IMainPluginEntry> GetPluginEntryAsync(ILogger logger, string pluginName)
         {
             if (plugins is null)
                 await RefreshAsync(logger);

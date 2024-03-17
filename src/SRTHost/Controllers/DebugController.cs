@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using SRTPluginBase;
+using SRTPluginBase.Implementations;
+using SRTPluginBase.Interfaces;
 using System;
 using System.Diagnostics;
 using System.Text.Json;
+using static MudBlazor.CategoryTypes;
 
 namespace SRTHost.Controllers
 {
@@ -34,31 +36,50 @@ namespace SRTHost.Controllers
             return new JsonResult(
                 new MainJson()
                 {
-                    Host = new MainHostEntry()
+                    Hosts = new IMainHostEntry[]
                     {
-                        ManifestURL = new Uri("https://raw.githubusercontent.com/SpeedRunTool/SRTHost/develop/main.json")
+                        new MainHostEntry()
+                        {
+                            Name = "SRTHost",
+                            DisplayName = "SRT Host",
+                            Description = "A plugin host for various informational SpeedRun Tools.",
+                            RepoURL = new Uri("https://github.com/SpeedRunTool/SRTHost"),
+                            ManifestURL = new Uri("https://raw.githubusercontent.com/SpeedRunTool/SRTHost/develop/manifest.json")
+                        }
                     },
-                    Plugins = new MainPluginEntry[]
+                    Plugins = new IMainPluginEntry[]
                     {
                             new MainPluginEntry()
                             {
-                                Name = "SRTProducerTest1",
-                                Type = MainPluginTypeEnum.Producer,
+                                Name = "SRTProducerTest",
+                                DisplayName = "Test Producer",
+                                Description = "A plugin for Test that produces values from in-game memory for consumers.",
                                 Platform = MainPluginPlatformEnum.x64,
+                                Type = MainPluginTypeEnum.Producer,
+                                Tags = new string[] { "Producer" },
+                                RepoURL = new Uri("https://github.com/TestAuthor1/SRTProducerTest1"),
                                 ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTProducerTest1/main/manifest.json")
                             },
                             new MainPluginEntry()
                             {
-                                Name = "SRTConsumerTest1",
-                                Type = MainPluginTypeEnum.Consumer,
+                                Name = "SRTConsumerTestUIDirectX",
+                                DisplayName = "Test Consumer (DirectX)",
+                                Description = "A plugin for Test that displays in-game data within a DirectX Overlay.",
                                 Platform = MainPluginPlatformEnum.x64,
+                                Type = MainPluginTypeEnum.Consumer,
+                                Tags = new string[] { "Consumer", "UI", "Overlay", "DirectX" },
+                                RepoURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest1"),
                                 ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest1/main/manifest.json")
                             },
                             new MainPluginEntry()
                             {
-                                Name = "SRTConsumerTest2",
-                                Type = MainPluginTypeEnum.Consumer,
+                                Name = "SRTConsumerTestUIWinForms",
+                                DisplayName = "Test Consumer (WinForms)",
+                                Description = "A plugin for Test that displays in-game data within a Win32 WinForm.",
                                 Platform = MainPluginPlatformEnum.x64,
+                                Type = MainPluginTypeEnum.Consumer,
+                                Tags = new string[] { "Consumer", "UI", "WinForms" },
+                                RepoURL = new Uri("https://github.com/TestAuthor1/SRTConsumerTest2"),
                                 ManifestURL = new Uri("https://raw.githubusercontent.com/TestAuthor1/SRTConsumerTest2/main/manifest.json")
                             },
                     }
@@ -66,9 +87,11 @@ namespace SRTHost.Controllers
                 new JsonSerializerOptions()
                 {
                     WriteIndented = true
-                });
-        }
+                })
+            {
 
+            };
+        }
 
         // GET: api/v1/Debug/GenerateManifestHost
         [HttpGet("GenerateManifestHost", Name = "DebugGenerateManifestHostGet")]
@@ -79,7 +102,11 @@ namespace SRTHost.Controllers
             return new JsonResult(
                 new ManifestEntryJson()
                 {
-                    Releases = new ManifestReleaseJson[]
+                    Contributors = new string[]
+                    {
+                        "Squirrelies"
+                    },
+                    Releases = new IManifestReleaseJson[]
                     {
                         new ManifestReleaseJson()
                         {
@@ -104,19 +131,12 @@ namespace SRTHost.Controllers
         public IActionResult DebugGenerateManifestPluginGet()
         {
             return new JsonResult(
-                new ManifestPluginJson()
+                new ManifestEntryJson()
                 {
                     Contributors = new string[]
                     {
                         "TestAuthor1",
                         "TestAuthor2"
-                    },
-                    Tags = new string[]
-                    {
-                        "Consumer",
-                        "UI",
-                        "Overlay",
-                        "DirectX",
                     },
                     Releases = new ManifestReleaseJson[]
                     {

@@ -2,12 +2,13 @@
 @using System.Net.Http.Json;
 @using System.Text.Json;
 @using SRTPluginBase;
+@using SRTPluginBase.Implementations;
 @inject NavigationManager NavigationManager;
 @inject IHttpClientFactory httpClientFactory;
 <PageTitle>Get Plugins</PageTitle>
 
 <div class="w-full h-full">
-    @if (pluginHost is null || MainJson is null || ManifestHost is null || ManifestPlugins is null)
+@*     @if (pluginHost is null || MainJson is null || ManifestHost is null || ManifestPlugins is null)
     {
         <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
     }
@@ -41,35 +42,35 @@
                 </PluginBar>
             }
         </MudPaper>
-    }
+    } *@
 </div>
 
 @code {
     private string GetPluginName(string name, string page) => $"api/v1/Plugin/{name}/{page}";
     // private string GetItemCssClass(int index) => index % 2 == 0 ? "even" : "odd";
 
-    private MainJson? MainJson { get; set; }
-    private ManifestHostJson? ManifestHost { get; set; }
-    private IDictionary<string, (MainPluginEntry, ManifestPluginJson?)>? ManifestPlugins { get; set; }
-    protected override async Task OnInitializedAsync()
-    {
-        using (HttpClient httpClient = httpClientFactory.CreateClient())
-        {
-            httpClient.BaseAddress = new Uri(NavigationManager.BaseUri);
+    // private MainJson? MainJson { get; set; }
+    // private ManifestHostJson? ManifestHost { get; set; }
+    // private IDictionary<string, (MainPluginEntry, ManifestPluginJson?)>? ManifestPlugins { get; set; }
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     using (HttpClient httpClient = httpClientFactory.CreateClient())
+    //     {
+    //         httpClient.BaseAddress = new Uri(NavigationManager.BaseUri);
 
-            //MainJson = await httpClient.GetFromJsonAsync<MainJson>("https://raw.githubusercontent.com/SpeedRunTool/SRTPlugins/main/main.json", System.Text.Json.JsonSerializerOptions.Default);
-            MainJson = await httpClient.GetFromJsonAsync<MainJson>("/api/v1/Debug/GenerateMainJson", System.Text.Json.JsonSerializerOptions.Default);
+    //         //MainJson = await httpClient.GetFromJsonAsync<MainJson>("https://raw.githubusercontent.com/SpeedRunTool/SRTPlugins/main/main.json", System.Text.Json.JsonSerializerOptions.Default);
+    //         MainJson = await httpClient.GetFromJsonAsync<MainJson>("/api/v1/Debug/GenerateMainJson", System.Text.Json.JsonSerializerOptions.Default);
 
-            //ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>(MasterJson?.Host.ManifestURL, System.Text.Json.JsonSerializerOptions.Default);
-            ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>("/api/v1/Debug/GenerateManifestHost", System.Text.Json.JsonSerializerOptions.Default);
+    //         //ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>(MasterJson?.Host.ManifestURL, System.Text.Json.JsonSerializerOptions.Default);
+    //         ManifestHost = await httpClient.GetFromJsonAsync<ManifestHostJson>("/api/v1/Debug/GenerateManifestHost", System.Text.Json.JsonSerializerOptions.Default);
 
-            //ManifestPlugins = MainJson?.Plugins.ToDictionary(kvp => kvp.Name, (kvp) => (kvp, httpClient.GetFromJsonAsync<ManifestPluginJson>(kvp.ManifestURL, System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()));
-            ManifestPlugins = new Dictionary<string, (MainPluginEntry, ManifestPluginJson?)>()
-            {
-                { "SRTConsumerTest1", (MainJson!.Plugins.First(p => p.Name == "SRTConsumerTest1"), httpClient.GetFromJsonAsync<ManifestPluginJson>("/api/v1/Debug/GenerateManifestPlugin", System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()) }
-            };
-        }
+    //         //ManifestPlugins = MainJson?.Plugins.ToDictionary(kvp => kvp.Name, (kvp) => (kvp, httpClient.GetFromJsonAsync<ManifestPluginJson>(kvp.ManifestURL, System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()));
+    //         ManifestPlugins = new Dictionary<string, (MainPluginEntry, ManifestPluginJson?)>()
+    //         {
+    //             { "SRTConsumerTest1", (MainJson!.Plugins.First(p => p.Name == "SRTConsumerTest1"), httpClient.GetFromJsonAsync<ManifestPluginJson>("/api/v1/Debug/GenerateManifestPlugin", System.Text.Json.JsonSerializerOptions.Default).GetAwaiter().GetResult()) }
+    //         };
+    //     }
 
-        await base.OnInitializedAsync();
-    }
+    //     await base.OnInitializedAsync();
+    // }
 }

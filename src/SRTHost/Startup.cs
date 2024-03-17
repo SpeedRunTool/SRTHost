@@ -11,11 +11,13 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using SRTPluginBase;
+using SRTPluginBase.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -59,7 +61,7 @@ namespace SRTHost
                 services.Remove(descriptor);
 			services.AddSingleton<IViewCompilerProvider, PluginViewCompilerProvider>();
             services.AddScoped<CascadingStateChanger>();
-            services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
+            services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s.GetRequiredService<IHttpClientFactory>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
 			services.AddSingleton<IPluginHost>(s => s.GetRequiredService<PluginHost>());
 			services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
         }

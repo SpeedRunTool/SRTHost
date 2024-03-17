@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SRTPluginBase;
+using SRTPluginBase.Interfaces;
 
 namespace SRTHost
 {

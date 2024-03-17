@@ -8,7 +8,8 @@ using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using SRTPluginBase;
+using SRTPluginBase.Interfaces;
+using System.Net.Http;
 
 namespace SRTHost.Controllers
 {
@@ -23,10 +24,14 @@ namespace SRTHost.Controllers
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private readonly PluginHost pluginHost;
 
-        public PluginController(ILogger<PluginController> logger, PluginHost pluginHost)
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private readonly IHttpClientFactory httpClientFactory;
+
+        public PluginController(ILogger<PluginController> logger, PluginHost pluginHost, IHttpClientFactory httpClientFactory)
         {
             this.logger = logger;
             this.pluginHost = pluginHost;
+            this.httpClientFactory = httpClientFactory;
         }
 
         // GET: api/v1/Plugin
@@ -165,7 +170,7 @@ namespace SRTHost.Controllers
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Manifest
         [HttpGet("{Plugin}/Manifest", Name = "PluginManifestGet")]
-        public IActionResult PluginManifestGet(string plugin)
+        public async Task<IActionResult> PluginManifestGet(string plugin)
         {
             LogPluginGenerateManifestGet(plugin);
 
@@ -181,9 +186,10 @@ namespace SRTHost.Controllers
                 else if (pluginStateValue.PluginType?.IsAssignableTo(typeof(IPluginConsumer)) ?? false)
                     tags.Add("Consumer");
 
-                ManifestPluginJson manifest = pluginHost.githubAPIHandler.GetPluginManifest(plugin);
+                IMainPluginEntry manifest = await pluginHost.githubAPIHandler.GetPluginEntryAsync(logger, plugin);
+                await manifest.SetManifestAsync(httpClientFactory.CreateClient().ConfigureHttpClient(new Uri("https://github.com/")));
                 return new JsonResult(
-                    manifest,
+                    manifest.Manifest,
                     new JsonSerializerOptions()
                     {
                         WriteIndented = true

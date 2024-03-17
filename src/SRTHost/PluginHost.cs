@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Runtime.CompilerServices;
 using SRTHost.APIs;
+using SRTPluginBase.Interfaces;
+using System.Net.Http;
 
 namespace SRTHost
 {
@@ -47,20 +49,23 @@ namespace SRTHost
         }
 
         // Misc. variables
-        internal readonly GithubAPIHandler githubAPIHandler = new GithubAPIHandler();
+        private readonly IHttpClientFactory httpClientFactory;
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
+        internal readonly GithubAPIHandler githubAPIHandler;
         private ConfigurationDB<PluginHost>? configurationDB;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
         //private readonly Timer failedPluginRetryTimer;
         private IDictionary<string, PluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, PluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
         //private HashSet<string> failedPlugins = new HashSet<string>();
 
-        public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
+        public PluginHost(ILogger<PluginHost> logger, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
         {
             this.logger = logger;
+            this.httpClientFactory = httpClientFactory;
             this.serviceProvider = serviceProvider;
             this.configuration = configuration;
+            this.githubAPIHandler = new GithubAPIHandler(this.httpClientFactory);
             //this.failedPluginRetryTimer = new Timer(RetryFailedPluginsAsync, FailedPlugins, 0, 5 * 1000);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));

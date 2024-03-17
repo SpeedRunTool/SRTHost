@@ -75,6 +75,20 @@ namespace SRTHost
                 app.UseHsts();
             }
 
+            DirectoryInfo wwwrootDirectory = new DirectoryInfo(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"));
+            if (!wwwrootDirectory.Exists)
+            {
+                wwwrootDirectory.Create();
+                wwwrootDirectory.Refresh();
+            }
+
+            DirectoryInfo pluginsDirectory = new DirectoryInfo(Path.Combine(Directory.GetCurrentDirectory(), "plugins"));
+            if (!pluginsDirectory.Exists)
+            {
+                pluginsDirectory.Create();
+                pluginsDirectory.Refresh();
+            }
+
             app.UseStaticFiles(new StaticFileOptions()
             {
                 ServeUnknownFileTypes = true,

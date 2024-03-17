@@ -13,6 +13,7 @@ namespace SRTHost.APIs
         internal GithubAPIHandler() : base()
         {
             client.BaseAddress = new Uri("https://github.com/");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
         }
 
         internal ManifestPluginJson GetPluginManifest(string pluginName)

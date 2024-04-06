@@ -49,16 +49,16 @@ namespace SRTHost.Controllers
                 );
         }
 
-        // GET: api/v1/Plugin/ReloadAll
+        // POST: api/v1/Plugin/ReloadAll
         [HttpPost("ReloadAll", Name = "PluginReloadAllPost")]
         public async Task<IActionResult> PluginReloadAllPost()
         {
-            LogPluginReloadAllGet();
+            LogPluginReloadAllPost();
 
             try
             {
                 await pluginHost.ReloadPluginsAsync(CancellationToken.None).ConfigureAwait(false);
-                return LocalRedirect("/OperationStatus/reload%20all/successfully");
+                return new OkObjectResult("Plugins reloaded successfully.");
             }
             catch (Exception ex)
             {
@@ -66,18 +66,18 @@ namespace SRTHost.Controllers
             }
         }
 
-        // GET: api/v1/Plugin/SRTPluginProducerRE2/Load
+        // POST: api/v1/Plugin/SRTPluginProducerRE2/Load
         [HttpPost("{Plugin}/Load", Name = "PluginLoadPost")]
         public async Task<IActionResult> PluginLoadPost(string plugin)
         {
-            LogPluginLoadGet(plugin);
+            LogPluginLoadPost(plugin);
 
             try
             {
                 // TODO: Implement load but not instantiate and expose either internal or public.
                 //await pluginHost.LoadPlugin(plugin, CancellationToken.None);
                 await Task.CompletedTask;
-                return LocalRedirect("/OperationStatus/load/successfully");
+                return new OkObjectResult($"{plugin} loaded successfully.");
             }
             catch (Exception ex)
             {
@@ -85,18 +85,18 @@ namespace SRTHost.Controllers
             }
         }
 
-        // GET: api/v1/Plugin/SRTPluginProducerRE2/Unload
+        // POST: api/v1/Plugin/SRTPluginProducerRE2/Unload
         [HttpPost("{Plugin}/Unload", Name = "PluginUnloadPost")]
         public async Task<IActionResult> PluginUnloadPost(string plugin)
         {
-            LogPluginUnloadGet(plugin);
+            LogPluginUnloadPost(plugin);
 
             try
             {
                 // TODO: Implement unload and expose either internal or public.
                 //await pluginHost.UnloadPlugin(plugin, CancellationToken.None);
                 await Task.CompletedTask;
-                return LocalRedirect("/OperationStatus/unload/successfully");
+                return new OkObjectResult($"{plugin} unloaded successfully.");
             }
             catch (Exception ex)
             {
@@ -104,16 +104,16 @@ namespace SRTHost.Controllers
             }
         }
 
-        // GET: api/v1/Plugin/SRTPluginProducerRE2/Reload
+        // POST: api/v1/Plugin/SRTPluginProducerRE2/Reload
         [HttpPost("{Plugin}/Reload", Name = "PluginReloadPost")]
         public async Task<IActionResult> PluginReloadPost(string plugin)
         {
-            LogPluginReloadGet(plugin);
+            LogPluginReloadPost(plugin);
 
             try
             {
                 await pluginHost.ReloadPluginAsync(plugin, CancellationToken.None);
-                return LocalRedirect("/OperationStatus/reload/successfully");
+                return new OkObjectResult($"{plugin} reloaded successfully.");
             }
             catch (Exception ex)
             {
@@ -204,8 +204,8 @@ namespace SRTHost.Controllers
 
         // GET: api/v1/Plugin/SRTPluginProducerRE2/Roar?Name=Burrito
         // SRTPluginProducerRE2.HttpHandler(this);
-        [HttpPost("{Plugin}/{**Command}", Name = "PluginHttpHandlerPost")]
-        public async Task<IActionResult> PluginHttpHandlerPost(string plugin, string? command)
+        [HttpGet("{Plugin}/{**Command}", Name = "PluginHttpHandlerGet")]
+        public async Task<IActionResult> PluginHttpHandlerGet(string plugin, string? command)
         {
             LogPluginHttpHandlerGet(plugin, command);
 

@@ -11,17 +11,17 @@ namespace SRTHost.Controllers
         [LoggerMessage(EventIds.PluginController + 0, LogLevel.Information, "PluginGet()", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginGet();
 
-        [LoggerMessage(EventIds.PluginController + 1, LogLevel.Information, "PluginReloadAllGet()", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginReloadAllGet();
+        [LoggerMessage(EventIds.PluginController + 1, LogLevel.Information, "PluginReloadAllPost()", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        private partial void LogPluginReloadAllPost();
 
-        [LoggerMessage(EventIds.PluginController + 2, LogLevel.Information, "PluginLoadGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginLoadGet(string plugin);
+        [LoggerMessage(EventIds.PluginController + 2, LogLevel.Information, "PluginLoadPost({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        private partial void LogPluginLoadPost(string plugin);
 
-        [LoggerMessage(EventIds.PluginController + 3, LogLevel.Information, "PluginUnloadGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginUnloadGet(string plugin);
+        [LoggerMessage(EventIds.PluginController + 3, LogLevel.Information, "PluginUnloadPost({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        private partial void LogPluginUnloadPost(string plugin);
 
-        [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginReloadGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginReloadGet(string plugin);
+        [LoggerMessage(EventIds.PluginController + 4, LogLevel.Information, "PluginReloadPost({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        private partial void LogPluginReloadPost(string plugin);
 
         [LoggerMessage(EventIds.PluginController + 5, LogLevel.Information, "PluginInfoGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginInfoGet(string plugin);

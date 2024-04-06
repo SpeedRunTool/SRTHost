@@ -295,7 +295,8 @@ namespace SRTHost
                 else if (pluginInstance is IPlugin)
                     pluginStateValue.Plugin = (IPlugin)pluginInstance;
 
-                loadedPlugins.Add(pluginStateValue.PluginType!.Name, pluginStateValue);
+                // Switched to this method of storing key as 'pluginStateValue.PluginType!.Name' could differ from the filename we're using for ReloadAll.
+                loadedPlugins.Add(Path.GetFileNameWithoutExtension(pluginStateValue.PluginType!.Assembly.Location)!, pluginStateValue);
                 return pluginStateValue;
             }, cancellationToken);
         }

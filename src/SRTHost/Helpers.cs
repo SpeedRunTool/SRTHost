@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.NetworkInformation;
+using System.Threading.Tasks;
 using MudBlazor;
 using SRTPluginBase.Interfaces;
 
@@ -24,6 +25,17 @@ namespace SRTHost
             return httpClient;
         }
 
+        internal static async Task<HttpResponseMessage> Request(this HttpClient httpClient, string method, Uri requestUri, HttpContent? httpContent = default)
+        {
+            using (HttpRequestMessage httpRequestMessage = new HttpRequestMessage()
+            {
+                Method = new HttpMethod(method),
+                RequestUri = requestUri,
+                Content = httpContent
+            })
+                return await httpClient.SendAsync(httpRequestMessage);
+        }
+
         private static IEnumerable<UnicastIPAddressInformation> GetIPs() => NetworkInterface
                 .GetAllNetworkInterfaces()
                 .Where(a => a.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 || a.NetworkInterfaceType == NetworkInterfaceType.Ethernet)
@@ -35,8 +47,6 @@ namespace SRTHost
 
         internal static string? GetIPv4() => GetIPs().FirstOrDefault(ip => ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)?.Address?.ToString();
         internal static string? GetIPv6() => GetIPs().FirstOrDefault(ip => ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)?.Address?.ToString();
-
-        internal static string GetPluginName(string name, string page) => $"api/v1/Plugin/{name}/{page}";
 
         internal static string GetRunningStatusIcon(PluginStateValue<IPlugin> pluginStateValue)
         {

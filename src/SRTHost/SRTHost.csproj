@@ -33,6 +33,7 @@
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="*">
 			<ExcludeAssets>Compile;Build</ExcludeAssets>
 		</PackageReference>
+		<PackageReference Include="MudBlazor" Version="8.15.0" />
 	</ItemGroup>
 
 	<ItemGroup>

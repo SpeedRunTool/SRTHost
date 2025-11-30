@@ -1,0 +1,33 @@
+﻿@page "/Settings"
+@using System.Reflection;
+@using System.Collections.ObjectModel;
+
+<PageTitle>Settings</PageTitle>
+
+<Container>
+    <MudPaper Class="w-full h-full flex-col gap-4 rounded-none">
+        <PageHeader>
+            <MudText Typo="Typo.h5">Settings</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="SaveSettings">
+                Save Settings
+            </MudButton>
+        </PageHeader>
+        <MudCheckBox T="bool" Checked=pluginHost.HostConfiguration.ShowDebugMenu CheckedChanged="(value) => SRTPluginBase.Helpers.MudSettingChanged(SettingChanged, nameof(pluginHost.HostConfiguration.ShowDebugMenu), value, cascadingStateChanger)" Color="Color.Secondary">Show Debug Menu</MudCheckBox>
+    </MudPaper>
+</Container>
+
+@code
+{
+    private static PropertyInfo[] hostConfigurationProperties => typeof(HostConfiguration).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+    private static IReadOnlyDictionary<string, MethodInfo?> hostConfigurationPropertySetters = hostConfigurationProperties.ToDictionary(p => p.Name, p => p.SetMethod);
+
+    private void SettingChanged<T>(string propertyName, T value)
+    {
+        if (hostConfigurationPropertySetters.ContainsKey(propertyName))
+            hostConfigurationPropertySetters[propertyName]?.Invoke(pluginHost.HostConfiguration, new object?[] { value });
+        SaveSettings();
+    }
+
+    public void SaveSettings() => pluginHost.SaveConfigDB();
+}

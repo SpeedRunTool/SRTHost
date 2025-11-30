@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "SRTHost": {
+      "commandName": "Project",
+      "nativeDebugging": true,
+      "externalUrlConfiguration": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

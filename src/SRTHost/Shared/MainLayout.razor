@@ -1,0 +1,78 @@
+﻿@using MudBlazor;
+@inherits LayoutComponentBase
+
+<MudThemeProvider @bind-IsDarkMode="@isDarkMode" Theme="theme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout Class="mud-height-full">
+        <MudAppBar>
+        <MudIconButton Icon="@(open ? Icons.Material.Filled.Close : Icons.Material.Filled.Menu)" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => setOpen())" />
+            <MudSpacer />
+        <MudToggleIconButton Style="transform: scaleX(-1);" @bind-Toggled="@isDarkMode" Icon="@Icons.Material.Filled.WbSunny" Color="@Color.Tertiary" Title="Toggle Dark Mode" ToggledIcon="@Icons.Material.Filled.Brightness3" ToggledColor="@Color.Tertiary" ToggledTitle="Toggle Light Mode" />
+        </MudAppBar>
+        <MudDrawer Class="mud-height-full" @bind-Open="@open">
+                <NavMenu />
+            </MudDrawer>
+        <MudMainContent Class="mud-height-full">
+            @Body
+        </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool open = true;
+    private bool isDarkMode = true;
+
+    void setOpen()
+    {
+        open = !open;
+    }
+
+    private string getLabel()
+    {
+        if (isDarkMode == true)
+            return "Toggle Light Mode";
+        else
+            return "Toggle Dark Mode";
+    }
+
+    private MudTheme theme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = Colors.Blue.Lighten1, // Active Nav Link
+                PrimaryContrastText = Colors.Grey.Lighten3, // Unknown
+                PrimaryLighten = Colors.Amber.Darken2, // Unknown
+                PrimaryDarken = Colors.Amber.Darken4, // Unknown
+                Secondary = Colors.Blue.Darken4, // Buttons
+                Tertiary = Colors.Shades.White, // White Objects
+                Dark = Colors.Blue.Lighten5, // Status Icon Inner Circle
+                Background = Colors.Blue.Lighten5, // Main Background
+                AppbarBackground = Colors.BlueGrey.Darken3, // AppBar Background
+                DrawerBackground = Colors.BlueGrey.Darken4, // Drawer "SideBar" Background
+                DrawerText = Colors.Shades.White, // Drawer "SideBar" Text
+                Surface = Colors.Blue.Lighten5, // Paper Background
+                Success = Colors.LightGreen.Darken4,
+                Warning = Colors.Yellow.Accent4,
+                Error = Colors.Red.Accent4,
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = Colors.Blue.Darken1, // Active Nav Link
+                PrimaryContrastText = Colors.Grey.Lighten3, // Unknown
+                PrimaryLighten = Colors.Amber.Darken2, // Unknown
+                PrimaryDarken = Colors.Amber.Darken4, // Unknown
+                Secondary = Colors.Blue.Darken4, // Buttons
+                Tertiary = Colors.Shades.White, // White Objects
+                Dark = Colors.Grey.Darken3, // Status Icon Inner Circle
+                Background = Colors.Grey.Darken3, // Main Background
+                AppbarBackground = Colors.Grey.Darken4, // AppBar Background
+                DrawerBackground = Colors.Shades.Black, // Drawer "SideBar" Background
+                DrawerText = Colors.Shades.White, // Drawer "SideBar" Text
+                Surface = Colors.Grey.Darken3, // Paper Background
+                Success = Colors.LightGreen.Accent2,
+                Warning = Colors.Yellow.Accent2,
+                Error = Colors.Red.Accent2,
+            },
+        };
+}

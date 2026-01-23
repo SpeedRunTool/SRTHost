@@ -2,18 +2,17 @@
 
 ## Overview
 
-This guide explains how to develop plugins for SRTHost, including how to create plugins with custom Razor/Blazor pages that integrate with the SRTHost Web UI.
+This guide explains how to develop plugins for SRTHost, including how to create plugins with Blazor pages that integrate with the SRTHost Web UI.
 
 ## Table of Contents
 
 1. [Getting Started](#getting-started)
 2. [Plugin Structure](#plugin-structure)
 3. [Plugin Types](#plugin-types)
-4. [Registered Pages API](#registered-pages-api)
-5. [Razor/Blazor Page Support](#razorblazor-page-support)
-6. [Security Considerations](#security-considerations)
-7. [Best Practices](#best-practices)
-8. [Troubleshooting](#troubleshooting)
+4. [Creating Blazor Pages](#creating-blazor-pages)
+5. [Security Considerations](#security-considerations)
+6. [Best Practices](#best-practices)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -46,7 +45,7 @@ Plugins must follow this directory structure:
 plugins/
 └── YourPluginName/
     ├── YourPluginName.dll          # Main plugin assembly (required)
-    ├── YourPluginName.Views.dll    # Compiled Razor views (if using Razor pages)
+    ├── YourPluginName.Views.dll    # Compiled Razor views (if using Blazor pages)
     ├── Dependencies.dll            # Any plugin-specific dependencies
     └── wwwroot/                    # Static files (optional)
         ├── css/
@@ -87,9 +86,6 @@ public class MyProducerPlugin : IPluginProducer
         Description = "Reads game data from memory"
     };
 
-    public Dictionary<RegisteredPagesKey, Func<ControllerBase, Task<IActionResult>>> RegisteredPages { get; }
-        = new Dictionary<RegisteredPagesKey, Func<ControllerBase, Task<IActionResult>>>();
-
     public object? Refresh()
     {
         // Return current game state
@@ -111,9 +107,6 @@ public class MyConsumerPlugin : IPluginConsumer
         Version = "1.0.0"
     };
 
-    public Dictionary<RegisteredPagesKey, Func<ControllerBase, Task<IActionResult>>> RegisteredPages { get; }
-        = new Dictionary<RegisteredPagesKey, Func<ControllerBase, Task<IActionResult>>>();
-
     public int Startup(IPluginHost host)
     {
         // Subscribe to producer data
@@ -124,111 +117,20 @@ public class MyConsumerPlugin : IPluginConsumer
 
 ---
 
-## Registered Pages API
+## Creating Blazor Pages
 
-The `RegisteredPages` dictionary allows plugins to expose HTTP endpoints accessible through the Web UI.
+Plugin assemblies are integrated with the Blazor router, allowing you to create interactive pages using standard Blazor components.
 
-### Registering a Page Handler
+### URL Pattern
 
-```csharp
-public class MyPlugin : IPlugin
-{
-    public MyPlugin()
-    {
-        // Register a simple text response
-        RegisteredPages.Add("Status", async (controller) =>
-        {
-            return new OkObjectResult("Plugin is running!");
-        });
+Plugin pages are accessed at: `/api/v1/Plugin/{PluginName}/{PageRoute}`
 
-        // Register a JSON response
-        RegisteredPages.Add("Data", async (controller) =>
-        {
-            var data = GetCurrentData();
-            return new JsonResult(data);
-        });
-
-        // Register a file download
-        RegisteredPages.Add("Export", async (controller) =>
-        {
-            byte[] fileData = GenerateExportFile();
-            return new FileContentResult(fileData, "application/octet-stream")
-            {
-                FileDownloadName = "export.dat"
-            };
-        });
-    }
-}
-```
-
-### Accessing Plugin Pages
-
-Plugin pages are accessible via:
-```
-GET http://localhost:5000/api/v1/Plugin/{PluginName}/{Command}
-```
-
-Example:
-```
-GET http://localhost:5000/api/v1/Plugin/MyPlugin/Status
-GET http://localhost:5000/api/v1/Plugin/MyPlugin/Data
-```
-
-### Hiding Pages from UI
-
-You can hide pages from the UI while keeping them accessible via direct URL:
-
-```csharp
-RegisteredPages.Add(new RegisteredPagesKey("InternalAPI", hidden: true), async (controller) =>
-{
-    return new OkObjectResult("This won't show in the UI buttons");
-});
-```
-
----
-
-## Razor/Blazor Page Support
-
-### Blazor Router Integration
-
-Plugin assemblies are now integrated with the Blazor router! You can create Blazor pages using `@page` directives, and they will be accessible through the host's routing system.
-
-**URL Pattern:** Plugin pages are accessed at `/api/v1/Plugin/{PluginName}/{PageRoute}`
-
-**Example:** A plugin named `SRTPluginProducerRE2R` with a page `@page "/Data/Enemies/{id:int}"` would be accessible at:
+**Example:** A plugin named `SRTPluginProducerRE2R` with a page `@page "/Data/Enemies/{id:int}"` is accessible at:
 ```
 http://localhost:5000/api/v1/Plugin/SRTPluginProducerRE2R/Data/Enemies/12
 ```
 
-### Creating Blazor Pages in Plugins
-
-You can create Blazor pages with full routing support:
-
-```razor
-@page "/Status"
-@inject YourPlugin.Services.StatusService statusService
-
-<h1>Plugin Status</h1>
-<p>Current Status: @status</p>
-<p>Data Points: @dataCount</p>
-
-@code {
-    private string status = "Loading...";
-    private int dataCount = 0;
-
-    protected override async Task OnInitializedAsync()
-    {
-        status = await statusService.GetStatusAsync();
-        dataCount = await statusService.GetDataCountAsync();
-    }
-}
-```
-
-### Creating MVC Razor Views
-
-For traditional MVC-style views, you can still use the Registered Pages API:
-
-#### Step 1: Configure Your Plugin Project
+### Project Setup for Blazor Pages
 
 Add the Razor SDK to your plugin's `.csproj`:
 
@@ -245,55 +147,94 @@ Add the Razor SDK to your plugin's `.csproj`:
 </Project>
 ```
 
-#### Step 2: Create Razor Views
+### Creating a Blazor Page
 
-Create a `Views` folder in your plugin project:
+Create Blazor pages in your plugin with standard `@page` directives:
 
-```
-YourPlugin/
-├── Views/
-│   └── Status.cshtml
-├── YourPlugin.cs
-└── YourPlugin.csproj
-```
+**Pages/LiveData.razor:**
+```razor
+@page "/LiveData"
+@using YourPlugin.Models
 
-**Views/Status.cshtml:**
-```cshtml
-@model YourPlugin.Models.StatusViewModel
+<h3>Live Game Data</h3>
 
-<h1>Plugin Status</h1>
-<p>Current Status: @Model.Status</p>
-<p>Data Points: @Model.DataCount</p>
-```
-
-#### Step 3: Register the View
-
-```csharp
-public class YourPlugin : IPlugin
+@if (isLoading)
 {
-    public YourPlugin()
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="data-display">
+        <p>Health: <strong>@gameData.Health</strong> / @gameData.MaxHealth</p>
+        <p>Ammo: <strong>@gameData.Ammo</strong></p>
+        <p>Last Updated: @lastUpdate.ToString("HH:mm:ss")</p>
+    </div>
+    
+    <button class="btn btn-primary" @onclick="RefreshData">Refresh</button>
+}
+
+@code {
+    private GameData gameData = new();
+    private bool isLoading = true;
+    private DateTime lastUpdate = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
     {
-        RegisteredPages.Add("Status", async (controller) =>
-        {
-            var model = new StatusViewModel
-            {
-                Status = "Running",
-                DataCount = 42
-            };
-            return await Task.FromResult(controller.View("Status", model));
-        });
+        await RefreshData();
     }
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        await Task.Delay(100); // Simulate data fetch
+        
+        // Get data from your plugin's producer
+        gameData.Health = 100;
+        gameData.MaxHealth = 150;
+        gameData.Ammo = 25;
+        
+        lastUpdate = DateTime.Now;
+        isLoading = false;
+    }
+}
+
+<style>
+    .data-display {
+        padding: 20px;
+        background: #f0f0f0;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+</style>
+```
+
+### Routing with Parameters
+
+Blazor routing supports parameters:
+
+```razor
+@page "/Enemies/{id:int}"
+
+<h3>Enemy Details</h3>
+<p>Enemy ID: @Id</p>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
 }
 ```
 
-### Capabilities and Limitations
+Accessible at: `http://localhost:5000/api/v1/Plugin/YourPlugin/Enemies/5`
+
+### Capabilities
 
 **What Works:**
-- ✅ Blazor pages with `@page` directives and routing
-- ✅ Route parameters (e.g., `@page "/Data/{id:int}"`)
-- ✅ Dependency injection in Blazor components
-- ✅ MVC Razor views via Registered Pages API
 - ✅ Full Blazor component lifecycle
+- ✅ `@page` directives with route parameters
+- ✅ Dependency injection
+- ✅ Component state management
+- ✅ Event handling and data binding
+- ✅ CSS isolation
 
 **Limitations:**
 - ⚠️ Plugin pages must be accessed under `/api/v1/Plugin/{PluginName}/` prefix
@@ -364,23 +305,21 @@ public IPluginInfo Info => new PluginInfo
 ### 3. Error Handling
 
 ```csharp
-RegisteredPages.Add("RiskyOperation", async (controller) =>
-{
-    try
+@code {
+    protected override async Task OnInitializedAsync()
     {
-        var result = PerformRiskyOperation();
-        return new OkObjectResult(result);
-    }
-    catch (Exception ex)
-    {
-        // Log the error
-        logger.LogError(ex, "Failed to perform risky operation");
-        return new ObjectResult(new { error = ex.Message })
+        try
         {
-            StatusCode = 500
-        };
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log the error
+            Console.Error.WriteLine($"Error loading data: {ex.Message}");
+            errorMessage = "Failed to load data";
+        }
     }
-});
+}
 ```
 
 ### 4. Resource Cleanup
@@ -433,25 +372,16 @@ public class MyPlugin : IPlugin, IDisposable
 - Ensure your plugin is compiled for the same architecture as SRTHost
 - Use "Any CPU" or explicitly target x64/x86 to match the host
 
-### Razor Views Not Found
+### Blazor Pages Not Found
 
-**Problem:** Plugin page returns 404 or view not found error
+**Problem:** Plugin page returns 404 or not found error
 
 **Solutions:**
 1. Verify `.Views.dll` is present in plugin directory
-2. Check that view file is marked as embedded resource
-3. Ensure view path matches registration name
-4. Verify Razor SDK is configured in `.csproj`
-
-### RegisteredPages Not Working
-
-**Problem:** Plugin pages don't appear as buttons in UI
-
-**Solutions:**
-1. Verify pages are added to `RegisteredPages` in constructor
-2. Check that page keys are not marked as hidden
-3. Ensure plugin is in `Instantiated` state (check plugin status icon)
-4. Reload the plugin after making changes
+2. Check that Razor SDK is configured in `.csproj`
+3. Ensure page has `@page` directive
+4. Verify plugin is in `Instantiated` state (check plugin status icon)
+5. Reload the plugin after making changes
 
 ### Memory Issues After Reloading
 
@@ -465,17 +395,17 @@ public class MyPlugin : IPlugin, IDisposable
 
 ---
 
-## Example: Complete Plugin with Razor View
+## Complete Example
 
 ### Project Structure
 ```
 SRTPluginExample/
 ├── SRTPluginExample.csproj
 ├── ExamplePlugin.cs
-├── Models/
-│   └── ExampleModel.cs
-└── Views/
-    └── Dashboard.cshtml
+├── Pages/
+│   └── Dashboard.razor
+└── Models/
+    └── GameData.cs
 ```
 
 ### SRTPluginExample.csproj
@@ -494,7 +424,6 @@ SRTPluginExample/
 
 ### ExamplePlugin.cs
 ```csharp
-using Microsoft.AspNetCore.Mvc;
 using SRTPluginBase;
 using SRTPluginBase.Interfaces;
 
@@ -504,146 +433,43 @@ public class ExamplePlugin : IPlugin
     {
         Name = "Example Plugin",
         Version = "1.0.0",
-        Description = "Demonstrates plugin with Razor views"
+        Description = "Demonstrates plugin with Blazor pages"
     };
-
-    public Dictionary<RegisteredPagesKey, Func<ControllerBase, Task<IActionResult>>> RegisteredPages { get; }
-        = new Dictionary<RegisteredPagesKey, Func<ControllerBase, Task<IActionResult>>>();
-
-    public ExamplePlugin()
-    {
-        RegisteredPages.Add("Dashboard", async (controller) =>
-        {
-            var model = new ExampleModel
-            {
-                Status = "Running",
-                LastUpdate = DateTime.Now
-            };
-            return await Task.FromResult(controller.View("Dashboard", model));
-        });
-
-        RegisteredPages.Add("Data", async (controller) =>
-        {
-            var data = new { value = 42, timestamp = DateTime.Now };
-            return new JsonResult(data);
-        });
-    }
 
     public int Startup(IPluginHost host) => 0;
     public int Shutdown(IPluginHost host) => 0;
 }
 ```
 
-### Views/Dashboard.cshtml
-```cshtml
-@model ExampleModel
-
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Example Plugin Dashboard</title>
-    <style>
-        .dashboard { padding: 20px; font-family: Arial, sans-serif; }
-        .status { color: green; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="dashboard">
-        <h1>Example Plugin Dashboard</h1>
-        <p>Status: <span class="status">@Model.Status</span></p>
-        <p>Last Update: @Model.LastUpdate.ToString("yyyy-MM-dd HH:mm:ss")</p>
-    </div>
-</body>
-</html>
-```
-
----
-
-## Example: Blazor Page in Plugin
-
-### Project Structure
-```
-SRTPluginBlazorExample/
-├── SRTPluginBlazorExample.csproj
-├── ExamplePlugin.cs
-├── Pages/
-│   └── LiveData.razor
-└── Models/
-    └── GameData.cs
-```
-
-### SRTPluginBlazorExample.csproj
-```xml
-<Project Sdk="Microsoft.NET.Sdk.Razor">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="SRTPluginBase" Version="4.0.0-*" />
-  </ItemGroup>
-</Project>
-```
-
-### Pages/LiveData.razor
+### Pages/Dashboard.razor
 ```razor
-@page "/LiveData"
-@using SRTPluginBlazorExample.Models
+@page "/Dashboard"
 
-<h3>Live Game Data</h3>
+<h3>Example Plugin Dashboard</h3>
 
-@if (isLoading)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <div class="data-display">
-        <p>Health: <strong>@gameData.Health</strong> / @gameData.MaxHealth</p>
-        <p>Ammo: <strong>@gameData.Ammo</strong></p>
-        <p>Last Updated: @lastUpdate.ToString("HH:mm:ss")</p>
-    </div>
-    
-    <button class="btn btn-primary" @onclick="RefreshData">Refresh</button>
-}
+<div class="dashboard">
+    <p>Status: <span class="status">@status</span></p>
+    <p>Last Update: @lastUpdate.ToString("yyyy-MM-dd HH:mm:ss")</p>
+</div>
 
 @code {
-    private GameData gameData = new();
-    private bool isLoading = true;
+    private string status = "Running";
     private DateTime lastUpdate = DateTime.Now;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await RefreshData();
-    }
-
-    private async Task RefreshData()
-    {
-        isLoading = true;
-        await Task.Delay(100); // Simulate data fetch
-        
-        // Get data from your plugin's producer
-        gameData.Health = 100;
-        gameData.MaxHealth = 150;
-        gameData.Ammo = 25;
-        
-        lastUpdate = DateTime.Now;
-        isLoading = false;
-    }
 }
 
 <style>
-    .data-display {
-        padding: 20px;
-        background: #f0f0f0;
-        border-radius: 5px;
-        margin: 10px 0;
+    .dashboard { 
+        padding: 20px; 
+        font-family: Arial, sans-serif; 
+    }
+    .status { 
+        color: green; 
+        font-weight: bold; 
     }
 </style>
 ```
 
-**Accessible at:** `http://localhost:5000/api/v1/Plugin/SRTPluginBlazorExample/LiveData`
+**Accessible at:** `http://localhost:5000/api/v1/Plugin/SRTPluginExample/Dashboard`
 
 ---
 
@@ -661,9 +487,8 @@ else
 If you encounter issues:
 
 1. Check the SRTHost logs (located in the application directory)
-2. Review the [BLAZOR_ANALYSIS.md](BLAZOR_ANALYSIS.md) document for known issues
-3. Join the Discord community for support
-4. Open an issue on the GitHub repository with:
+2. Join the Discord community for support
+3. Open an issue on the GitHub repository with:
    - SRTHost version
    - Plugin name and version
    - Error messages from logs

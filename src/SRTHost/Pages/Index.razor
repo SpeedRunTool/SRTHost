@@ -33,30 +33,9 @@
                             @((pluginStateValue.Plugin is not null) ? pluginStateValue.Plugin!.Info.Version : "Unknown Version")
                         </PluginTitle>
                     </PluginHeader>
-                    <MudHidden Breakpoint="Breakpoint.Xs">
-                        <MudButtonGroup Color="Color.Secondary" Variant="Variant.Filled">
-                            <MudButton OnClick="@((e) => RequestAsString("POST", new Uri($"/api/v1/Plugin/{pluginStateValue.PluginType?.Name ?? "Unknown"}/Reload", UriKind.Relative)))">
-                                Reload
-                            </MudButton>
-                            @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
-                            {
-                                <MudButton OnClick="@((e) => RequestAsString("GET", new Uri($"/api/v1/Plugin/{pluginStateValue.PluginType?.Name ?? "Unknown"}/{registeredPage}", UriKind.Relative)))">
-                                    @registeredPage
-                                </MudButton>
-                            }
-                        </MudButtonGroup>
-                    </MudHidden>
-                    <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">
-                        <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" OnClick="@((e) => RequestAsString("POST", new Uri($"/api/v1/Plugin/{pluginStateValue.PluginType?.Name ?? "Unknown"}/Reload", UriKind.Relative)))">
-                            Reload
-                        </MudButton>
-                        @foreach (string registeredPage in (pluginStateValue.Plugin?.RegisteredPages.Keys ?? Enumerable.Empty<RegisteredPagesKey>()).Where((RegisteredPagesKey registeredPagesKey) => !registeredPagesKey.Hidden))
-                        {
-                            <MudButton FullWidth="true" Color="Color.Secondary" Variant="Variant.Filled" OnClick="@((e) => RequestAsString("GET", new Uri($"/api/v1/Plugin/{pluginStateValue.PluginType?.Name ?? "Unknown"}/{registeredPage}", UriKind.Relative)))">
-                                @registeredPage
-                            </MudButton>
-                        }
-                    </MudHidden>
+                    <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="@((e) => RequestAsString("POST", new Uri($"/api/v1/Plugin/{pluginStateValue.PluginType?.Name ?? "Unknown"}/Reload", UriKind.Relative)))">
+                        Reload
+                    </MudButton>
                 </PluginBar>
             }
         </MudPaper>

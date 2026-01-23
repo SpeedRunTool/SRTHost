@@ -29,10 +29,7 @@ namespace SRTHost.Controllers
         [LoggerMessage(EventIds.PluginController + 6, LogLevel.Information, "PluginDataGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginDataGet(string plugin);
 
-        [LoggerMessage(EventIds.PluginController + 7, LogLevel.Information, "PluginHttpHandlerGet({plugin}, {command})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
-        private partial void LogPluginHttpHandlerGet(string plugin, string? command);
-
-        [LoggerMessage(EventIds.PluginController + 8, LogLevel.Information, "PluginGenerateManifestGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
+        [LoggerMessage(EventIds.PluginController + 7, LogLevel.Information, "PluginGenerateManifestGet({plugin})", EventName = PLUGIN_CONTROLLER_EVENT_NAME)]
         private partial void LogPluginGenerateManifestGet(string plugin);
     }
 }

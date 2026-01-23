@@ -189,11 +189,44 @@ RegisteredPages.Add(new RegisteredPagesKey("InternalAPI", hidden: true), async (
 
 ## Razor/Blazor Page Support
 
-### Important Note on Routing
+### Blazor Router Integration
 
-**Current Implementation:** Plugin Razor pages are NOT integrated with the standard Blazor router. Instead, they must be accessed through the Registered Pages API described above.
+Plugin assemblies are now integrated with the Blazor router! You can create Blazor pages using `@page` directives, and they will be accessible through the host's routing system.
 
-### Creating Plugin Razor Views
+**URL Pattern:** Plugin pages are accessed at `/api/v1/Plugin/{PluginName}/{PageRoute}`
+
+**Example:** A plugin named `SRTPluginProducerRE2R` with a page `@page "/Data/Enemies/{id:int}"` would be accessible at:
+```
+http://localhost:5000/api/v1/Plugin/SRTPluginProducerRE2R/Data/Enemies/12
+```
+
+### Creating Blazor Pages in Plugins
+
+You can create Blazor pages with full routing support:
+
+```razor
+@page "/Status"
+@inject YourPlugin.Services.StatusService statusService
+
+<h1>Plugin Status</h1>
+<p>Current Status: @status</p>
+<p>Data Points: @dataCount</p>
+
+@code {
+    private string status = "Loading...";
+    private int dataCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        status = await statusService.GetStatusAsync();
+        dataCount = await statusService.GetDataCountAsync();
+    }
+}
+```
+
+### Creating MVC Razor Views
+
+For traditional MVC-style views, you can still use the Registered Pages API:
 
 #### Step 1: Configure Your Plugin Project
 
@@ -253,21 +286,31 @@ public class YourPlugin : IPlugin
 }
 ```
 
-### Limitations
+### Capabilities and Limitations
 
-1. **No Direct Blazor Routing:** You cannot use `@page "/MyPage"` directives for plugin pages
-2. **No NavigationManager:** Standard Blazor navigation doesn't work for plugin pages
-3. **API-Based Access:** All plugin pages must be accessed via the Registered Pages API
-4. **No Hot Reload:** Changes to plugin Razor pages require plugin reload
+**What Works:**
+- ✅ Blazor pages with `@page` directives and routing
+- ✅ Route parameters (e.g., `@page "/Data/{id:int}"`)
+- ✅ Dependency injection in Blazor components
+- ✅ MVC Razor views via Registered Pages API
+- ✅ Full Blazor component lifecycle
+
+**Limitations:**
+- ⚠️ Plugin pages must be accessed under `/api/v1/Plugin/{PluginName}/` prefix
+- ⚠️ Changes to plugin pages require plugin reload (no hot reload)
+- ⚠️ Dynamic plugin loading/unloading may require app restart for routing updates
 
 ---
 
 ## Security Considerations
 
-### Code Signing (Recommended)
+### Code Signing and Trust
 
-SRTHost checks for code signatures on plugins. While not currently enforced, it's recommended to sign your plugins:
+SRTHost checks for code signatures on plugins but does not enforce them. Code signing certificates can be difficult to obtain for open-source developers and individual contributors.
 
+**Important:** Only install plugins from developers and sources you trust. While SRTHost provides assembly isolation, plugins run in-process with significant access to system resources.
+
+If you have access to a code signing certificate, signing your plugin is recommended:
 1. Obtain a code signing certificate
 2. Sign your plugin DLL:
    ```bash
@@ -513,6 +556,94 @@ public class ExamplePlugin : IPlugin
 </body>
 </html>
 ```
+
+---
+
+## Example: Blazor Page in Plugin
+
+### Project Structure
+```
+SRTPluginBlazorExample/
+├── SRTPluginBlazorExample.csproj
+├── ExamplePlugin.cs
+├── Pages/
+│   └── LiveData.razor
+└── Models/
+    └── GameData.cs
+```
+
+### SRTPluginBlazorExample.csproj
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SRTPluginBase" Version="4.0.0-*" />
+  </ItemGroup>
+</Project>
+```
+
+### Pages/LiveData.razor
+```razor
+@page "/LiveData"
+@using SRTPluginBlazorExample.Models
+
+<h3>Live Game Data</h3>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="data-display">
+        <p>Health: <strong>@gameData.Health</strong> / @gameData.MaxHealth</p>
+        <p>Ammo: <strong>@gameData.Ammo</strong></p>
+        <p>Last Updated: @lastUpdate.ToString("HH:mm:ss")</p>
+    </div>
+    
+    <button class="btn btn-primary" @onclick="RefreshData">Refresh</button>
+}
+
+@code {
+    private GameData gameData = new();
+    private bool isLoading = true;
+    private DateTime lastUpdate = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        await Task.Delay(100); // Simulate data fetch
+        
+        // Get data from your plugin's producer
+        gameData.Health = 100;
+        gameData.MaxHealth = 150;
+        gameData.Ammo = 25;
+        
+        lastUpdate = DateTime.Now;
+        isLoading = false;
+    }
+}
+
+<style>
+    .data-display {
+        padding: 20px;
+        background: #f0f0f0;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+</style>
+```
+
+**Accessible at:** `http://localhost:5000/api/v1/Plugin/SRTPluginBlazorExample/LiveData`
 
 ---
 

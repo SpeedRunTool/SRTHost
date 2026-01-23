@@ -12,4 +12,3 @@ Join our [discord](https://discord.gg/JZvYbZmy8v) at [https://discord.gg/JZvYbZm
 
 - **[Building](BUILDING.md)** - Instructions for building from source
 - **[Plugin Development Guide](PLUGIN_DEVELOPMENT.md)** - How to create plugins with Razor/Blazor support
-- **[Blazor/Razor Analysis](BLAZOR_ANALYSIS.md)** - Technical analysis of plugin architecture

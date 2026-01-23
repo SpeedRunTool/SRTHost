@@ -1,6 +1,9 @@
 ﻿<Project>
 	
 	<!-- workaround for not using Microsoft.NET.Sdk.Web -->
+	<!-- This workaround is necessary due to VSCode Razor parsing issues (https://github.com/dotnet/razor/issues/9986, https://github.com/dotnet/razor/issues/10056) -->
+	<!-- Using manual SDK imports instead of <Project Sdk="Microsoft.NET.Sdk.Web"> for better IDE compatibility -->
+	<!-- TODO: Periodically test if standard Microsoft.NET.Sdk.Web works and migrate when tooling improves -->
 	<PropertyGroup>
 		<UsingMicrosoftNETSdkWeb>true</UsingMicrosoftNETSdkWeb>
 		<EnableRazorSdkContent>true</EnableRazorSdkContent>

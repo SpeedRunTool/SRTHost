@@ -542,3 +542,4 @@ If you encounter issues:
 
 *Last Updated: 2024-01-23*
 *Compatible with SRTHost 4.0.0 and SRTPluginBase 4.0.0*
+*Note: Examples use '4.0.0-*' to include pre-release versions during development*

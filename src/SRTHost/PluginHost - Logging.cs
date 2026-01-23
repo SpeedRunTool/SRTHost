@@ -123,5 +123,11 @@ namespace SRTHost
         private const string APP_REPORT_URL_EVENT_NAME = "Application Web Server URL";
         [LoggerMessage(EventIds.PluginSystem + 25, LogLevel.Information, "Web Server URL (Ctrl-Click): \x1b[30;103m{url}\x1b[39;49m", EventName = APP_REPORT_URL_EVENT_NAME)]
         private partial void LogApplicationWebSeverURL(string url);
+
+        // Unload Views Error
+        // Note: Event ID 26 is used above (LogLoadPluginUnableToCreateCtorArgsType), so using 27 here
+        private const string UNLOAD_VIEWS_ERROR_EVENT_NAME = "Unload Views Error";
+        [LoggerMessage(EventIds.PluginSystem + 27, LogLevel.Error, "Failed to unload compiled views for assembly {assemblyName}", EventName = UNLOAD_VIEWS_ERROR_EVENT_NAME)]
+        private partial void LogUnloadViewsError(string assemblyName, Exception ex);
     }
 }

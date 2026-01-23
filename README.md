@@ -7,3 +7,8 @@
 A plugin host for various informational SpeedRun Tools.
 
 Join our [discord](https://discord.gg/JZvYbZmy8v) at [https://discord.gg/JZvYbZmy8v](https://discord.gg/JZvYbZmy8v)!
+
+## Documentation
+
+- **[Building](BUILDING.md)** - Instructions for building from source
+- **[Plugin Development Guide](PLUGIN_DEVELOPMENT.md)** - How to create plugins with Razor/Blazor support

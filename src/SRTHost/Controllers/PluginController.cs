@@ -201,27 +201,5 @@ namespace SRTHost.Controllers
             else
                 return NotFound(string.Format("Plugin \"{0}\" not found.", plugin));
         }
-
-        // GET: api/v1/Plugin/SRTPluginProducerRE2/Roar?Name=Burrito
-        // SRTPluginProducerRE2.HttpHandler(this);
-        [HttpGet("{Plugin}/{**Command}", Name = "PluginHttpHandlerGet")]
-        public async Task<IActionResult> PluginHttpHandlerGet(string plugin, string? command)
-        {
-            LogPluginHttpHandlerGet(plugin, command);
-
-            if (string.IsNullOrWhiteSpace(plugin))
-                return BadRequest("A plugin name must be provided.");
-
-            IPlugin? iPlugin = pluginHost.LoadedPlugins.ContainsKey(plugin) ? pluginHost.LoadedPlugins[plugin].Plugin : null;
-            if (iPlugin is not null)
-            {
-                if (command is not null && iPlugin.RegisteredPages.ContainsKey(command))
-                    return await iPlugin.RegisteredPages[command].Invoke(this);
-                else
-                    return NotFound($"Plugin \"{plugin}\" does not have the command \"{command}\" registered.");
-            }
-            else
-                return NotFound($"Plugin \"{plugin}\" not found.");
-        }
     }
 }

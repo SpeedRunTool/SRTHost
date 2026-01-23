@@ -344,8 +344,9 @@ namespace SRTHost
                         {
                             PluginViewCompiler.Current?.UnloadModuleCompiledViews(assembly);
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            LogUnloadViewsError(assembly.FullName ?? "Unknown Assembly", ex);
                             throw;
                         }
                     }

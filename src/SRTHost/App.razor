@@ -1,4 +1,6 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
+@inject PluginHost pluginHost
+
+<Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="@GetPluginAssemblies()">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
@@ -10,3 +12,17 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    private IEnumerable<System.Reflection.Assembly> GetPluginAssemblies()
+    {
+        if (pluginHost?.LoadedPlugins == null)
+            return Array.Empty<System.Reflection.Assembly>();
+
+        return pluginHost.LoadedPlugins.Values
+            .Where(p => p.PluginType?.Assembly != null && p.Status == PluginStatusEnum.Instantiated)
+            .Select(p => p.PluginType!.Assembly)
+            .Distinct()
+            .ToArray();
+    }
+}

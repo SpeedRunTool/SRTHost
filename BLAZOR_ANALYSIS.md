@@ -28,52 +28,7 @@ The main components enabling plugin Razor/Blazor page support are:
 
 ## Key Issues and Concerns
 
-### 1. **CRITICAL: Missing CascadingStateChanger Class**
-
-**Severity: High**
-
-**Location:**
-- Referenced in `Startup.cs` line 63
-- Injected in `_Imports.razor` line 20
-- Used in `NavMenu.razor` line 19
-
-**Issue:**
-The `CascadingStateChanger` class is registered as a service and injected into Razor components but is not defined anywhere in the codebase.
-
-```csharp
-// Startup.cs line 63
-services.AddScoped<CascadingStateChanger>();
-
-// _Imports.razor line 20
-@inject CascadingStateChanger cascadingStateChanger
-
-// NavMenu.razor line 19
-cascadingStateChanger.OnChange += StateHasChanged;
-```
-
-**Impact:**
-- Application will fail at runtime when any page tries to use this service
-- Compilation may succeed but runtime will throw dependency injection errors
-- The navigation menu cannot refresh state dynamically
-
-**Recommendation:**
-Implement the missing `CascadingStateChanger` class:
-
-```csharp
-public class CascadingStateChanger
-{
-    public event Action? OnChange;
-    
-    public void NotifyStateChanged()
-    {
-        OnChange?.Invoke();
-    }
-}
-```
-
----
-
-### 2. **Router Configuration Missing AdditionalAssemblies**
+### 1. **Router Configuration Missing AdditionalAssemblies**
 
 **Severity: High**
 
@@ -124,7 +79,7 @@ Either:
 
 ---
 
-### 3. **Security: Unvalidated Plugin Code Execution**
+### 2. **Security: Unvalidated Plugin Code Execution**
 
 **Severity: Critical**
 
@@ -171,7 +126,7 @@ PluginViewCompiler.Current?.LoadModuleCompiledViews(pluginAssembly);
 
 ---
 
-### 4. **Memory Leak Risk: View Compiler Lifecycle**
+### 3. **Memory Leak Risk: View Compiler Lifecycle**
 
 **Severity: Medium**
 
@@ -222,7 +177,7 @@ public void UnloadModuleCompiledViews(Assembly moduleAssembly)
 
 ---
 
-### 5. **Race Condition: PluginViewCompiler.Current Static Property**
+### 4. **Race Condition: PluginViewCompiler.Current Static Property**
 
 **Severity: Medium**
 
@@ -254,7 +209,7 @@ Use dependency injection instead of static singleton:
 
 ---
 
-### 6. **Error Handling: Silent Failures in Plugin Loading**
+### 5. **Error Handling: Silent Failures in Plugin Loading**
 
 **Severity: Medium**
 
@@ -294,7 +249,7 @@ catch (Exception ex)
 
 ---
 
-### 7. **Plugin Discovery: Fragile Directory Structure Requirement**
+### 6. **Plugin Discovery: Fragile Directory Structure Requirement**
 
 **Severity: Low**
 
@@ -330,7 +285,7 @@ private IEnumerable<string> GetPluginNames() =>
 
 ---
 
-### 8. **CSProj Workarounds: Non-standard SDK Configuration**
+### 7. **CSProj Workarounds: Non-standard SDK Configuration**
 
 **Severity: Low**
 
@@ -369,7 +324,7 @@ VSCode has issues with Razor parsing and project file workarounds.
 
 ---
 
-### 9. **Platform Targeting: Windows-Only Limitation**
+### 8. **Platform Targeting: Windows-Only Limitation**
 
 **Severity: Low (by design)
 
@@ -397,7 +352,7 @@ If Windows-specific features (Forms/WPF) are not actually used for core function
 
 ---
 
-### 10. **Missing Plugin Assembly Discovery for Router**
+### 9. **Missing Plugin Assembly Discovery for Router**
 
 **Severity: High**
 
@@ -433,20 +388,19 @@ Even if `AdditionalAssemblies` is added to the Router, there's no mechanism to d
 ## Recommendations Summary
 
 ### High Priority:
-1. ✅ Implement missing `CascadingStateChanger` class
-2. ✅ Fix Router to include plugin assemblies OR document API-only approach
-3. ✅ Implement plugin code signing enforcement
-4. ✅ Add CSP headers for XSS protection
+1. ✅ Fix Router to include plugin assemblies OR document API-only approach
+2. ✅ Implement plugin code signing enforcement
+3. ✅ Add CSP headers for XSS protection
 
 ### Medium Priority:
-5. Fix memory leak in `NormalizedPathCache`
-6. Replace static `Current` property with proper DI
-7. Improve error logging in plugin unload
+4. Fix memory leak in `NormalizedPathCache`
+5. Replace static `Current` property with proper DI
+6. Improve error logging in plugin unload
 
 ### Low Priority:
-8. Document CSProj workarounds
-9. Support flexible plugin directory structures
-10. Consider cross-platform architecture (if applicable)
+7. Document CSProj workarounds
+8. Support flexible plugin directory structures
+9. Consider cross-platform architecture (if applicable)
 
 ---
 
@@ -476,14 +430,15 @@ This approach:
 
 ## Conclusion
 
-The Blazor/Razor plugin support implementation shows good architectural thinking with assembly isolation and dynamic view compilation. However, there are several critical issues that need attention:
+The Blazor/Razor plugin support implementation shows good architectural thinking with assembly isolation and dynamic view compilation. However, there are several issues that need attention:
 
-1. **Critical blocker**: Missing `CascadingStateChanger` will cause runtime failures
-2. **Architecture decision needed**: Choose between Blazor router integration vs. API-only approach
-3. **Security hardening**: Enforce plugin signing and add XSS protections
-4. **Maintenance improvements**: Fix memory leaks and improve error handling
+1. **Architecture decision needed**: Choose between Blazor router integration vs. API-only approach
+2. **Security hardening**: Enforce plugin signing and add XSS protections
+3. **Maintenance improvements**: Fix memory leaks and improve error handling
 
 The system appears to be in a transitional state where Blazor infrastructure is in place but the plugin integration story isn't complete. The decision of whether to fully embrace Blazor routing or continue with the API-based approach should be made explicitly and documented.
+
+**Note**: The `CascadingStateChanger` class referenced in the codebase is provided by the `SRTPluginBase` dependency, not by SRTHost itself.
 
 ---
 

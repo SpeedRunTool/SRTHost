@@ -75,15 +75,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.102">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.*-*" />
+		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.23" />
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="*">
 			<ExcludeAssets>Compile;Build</ExcludeAssets>
 		</PackageReference>
-		<PackageReference Include="MudBlazor" Version="6.11.0" />
+		<PackageReference Include="MudBlazor" Version="8.15.0" />
 	</ItemGroup>
 
 	<ItemGroup>

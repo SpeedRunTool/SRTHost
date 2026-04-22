@@ -9,7 +9,7 @@
 #if DirExists("..\..\artifact")
 #define AppPublishDir "..\..\artifact"
 #else
-#define AppPublishDir "..\SRTHost\bin\Release\net7.0-windows\publish"
+#define AppPublishDir "..\SRTHost\bin\Release\net10.0\publish"
 #endif
 
 #define AppExe32Path AppPublishDir + "\" + AppExeNamePrefix + "32.exe"
@@ -59,8 +59,8 @@ CloseApplications=yes
 RestartApplications=no
 TimeStampsInUTC=yes
 ArchitecturesAllowed=x86 x64
-; Require Windows 7 SP1 or newer (minimum needed for .NET 7)
-MinVersion=6.1sp1
+; Require Windows 10 1607 or newer (minimum needed for .NET 10)
+MinVersion=10.0.14393
 OutputBaseFilename=SRTHostSetup-v{#VersionTag}
 Compression=lzma2/max
 SolidCompression=yes

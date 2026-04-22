@@ -2,17 +2,16 @@
 
 ## Overview
 
-This guide explains how to develop plugins for SRTHost, including how to create plugins with Blazor pages that integrate with the SRTHost Web UI.
+This guide explains how to develop plugins for SRTHost.
 
 ## Table of Contents
 
 1. [Getting Started](#getting-started)
 2. [Plugin Structure](#plugin-structure)
 3. [Plugin Types](#plugin-types)
-4. [Creating Blazor Pages](#creating-blazor-pages)
-5. [Security Considerations](#security-considerations)
-6. [Best Practices](#best-practices)
-7. [Troubleshooting](#troubleshooting)
+4. [Security Considerations](#security-considerations)
+5. [Best Practices](#best-practices)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -20,17 +19,17 @@ This guide explains how to develop plugins for SRTHost, including how to create 
 
 ### Prerequisites
 
-- .NET 8 SDK
-- Visual Studio 2022 (recommended) or compatible IDE
-- Reference to `SRTPluginBase` NuGet package (version 4.0.0 or later)
+- .NET 10 SDK
+- Visual Studio 2026 (recommended) or compatible IDE
+- Reference to `SRTPluginBase` NuGet package (version 5.0.0 or later)
 
 ### Basic Plugin Project Setup
 
-1. Create a new .NET 8 Class Library project
-2. Target framework: `net8.0` or `net8.0-windows` (if using Windows-specific features)
+1. Create a new .NET 10 Class Library project
+2. Target framework: `net10.0` or `net10.0-windows` (if using Windows-specific features)
 3. Add NuGet package reference:
    ```xml
-   <PackageReference Include="SRTPluginBase" Version="4.0.0-*" />
+   <PackageReference Include="SRTPluginBase" Version="5.0.0-*" />
    ```
 
 ---
@@ -45,12 +44,7 @@ Plugins must follow this directory structure:
 plugins/
 └── YourPluginName/
     ├── YourPluginName.dll          # Main plugin assembly (required)
-    ├── YourPluginName.Views.dll    # Compiled Razor views (if using Blazor pages)
-    ├── Dependencies.dll            # Any plugin-specific dependencies
-    └── wwwroot/                    # Static files (optional)
-        ├── css/
-        ├── js/
-        └── images/
+    └── Dependencies.dll            # Any plugin-specific dependencies
 ```
 
 **Important:** The DLL filename must match the directory name exactly.
@@ -61,7 +55,6 @@ plugins/
 plugins/
 └── SRTPluginProducerRE2/
     ├── SRTPluginProducerRE2.dll
-    ├── SRTPluginProducerRE2.Views.dll
     └── GameSpecificLibrary.dll
 ```
 
@@ -117,132 +110,6 @@ public class MyConsumerPlugin : IPluginConsumer
 
 ---
 
-## Creating Blazor Pages
-
-Plugin assemblies are integrated with the Blazor router, allowing you to create interactive pages using standard Blazor components.
-
-### URL Pattern
-
-Plugin pages are accessed at: `/api/v1/Plugin/{PluginName}/{PageRoute}`
-
-**Example:** A plugin named `SRTPluginProducerRE2R` with a page `@page "/Data/Enemies/{id:int}"` is accessible at:
-```
-http://localhost:5000/api/v1/Plugin/SRTPluginProducerRE2R/Data/Enemies/12
-```
-
-### Project Setup for Blazor Pages
-
-Add the Razor SDK to your plugin's `.csproj`:
-
-```xml
-<Project Sdk="Microsoft.NET.Sdk.Razor">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="SRTPluginBase" Version="4.0.0-*" />
-  </ItemGroup>
-</Project>
-```
-
-### Creating a Blazor Page
-
-Create Blazor pages in your plugin with standard `@page` directives:
-
-**Pages/LiveData.razor:**
-```razor
-@page "/LiveData"
-@using YourPlugin.Models
-
-<h3>Live Game Data</h3>
-
-@if (isLoading)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <div class="data-display">
-        <p>Health: <strong>@gameData.Health</strong> / @gameData.MaxHealth</p>
-        <p>Ammo: <strong>@gameData.Ammo</strong></p>
-        <p>Last Updated: @lastUpdate.ToString("HH:mm:ss")</p>
-    </div>
-    
-    <button class="btn btn-primary" @onclick="RefreshData">Refresh</button>
-}
-
-@code {
-    private GameData gameData = new();
-    private bool isLoading = true;
-    private DateTime lastUpdate = DateTime.Now;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await RefreshData();
-    }
-
-    private async Task RefreshData()
-    {
-        isLoading = true;
-        await Task.Delay(100); // Simulate data fetch
-        
-        // Get data from your plugin's producer
-        gameData.Health = 100;
-        gameData.MaxHealth = 150;
-        gameData.Ammo = 25;
-        
-        lastUpdate = DateTime.Now;
-        isLoading = false;
-    }
-}
-
-<style>
-    .data-display {
-        padding: 20px;
-        background: #f0f0f0;
-        border-radius: 5px;
-        margin: 10px 0;
-    }
-</style>
-```
-
-### Routing with Parameters
-
-Blazor routing supports parameters:
-
-```razor
-@page "/Enemies/{id:int}"
-
-<h3>Enemy Details</h3>
-<p>Enemy ID: @Id</p>
-
-@code {
-    [Parameter]
-    public int Id { get; set; }
-}
-```
-
-Accessible at: `http://localhost:5000/api/v1/Plugin/YourPlugin/Enemies/5`
-
-### Capabilities
-
-**What Works:**
-- ✅ Full Blazor component lifecycle
-- ✅ `@page` directives with route parameters
-- ✅ Dependency injection
-- ✅ Component state management
-- ✅ Event handling and data binding
-- ✅ CSS isolation
-
-**Limitations:**
-- ⚠️ Plugin pages must be accessed under `/api/v1/Plugin/{PluginName}/` prefix
-- ⚠️ Changes to plugin pages require plugin reload (no hot reload)
-- ⚠️ Dynamic plugin loading/unloading may require app restart for routing updates
-
----
-
 ## Security Considerations
 
 ### Code Signing and Trust
@@ -251,23 +118,7 @@ SRTHost checks for code signatures on plugins but does not enforce them. Code si
 
 **Important:** Only install plugins from developers and sources you trust. While SRTHost provides assembly isolation, plugins run in-process with significant access to system resources.
 
-If you have access to a code signing certificate, signing your plugin is recommended:
-1. Obtain a code signing certificate
-2. Sign your plugin DLL:
-   ```bash
-   signtool sign /f certificate.pfx /p password /t http://timestamp.server.com YourPlugin.dll
-   ```
-
-### Content Security
-
-⚠️ **Important:** Any HTML/JavaScript in your plugin views executes with full trust in the user's browser.
-
-**Best Practices:**
-- Never trust user input - always sanitize
-- Validate all data before rendering
-- Use parameterized queries if accessing databases
-- Avoid `eval()` or similar dynamic code execution
-- Don't store sensitive data in client-side code
+If you have access to a code signing certificate, signing your plugin is recommended.
 
 ### Plugin Isolation
 
@@ -362,7 +213,7 @@ public class MyPlugin : IPlugin, IDisposable
 2. Check that `YourPluginName.dll` filename matches folder name
 3. Verify plugin implements `IPlugin`, `IPluginProducer`, or `IPluginConsumer`
 4. Check SRTHost logs for loading errors
-5. Ensure target framework is compatible (`net8.0`)
+5. Ensure target framework is compatible (`net10.0`)
 
 ### Architecture Mismatch
 
@@ -371,17 +222,6 @@ public class MyPlugin : IPlugin, IDisposable
 **Solution:**
 - Ensure your plugin is compiled for the same architecture as SRTHost
 - Use "Any CPU" or explicitly target x64/x86 to match the host
-
-### Blazor Pages Not Found
-
-**Problem:** Plugin page returns 404 or not found error
-
-**Solutions:**
-1. Verify `.Views.dll` is present in plugin directory
-2. Check that Razor SDK is configured in `.csproj`
-3. Ensure page has `@page` directive
-4. Verify plugin is in `Instantiated` state (check plugin status icon)
-5. Reload the plugin after making changes
 
 ### Memory Issues After Reloading
 
@@ -392,84 +232,6 @@ public class MyPlugin : IPlugin, IDisposable
 - Unsubscribe from events in `Shutdown()`
 - Clear any static references to plugin data
 - Ensure all timers/threads are stopped
-
----
-
-## Complete Example
-
-### Project Structure
-```
-SRTPluginExample/
-├── SRTPluginExample.csproj
-├── ExamplePlugin.cs
-├── Pages/
-│   └── Dashboard.razor
-└── Models/
-    └── GameData.cs
-```
-
-### SRTPluginExample.csproj
-```xml
-<Project Sdk="Microsoft.NET.Sdk.Razor">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="SRTPluginBase" Version="4.0.0-*" />
-  </ItemGroup>
-</Project>
-```
-
-### ExamplePlugin.cs
-```csharp
-using SRTPluginBase;
-using SRTPluginBase.Interfaces;
-
-public class ExamplePlugin : IPlugin
-{
-    public IPluginInfo Info => new PluginInfo
-    {
-        Name = "Example Plugin",
-        Version = "1.0.0",
-        Description = "Demonstrates plugin with Blazor pages"
-    };
-
-    public int Startup(IPluginHost host) => 0;
-    public int Shutdown(IPluginHost host) => 0;
-}
-```
-
-### Pages/Dashboard.razor
-```razor
-@page "/Dashboard"
-
-<h3>Example Plugin Dashboard</h3>
-
-<div class="dashboard">
-    <p>Status: <span class="status">@status</span></p>
-    <p>Last Update: @lastUpdate.ToString("yyyy-MM-dd HH:mm:ss")</p>
-</div>
-
-@code {
-    private string status = "Running";
-    private DateTime lastUpdate = DateTime.Now;
-}
-
-<style>
-    .dashboard { 
-        padding: 20px; 
-        font-family: Arial, sans-serif; 
-    }
-    .status { 
-        color: green; 
-        font-weight: bold; 
-    }
-</style>
-```
-
-**Accessible at:** `http://localhost:5000/api/v1/Plugin/SRTPluginExample/Dashboard`
 
 ---
 
@@ -496,6 +258,6 @@ If you encounter issues:
 
 ---
 
-*Last Updated: 2024-01-23*
-*Compatible with SRTHost 4.0.0 and SRTPluginBase 4.0.0*
-*Note: Examples use '4.0.0-*' to include pre-release versions during development*
+*Last Updated: 2026-04-22*
+*Compatible with SRTHost 3.5.0 and SRTPluginBase 5.0.0*
+*Note: Examples use '5.0.0-*' to include pre-release versions during development*

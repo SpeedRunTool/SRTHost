@@ -2,126 +2,242 @@ name: "Automated Release"
 
 on:
   push:
-    branches:
-      - master
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      buildConfiguration:
+        description: "Build Configuration"
+        required: true
+        default: "Release"
+        type: choice
+        options:
+          - Release
+          - Debug
+      versionPreReleaseTag:
+        # Use alpha, beta, or rc for pre-release. An empty string for stable.
+        description: "Pre-Release Tag"
+        required: true
+        default: "alpha"
+        type: choice
+        options:
+          - "alpha"
+          - "beta"
+          - "RC"
+          - ""
+      createTagsAndRelease:
+        description: "Whether to automatically create tags and a release"
+        required: true
+        default: false
+        type: boolean
+
+env:
+  projectName: SRTHost
+  baseFolderName: SRTHost
+  configuration: ${{ github.event.inputs.buildConfiguration || 'Release' }}
+  versionPreReleaseTag: ${{ github.event.inputs.versionPreReleaseTag || '' }}
+  createTagsAndRelease: ${{ github.event.inputs.createTagsAndRelease || false }}
 
 jobs:
-  publish:
-    name: "Publish"
-    runs-on: "windows-latest"
-    strategy:
-      matrix:
-        publish-profile-name: [x86, x64]
-    env:
-      working-directory: .
-      project-name: SRTHost
-      platform: ${{matrix.publish-profile-name}}
+  setup:
+    name: Setup Environment
+    runs-on: windows-2025-vs2026
+
     outputs:
-      solution: ${{steps.generated-variables-1.outputs.solution}}
-      project: ${{steps.generated-variables-1.outputs.project}}
-      publish-directory: ${{steps.generated-variables-1.outputs.publish-directory}}
-      zip-filename: ${{steps.generated-variables-2.outputs.zip-filename}}
-      version: ${{steps.get_version.outputs.RELEASE_VERSION}}
+      verMajor: ${{steps.version-parts.outputs.version_major}}
+      verMinor: ${{steps.version-parts.outputs.version_minor}}
+      verPatch: ${{steps.version-parts.outputs.version_patch}}
+      verPreReleaseTag: ${{steps.version-parts.outputs.version_prereltag}}
+      verBuild: ${{steps.build-number.outputs.current_build_number}}
+      verSHAHash: ${{steps.short-sha-hash.outputs.short_sha_hash}}
+      verFullTag: ${{steps.semver-string.outputs.fulltag_string}}
+      verSemVerString: ${{steps.semver-string.outputs.semver_string}}
 
     steps:
-    # Checkout latest code
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    # Set some output variables
-    - name: Set the main environment variables based on other environment variables
-      id: generated-variables-1
-      run: |
-        echo '::set-output name=solution::${{env.project-name}}.sln'
-        echo '::set-output name=project::${{env.project-name}}/${{env.project-name}}.csproj'
-        echo '::set-output name=publish-directory::${{env.project-name}}/bin/Release/net6.0-windows/publish/'
+      - name: Get version parts
+        id: version-parts
+        run: |
+          [string[]]$versionParts = (Get-Content -Path "version.txt" -Raw).Split('.');
+          echo "version_major=$($versionParts[0])" >> $env:GITHUB_OUTPUT
+          echo "version_minor=$($versionParts[1])" >> $env:GITHUB_OUTPUT
+          echo "version_patch=$($versionParts[2])" >> $env:GITHUB_OUTPUT
+          echo "version_prereltag=${{env.versionPreReleaseTag}}" >> $env:GITHUB_OUTPUT
 
-    # Get the project's version number
-    - name: Get project version
-      id: get_version
-      uses: greenygh0st/net-proj-release-version@v1
-      with:
-        PROJ_FILE: ${{steps.generated-variables-1.outputs.project}}
+      - name: Get new build number
+        id: build-number
+        run: |
+          $build_number = $((${{ vars.BUILD_NUMBER }} + 1))
+          echo "current_build_number=$build_number" >> $env:GITHUB_OUTPUT
 
-    # Sets the zip-filename output variable based on the project version
-    - name: Sets the zip-filename environment variable based on the project version
-      id: generated-variables-2
-      run: |
-        echo '::set-output name=zip-filename::${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.zip'
+      - name: Get short SHA hash
+        id: short-sha-hash
+        run: |
+          $short_sha_hash = $(("${{ github.sha }}".substring(0, 7)))
+          echo "short_sha_hash=$short_sha_hash" >> $env:GITHUB_OUTPUT
 
-    # Install .NET
-    - name: Install .NET
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 6.0.x
+      - name: Get SemVer string
+        id: semver-string
+        run: |
+          [string]$semver_string = "${{steps.version-parts.outputs.version_major}}.${{steps.version-parts.outputs.version_minor}}.${{steps.version-parts.outputs.version_patch}}";
 
-    # Compiles the program and runs the publish profile
-    - name: Compile and run publish profile
-      run: |
-        dotnet publish ${{steps.generated-variables-1.outputs.solution}} /p:PublishProfile=${{matrix.publish-profile-name}}
+          if (![string]::IsNullOrWhitespace("${{steps.version-parts.outputs.version_prereltag}}")) {
+            $semver_string += "-${{steps.version-parts.outputs.version_prereltag}}";
+          }
 
-    # Decode the base 64 encoded pfx and save the code signing certificate
-    - name: Decode the pfx
-      run: |
-        Set-Content -Path '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt' -Value '${{ secrets.CODE_SIGN_CERTIFICATE }}'
-        certutil -decode '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt' '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx'
-        Remove-Item -Path '${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.txt'
-        
-    - name: Code sign the exes
-      run: |
-        $filesToZip = (Get-ChildItem -Path '${{steps.generated-variables-1.outputs.publish-directory}}' -Filter SRTHost*.exe).fullname
-        foreach ($fileToZip in $filesToZip) {
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CODE_SIGN_CERTIFICATE_PASS}}" /fd SHA1 "$fileToZip"
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CODE_SIGN_CERTIFICATE_PASS}}" /fd SHA256 /as "$fileToZip"
-            & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x64/signtool.exe" sign /tr "http://timestamp.digicert.com" /td SHA1 /f "${{steps.generated-variables-1.outputs.publish-directory}}/CodeSign.pfx" /p "${{secrets.CODE_SIGN_CERTIFICATE_PASS}}" /fd SHA512 /as "$fileToZip"
-        }
+          $semver_string += "+${{steps.build-number.outputs.current_build_number}}";
+          echo "fulltag_string=$semver_string" >> $env:GITHUB_OUTPUT;
 
-    - name: Upload publish artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        path: |
-          ${{steps.generated-variables-1.outputs.publish-directory}}SRTHost*.exe
+          $semver_string += ".${{steps.short-sha-hash.outputs.short_sha_hash}}";
+          echo "semver_string=$semver_string" >> $env:GITHUB_OUTPUT;
 
-  release:
-    name: "Release"
-    runs-on: "windows-latest"
-    needs: publish
+  build-csharp:
+    name: "Build (C#)"
+    runs-on: windows-2025-vs2026
+    needs: setup
+    strategy:
+      matrix:
+        platform: [x86, x64]
+    env:
+      working-directory: .
+
+    steps:
+      # Checkout latest code
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set versioning environment variable
+        run: |
+          echo 'VERSION=${{needs.Setup.outputs.verSemVerString}}' >> $env:GITHUB_ENV
+          echo 'FILEVERSION=${{needs.Setup.outputs.verMajor}}.${{needs.Setup.outputs.verMinor}}.${{needs.Setup.outputs.verPatch}}.${{needs.Setup.outputs.verBuild}}' >> $env:GITHUB_ENV
+          echo 'ASSEMBLYVERSION=${{needs.Setup.outputs.verMajor}}.${{needs.Setup.outputs.verMinor}}.0.0' >> $env:GITHUB_ENV
+
+      # Install .NET
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+          dotnet-quality: "ga"
+
+      # Compile
+      - name: Build
+        run: |
+          dotnet build "src/${{env.projectName}}.slnx" /p:"Configuration=${{env.configuration}};Platform=${{matrix.platform}};VERSION=$env:VERSION;FILEVERSION=$env:FILEVERSION;ASSEMBLYVERSION=$env:ASSEMBLYVERSION"
+
+      # Publish artifact
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ArtifactsCsharp
+          path: |
+            src/${{env.projectName}}/bin/${{env.configuration}}/${{matrix.platform}}/net10.0/*
+
+  package:
+    name: "Package"
+    runs-on: windows-2025-vs2026
+    needs: [ setup, build-csharp ]
     env:
       working-directory: .
       is-prerelease: true
 
     steps:
-    # Checkout latest code
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
+      # Checkout latest code
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    - name: Download all artifacts
-      uses: actions/download-artifact@v2
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
 
-    # Zip the publish artifacts
-    - name: Zip the publish artifacts
-      run: |
-        Add-Type -assembly 'System.IO.Compression'
-        Add-Type -assembly 'System.IO.Compression.FileSystem'
-        [System.IO.Compression.ZipArchive]$zipFile = [System.IO.Compression.ZipFile]::Open('${{needs.publish.outputs.zip-filename}}', ([System.IO.Compression.ZipArchiveMode]::Create))
-        $filesToZip = (Get-ChildItem -Path artifact/ -Filter SRTHost*.exe).fullname
-        foreach ($fileToZip in $filesToZip) {
-            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, $fileToZip, (Split-Path $fileToZip -Leaf))
-        }
-        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, 'LICENSE', 'LICENSE')
-        $zipFile.Dispose()
+      # Log into Azure
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          creds: "{\"clientId\":\"${{ secrets.ASTJG_AZURE_CLIENT_ID
+            }}\",\"clientSecret\":\"${{ secrets.ASTJG_AZURE_CLIENT_SECRET
+            }}\",\"subscriptionId\":\"${{ secrets.ASTJG_AZURE_SUBSCRIPTION_ID
+            }}\",\"tenantId\":\"${{ secrets.ASTJG_AZURE_TENANT_ID }}\"}"
 
-    # Pushes the release
-    - name: Publish release
-      uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "latest"
-        prerelease: ${{env.is-prerelease}}
-        title: 'Automated Build [master] - ${{needs.publish.outputs.version}} Release'
-        files: |
-          ${{needs.publish.outputs.zip-filename}}
+      # Sign build artifacts before packaging.
+      - name: Sign executables with Trusted Signing
+        uses: azure/trusted-signing-action@v1
+        with:
+          azure-tenant-id: ${{ secrets.ASTJG_AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.ASTJG_AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.ASTJG_AZURE_CLIENT_SECRET }}
+          endpoint: https://ncus.codesigning.azure.net/
+          trusted-signing-account-name: AS-TJGutjahr
+          certificate-profile-name: AS-CP-TJGutjahr
+          files: |
+            ${{ github.workspace }}\ArtifactsCsharp\SRTHost32.exe
+            ${{ github.workspace }}\ArtifactsCsharp\SRTHost64.exe
+          file-digest: SHA512
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA512
+
+      # Zip the publish artifacts
+      - name: Zip the publish artifacts
+        run: |
+          Add-Type -assembly 'System.IO.Compression'
+          Add-Type -assembly 'System.IO.Compression.FileSystem'
+          [System.IO.Compression.ZipArchive]$zipFile = [System.IO.Compression.ZipFile]::Open('${{env.projectName}}_${{needs.Setup.outputs.verSemVerString}}.zip', ([System.IO.Compression.ZipArchiveMode]::Create))
+          [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, 'LICENSE', ('${{env.baseFolderName}}\' + 'LICENSE'))
+          $filesToZip = (Get-ChildItem -Path ArtifactsCsharp -File -Recurse).FullName
+          foreach ($fileToZip in $filesToZip) {
+            $fileNameInZip = $fileToZip.Replace(($pwd.Path + '\ArtifactsCsharp\'),'')
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, $fileToZip, ('${{env.baseFolderName}}\' + $fileNameInZip))
+          }
+          $zipFile.Dispose()
+
+      - name: Create additional version tags
+        if: ${{ env.createTagsAndRelease }}
+        run: |
+          git tag -f latest
+          git push origin latest --force
+
+          git tag -f v${{ needs.Setup.outputs.verMajor }}
+          git push origin v${{ needs.Setup.outputs.verMajor }} --force
+
+          git tag -f v${{ needs.Setup.outputs.verMajor }}.${{ needs.Setup.outputs.verMinor }}
+          git push origin v${{ needs.Setup.outputs.verMajor }}.${{ needs.Setup.outputs.verMinor }} --force
+
+          git tag -f v${{ needs.Setup.outputs.verMajor }}.${{ needs.Setup.outputs.verMinor }}.${{ needs.Setup.outputs.verPatch }}
+          git push origin v${{ needs.Setup.outputs.verMajor }}.${{ needs.Setup.outputs.verMinor }}.${{ needs.Setup.outputs.verPatch }} --force
+
+      # Pushes the release
+      - name: Publish release
+        uses: ncipollo/release-action@v1
+        if: ${{ env.createTagsAndRelease }}
+        with:
+          name: "Automated Build - v${{needs.Setup.outputs.verSemVerString}} Release"
+          tag: v${{needs.Setup.outputs.verFullTag}}
+          prerelease: ${{env.is-prerelease}}
+          artifacts: ${{env.projectName}}_${{needs.Setup.outputs.verSemVerString}}.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  postrun:
+    name: Post-Run
+    runs-on: windows-2025-vs2026
+    needs: [ setup, package ]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Update build number variable
+        env:
+          GH_TOKEN: ${{ secrets.GH_VARIABLE_RW_TOKEN }}
+        run: gh variable set BUILD_NUMBER -b${{needs.Setup.outputs.verBuild}}

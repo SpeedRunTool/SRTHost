@@ -1,47 +1,6 @@
-﻿<Project>
-	
-	<!-- workaround for not using Microsoft.NET.Sdk.Web -->
-	<!-- This workaround is necessary due to VSCode Razor parsing issues (https://github.com/dotnet/razor/issues/9986, https://github.com/dotnet/razor/issues/10056) -->
-	<!-- Using manual SDK imports instead of <Project Sdk="Microsoft.NET.Sdk.Web"> for better IDE compatibility -->
-	<!-- TODO: Periodically test if standard Microsoft.NET.Sdk.Web works and migrate when tooling improves -->
-	<PropertyGroup>
-		<UsingMicrosoftNETSdkWeb>true</UsingMicrosoftNETSdkWeb>
-		<EnableRazorSdkContent>true</EnableRazorSdkContent>
-	</PropertyGroup>
-
-	<!-- Default properties that shouldn't be replaced by the microsoft.net.sdk.props -->
-	<PropertyGroup>
-		<DebugSymbols Condition="'$(DebugSymbols)' == ''">true</DebugSymbols>
-	</PropertyGroup>
-
-	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.props" />
-
-	<Import Sdk="Microsoft.NET.Sdk.Razor" Project="Sdk.props" />
-
-	<ItemGroup Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' &gt;= '3.0'">
-		<FrameworkReference Include="Microsoft.AspNetCore.App" IsImplicitlyDefined="true" />
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(Language)' == 'C#' AND ('$(ImplicitUsings)' == 'true' or '$(ImplicitUsings)' == 'enable')">
-		<Using Include="System.Net.Http.Json" />
-		<Using Include="Microsoft.AspNetCore.Builder" />
-		<Using Include="Microsoft.AspNetCore.Hosting" />
-		<Using Include="Microsoft.AspNetCore.Http" />
-		<Using Include="Microsoft.AspNetCore.Routing" />
-		<Using Include="Microsoft.Extensions.Configuration" />
-		<Using Include="Microsoft.Extensions.DependencyInjection" />
-		<Using Include="Microsoft.Extensions.Hosting" />
-		<Using Include="Microsoft.Extensions.Logging" />
-	</ItemGroup>
-	<!-- end workaround -->
-	
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<UseWindowsForms>true</UseWindowsForms>
-		<UseWPF>true</UseWPF>
-		<DisableWinExeOutputInference>true</DisableWinExeOutputInference>
-		<TargetFramework>net8.0-windows</TargetFramework>
-		<LangVersion>latest</LangVersion>
 		<Platforms>x64;x86</Platforms>
 	</PropertyGroup>
 
@@ -50,9 +9,9 @@
 		<Description>A plugin host for various informational SpeedRun Tools.</Description>
 		<PackageId>SRTHost</PackageId>
 		<PackageDescription>$(Description)</PackageDescription>
-		<Version>4.0.0</Version>
-		<FileVersion>4.0.0</FileVersion>
-		<AssemblyVersion>4.0.0</AssemblyVersion>
+		<Version>1.0.0</Version>
+		<FileVersion>1.0.0</FileVersion>
+		<AssemblyVersion>1.0.0</AssemblyVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Platform)'=='x64'">
@@ -63,33 +22,10 @@
 		<AssemblyName>SRTHost32</AssemblyName>
 	</PropertyGroup>
 
-	<PropertyGroup>
-		<EmbedUntrackedSources>true</EmbedUntrackedSources>
-		<PublishRepositoryUrl>true</PublishRepositoryUrl>
-		<IncludeSymbols>true</IncludeSymbols>
-		<Nullable>enable</Nullable>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-	</PropertyGroup>
-
 	<ItemGroup>
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.102">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.23" />
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="*">
 			<ExcludeAssets>Compile;Build</ExcludeAssets>
 		</PackageReference>
-		<PackageReference Include="MudBlazor" Version="8.15.0" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Content Update="wwwroot\**">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </Content>
 	</ItemGroup>
 
 	<Choose>
@@ -100,23 +36,9 @@
 		</When>
 		<Otherwise>
 			<ItemGroup>
-				<PackageReference Include="SRTPluginBase" Version="4.0.0-*" />
+				<PackageReference Include="SRTPluginBase" Version="5.0.0-*" />
 			</ItemGroup>
 		</Otherwise>
 	</Choose>
-	
-	<!-- workaround -->
-	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" />
-
-	<PropertyGroup>
-		<!--
-      Configure the Razor SDK to add support for the MVC configuration unless the project configured it or the user opted out of the implicit reference to
-      Microsoft.AspNetCore.App. This needs to happen after the .NET SDK has evaluated TFMs.
-     -->
-		<AddRazorSupportForMvc Condition="'$(DisableImplicitFrameworkReferences)' != 'true' And '$(AddRazorSupportForMvc)' == '' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' &gt;= '3.0'">true</AddRazorSupportForMvc>
-	</PropertyGroup>
-
-	<Import Sdk="Microsoft.NET.Sdk.Razor" Project="Sdk.targets" />
-	<!-- end workaround -->
 	
 </Project>

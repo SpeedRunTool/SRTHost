@@ -13,9 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Runtime.CompilerServices;
-using SRTHost.APIs;
 using SRTPluginBase.Interfaces;
-using System.Net.Http;
 
 namespace SRTHost
 {
@@ -49,24 +47,19 @@ namespace SRTHost
         }
 
         // Misc. variables
-        private readonly IHttpClientFactory httpClientFactory;
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
-        internal readonly GithubAPIHandler githubAPIHandler;
         private ConfigurationDB<PluginHost>? configurationDB;
         private readonly string? loadSpecificProducer = null; // TODO: Allow IConfiguration settings.
         //private readonly Timer failedPluginRetryTimer;
         private IDictionary<string, PluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, PluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
         //private HashSet<string> failedPlugins = new HashSet<string>();
 
-        public PluginHost(ILogger<PluginHost> logger, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
+        public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
         {
             this.logger = logger;
-            this.httpClientFactory = httpClientFactory;
             this.serviceProvider = serviceProvider;
             this.configuration = configuration;
-            this.githubAPIHandler = new GithubAPIHandler(this.httpClientFactory);
-            //this.failedPluginRetryTimer = new Timer(RetryFailedPluginsAsync, FailedPlugins, 0, 5 * 1000);
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
@@ -123,10 +116,10 @@ namespace SRTHost
             await foreach (PluginStateValue<IPlugin> pluginStateValue in LoadPluginsAsync(cancellationToken))
                 await InitializeAsync(pluginStateValue, cancellationToken);
 
-            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:DevelopmentHttp:Url"));
-            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:DevelopmentHttps:Url"));
-            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:ProductionHttp:Url"));
-            ReportURL(configuration.GetValue<string>("Kestrel:Endpoints:ProductionHttps:Url"));
+            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:DevelopmentHttp:Url").Value ?? string.Empty);
+            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:DevelopmentHttps:Url").Value ?? string.Empty);
+            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:ProductionHttp:Url").Value ?? string.Empty);
+            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:ProductionHttps:Url").Value ?? string.Empty);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
@@ -198,7 +191,6 @@ namespace SRTHost
                         pluginStateValue.Status = PluginStatusEnum.Loaded;
                         pluginStateValue.SubStatus = PluginSubStatusEnum.None;
                         pluginStateValue.PluginType = GetPluginType(pluginAssembly);
-                        PluginViewCompiler.Current?.LoadModuleCompiledViews(pluginAssembly);
                         LogLoadedPlugin(pluginName);
                         GetSigningInfo(pluginFileInfo.FullName);
                         LogPluginVersion(FileVersionInfo.GetVersionInfo(pluginFileInfo.FullName).ProductVersion);
@@ -338,19 +330,7 @@ namespace SRTHost
                     if (pluginStateValue.Status == PluginStatusEnum.NotLoaded || pluginStateValue.Status == PluginStatusEnum.LoadingError)
                         return pluginStateValue;
 
-                    foreach (Assembly assembly in pluginStateValue.LoadContext!.Assemblies)
-                    {
-                        try
-                        {
-                            PluginViewCompiler.Current?.UnloadModuleCompiledViews(assembly);
-                        }
-                        catch (Exception ex)
-                        {
-                            LogUnloadViewsError(assembly.FullName ?? "Unknown Assembly", ex);
-                            throw;
-                        }
-                    }
-                    pluginStateValue.LoadContext.Unload();
+                    pluginStateValue.LoadContext?.Unload();
                     pluginStateValue.Status = PluginStatusEnum.NotLoaded;
                     pluginStateValue.SubStatus = PluginSubStatusEnum.None;
                 }

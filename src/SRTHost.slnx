@@ -3,8 +3,8 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="../SRTPluginBase/src/SRTPluginBase/SRTPluginBase.csproj" />
-  <Project Path="src/SRTHost/SRTHost.csproj">
+  <Project Path="../../SRTPluginBase/src/SRTPluginBase/SRTPluginBase.csproj" />
+  <Project Path="SRTHost/SRTHost.csproj">
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>

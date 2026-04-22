@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SRTHost.LoggerImplementations;
-using System.Threading.Tasks;
+using SRTPluginBase.Interfaces;
 
 namespace SRTHost
 {
@@ -14,32 +17,40 @@ namespace SRTHost
 
 		public static async Task Main(params string[] args)
         {
-            using (IWebHost host = CreateBuilder(args).Build())
-                await host.RunAsync();
+            var pluginsDirectory = new DirectoryInfo(Path.Combine(Directory.GetCurrentDirectory(), "plugins"));
+            if (!pluginsDirectory.Exists)
+            {
+                pluginsDirectory.Create();
+                pluginsDirectory.Refresh();
+            }
+
+            var host = Host
+                .CreateApplicationBuilder(args)
+                .ConfigureLogging();
+
+            host.Services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
+            host.Services.AddSingleton<IPluginHost>(s => s.GetRequiredService<PluginHost>());
+            host.Services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
+
+            using (var hostApp = host.Build())
+                await hostApp.RunAsync();
         }
 
-        public static IWebHostBuilder CreateBuilder(string[] args) =>
-            WebHost
-            .CreateDefaultBuilder(args)
-			.ConfigureLogging(ConfigureLogging)
-			.UseStaticWebAssets()
-			.UseStartup<Startup>();
-
-        public static void ConfigureLogging(WebHostBuilderContext ctx, ILoggingBuilder logging)
+        public static HostApplicationBuilder ConfigureLogging(this HostApplicationBuilder ctx)
         {
-            logging.ClearProviders();
-            logging.AddSimpleConsole(options =>
+            ctx.Logging.ClearProviders();
+            ctx.Logging.AddSimpleConsole(options =>
             {
                 options.IncludeScopes = true;
                 options.TimestampFormat = string.Format("[{0}] ", TIMESTAMP_FORMAT);
                 options.UseUtcTimestamp = UTC_TIMESTAMP;
             });
-            logging.AddDebug();
-            logging.AddEventSourceLogger();
+            ctx.Logging.AddDebug();
+            ctx.Logging.AddEventSourceLogger();
 #if x64
-            logging.AddFile(@"SRTHost64",
+            ctx.Logging.AddFile(@"SRTHost64",
 #else
-            logging.AddFile(@"SRTHost32",
+            ctx.Logging.AddFile(@"SRTHost32",
 #endif
                 (FileLoggerOptions options) =>
                 {
@@ -49,6 +60,8 @@ namespace SRTHost
 					options.TimestampFormat = TIMESTAMP_FORMAT;
 					options.UtcTime = UTC_TIMESTAMP;
 				});
+
+            return ctx;
         }
     }
 }

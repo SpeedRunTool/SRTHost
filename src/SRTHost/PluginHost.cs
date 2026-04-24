@@ -55,7 +55,7 @@ namespace SRTHost
         private IDictionary<string, PluginStateValue<IPlugin>> loadedPlugins = new Dictionary<string, PluginStateValue<IPlugin>>(StringComparer.OrdinalIgnoreCase);
         //private HashSet<string> failedPlugins = new HashSet<string>();
 
-        public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration, params string[] args)
+        public PluginHost(ILogger<PluginHost> logger, IServiceProvider serviceProvider, IConfiguration configuration)
         {
             this.logger = logger;
             this.serviceProvider = serviceProvider;
@@ -63,34 +63,6 @@ namespace SRTHost
 
             FileVersionInfo srtHostFileVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, APP_EXE_NAME));
             LogVersionBanner(srtHostFileVersionInfo.ProductName, srtHostFileVersionInfo.ProductVersion, APP_ARCHITECTURE);
-
-            foreach (KeyValuePair<string, string?> kvp in new CommandLineProcessor(args))
-            {
-                LogCommandLineBanner();
-                if (kvp.Value is not null)
-                    LogCommandLineKeyValue(kvp.Key, kvp.Value);
-                else
-                    LogCommandLineKey(kvp.Key);
-
-                switch (kvp.Key.ToUpperInvariant())
-                {
-                    case "HELP":
-                        {
-                            LogCommandLineHelpBanner();
-                            LogCommandLineHelpEntryValue("Producer", "Enables single producer mode where the given producer is the only one loaded", "SRTPluginProducerRE2");
-                            return;
-                        }
-                    case "PRODUCER":
-                        {
-                            loadSpecificProducer = kvp.Value;
-                            break;
-                        }
-                    default:
-                        {
-                            break;
-                        }
-                }
-            }
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -116,10 +88,9 @@ namespace SRTHost
             await foreach (PluginStateValue<IPlugin> pluginStateValue in LoadPluginsAsync(cancellationToken))
                 await InitializeAsync(pluginStateValue, cancellationToken);
 
-            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:DevelopmentHttp:Url").Value ?? string.Empty);
-            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:DevelopmentHttps:Url").Value ?? string.Empty);
-            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:ProductionHttp:Url").Value ?? string.Empty);
-            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:ProductionHttps:Url").Value ?? string.Empty);
+            var cfg = configuration.AsEnumerable().OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase).ToArray();
+            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:HttpEndpoint:Url").Value ?? string.Empty);
+            ReportURL(configuration.GetRequiredSection("Kestrel:Endpoints:HttpsEndpoint:Url").Value ?? string.Empty);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)

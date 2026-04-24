@@ -28,9 +28,8 @@ namespace SRTHost
                 .CreateApplicationBuilder(args)
                 .ConfigureLogging();
 
-            host.Services.AddSingleton<PluginHost>(s => ActivatorUtilities.CreateInstance<PluginHost>(s, s.GetRequiredService<ILogger<PluginHost>>(), s, Environment.GetCommandLineArgs().Skip(1).ToArray()));
-            host.Services.AddSingleton<IPluginHost>(s => s.GetRequiredService<PluginHost>());
-            host.Services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
+            host.Services.AddSingleton<IPluginHost, PluginHost>();
+            host.Services.AddHostedService(s => s.GetRequiredService<IPluginHost>()!);
 
             using (var hostApp = host.Build())
                 await hostApp.RunAsync();

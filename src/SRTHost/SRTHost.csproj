@@ -29,6 +29,15 @@
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <None Update="appsettings.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+      <None Update="appsettings.Development.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
+
 	<Choose>
 		<When Condition="'$(Configuration)'=='Debug'">
 			<ItemGroup>

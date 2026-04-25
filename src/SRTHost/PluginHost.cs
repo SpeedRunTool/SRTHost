@@ -46,6 +46,13 @@ namespace SRTHost
             return LoadedPlugins[pluginName].Plugin as T;
         }
 
+        public ICollection<IPlugin> GetPlugins() =>
+            [..
+            loadedPlugins
+                .Where(kvp => (kvp.Value.Status == PluginStatusEnum.Loaded || kvp.Value.Status == PluginStatusEnum.Instantiated) && kvp.Value.Plugin is not null)
+                .Select(kvp => kvp.Value.Plugin!)
+            ];
+
         // Misc. variables
         private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;

@@ -28,8 +28,10 @@ namespace SRTHost
                 .CreateApplicationBuilder(args)
                 .ConfigureLogging();
 
+            // Add PluginHost as a singleton first, then add it as a hosted service so that it can be referenced by interface or implementation.
             host.Services.AddSingleton<IPluginHost, PluginHost>();
-            host.Services.AddHostedService(s => s.GetRequiredService<IPluginHost>()!);
+            host.Services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
+            host.Services.AddHostedService<WebServer>();
 
             using (var hostApp = host.Build())
                 await hostApp.RunAsync();

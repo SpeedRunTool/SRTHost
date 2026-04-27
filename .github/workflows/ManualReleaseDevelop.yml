@@ -125,22 +125,22 @@ jobs:
       # Restore
       - name: Build
         run: |
-          dotnet restore "src/${{env.projectName}}.slnx" -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet restore "src/${{env.projectName}}.slnx" -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       # Build
       - name: Build
         run: |
-          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       # Test
       - name: Build
         run: |
-          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       # Publish
       - name: Build
         run: |
-          dotnet publish "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet publish "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       # Publish artifact
       - name: Upload artifacts

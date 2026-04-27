@@ -56,18 +56,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Checkout latest dependencies code
-      - name: Checkout SRTPluginBase
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          path: SRTPluginBase
-          repository: SpeedRunTool/SRTPluginBase
-
-      # GITHUB_WORKSPACE pathing is ass. Move this directory down one level.
-      - name: Move SRTHost down a folder to work with existing csproj pathing
-        run: Move-Item -Path SRTPluginBase -Destination ..
-
       - name: Get version parts
         id: version-parts
         run: |
@@ -120,6 +108,19 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      # Checkout latest dependencies code
+      - name: Checkout SRTPluginBase
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          path: SRTPluginBase
+          repository: SpeedRunTool/SRTPluginBase
+          ref: develop
+
+      # GITHUB_WORKSPACE pathing is ass. Move this directory down one level.
+      - name: Move SRTHost down a folder to work with existing csproj pathing
+        run: Move-Item -Path SRTPluginBase -Destination ..
 
       - name: Set versioning environment variable
         run: |

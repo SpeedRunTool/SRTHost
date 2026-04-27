@@ -125,7 +125,7 @@ jobs:
       # Restore
       - name: Build
         run: |
-          dotnet restore "src/${{env.projectName}}.slnx" -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet restore "src/${{env.projectName}}.slnx" -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       # Build
       - name: Build

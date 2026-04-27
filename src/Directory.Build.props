@@ -21,6 +21,7 @@
 		<AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 		<PublishProtocol>FileSystem</PublishProtocol>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<OutputPath>bin\$(Configuration)\$(Platform)\$(TargetFramework)</OutputPath>
 		<PublishDir>bin\$(Configuration)\$(Platform)\$(TargetFramework)\publish\</PublishDir>
 		<DefineConstants>$(DefineConstants);$(Platform)</DefineConstants>

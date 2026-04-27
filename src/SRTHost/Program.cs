@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -24,20 +25,20 @@ namespace SRTHost
                 pluginsDirectory.Refresh();
             }
 
-            var host = Host
-                .CreateApplicationBuilder(args)
+            var host = WebApplication
+                .CreateBuilder(args)
                 .ConfigureLogging();
 
             // Add PluginHost as a singleton first, then add it as a hosted service so that it can be referenced by interface or implementation.
             host.Services.AddSingleton<IPluginHost, PluginHost>();
-            host.Services.AddHostedService(s => s.GetRequiredService<PluginHost>()!);
+            host.Services.AddHostedService(s => (s.GetRequiredService<IPluginHost>() as PluginHost)!);
             host.Services.AddHostedService<WebServer>();
 
             using (var hostApp = host.Build())
                 await hostApp.RunAsync();
         }
 
-        public static HostApplicationBuilder ConfigureLogging(this HostApplicationBuilder ctx)
+        public static WebApplicationBuilder ConfigureLogging(this WebApplicationBuilder ctx)
         {
             ctx.Logging.ClearProviders();
             ctx.Logging.AddSimpleConsole(options =>

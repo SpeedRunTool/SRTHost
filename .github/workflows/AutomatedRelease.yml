@@ -124,23 +124,49 @@ jobs:
           dotnet-version: "10.0.x"
           dotnet-quality: "ga"
 
-      # Compile
+      # Restore
       - name: Build
         run: |
-          dotnet build "src/${{env.projectName}}.slnx" /p:"Configuration=${{env.configuration}};Platform=${{matrix.platform}};VERSION=$env:VERSION;FILEVERSION=$env:FILEVERSION;ASSEMBLYVERSION=$env:ASSEMBLYVERSION"
+          dotnet restore "src/${{env.projectName}}.slnx" -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+
+      # Build
+      - name: Build
+        run: |
+          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+
+      # Test
+      - name: Build
+        run: |
+          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+
+      # Publish
+      - name: Build
+        run: |
+          dotnet publish "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       # Publish artifact
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ArtifactsCsharp
+          name: ArtifactsCsharp-${{matrix.platform}}
           path: |
-            src/${{env.projectName}}/bin/${{env.configuration}}/${{matrix.platform}}/net10.0/*
+            src/${{env.projectName}}/bin/${{env.configuration}}/${{matrix.platform}}/net10.0/publish/*
+
+  merge:
+    name: "Merge Artifacts"
+    runs-on: windows-2025-vs2026
+    needs: [ setup, build-csharp ]
+    steps:
+      - name: Merge Artifacts
+        uses: actions/upload-artifact/merge@v7
+        with:
+          name: ArtifactsCsharp
+          pattern: ArtifactsCsharp-*
 
   package:
     name: "Package"
     runs-on: windows-2025-vs2026
-    needs: [ setup, build-csharp ]
+    needs: [ setup, build-csharp, merge ]
     env:
       working-directory: .
       is-prerelease: true

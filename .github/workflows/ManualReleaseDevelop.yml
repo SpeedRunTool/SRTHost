@@ -127,34 +127,28 @@ jobs:
           echo 'FILEVERSION=${{needs.Setup.outputs.verMajor}}.${{needs.Setup.outputs.verMinor}}.${{needs.Setup.outputs.verPatch}}.${{needs.Setup.outputs.verBuild}}' >> $env:GITHUB_ENV
           echo 'ASSEMBLYVERSION=${{needs.Setup.outputs.verMajor}}.${{needs.Setup.outputs.verMinor}}.0.0' >> $env:GITHUB_ENV
 
-      # Install .NET
       - name: Install .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
           dotnet-quality: "ga"
 
-      # Restore
-      - name: Build
+      - name: Restore
         run: |
           dotnet restore "src/${{env.projectName}}/${{env.projectName}}.csproj" -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
-      # Build
       - name: Build
         run: |
           dotnet build "src/${{env.projectName}}/${{env.projectName}}.csproj" --no-restore -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
-      # Test
-      - name: Build
+      - name: Test
         run: |
           dotnet test "src/${{env.projectName}}/${{env.projectName}}.csproj" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
-      # Publish
-      - name: Build
+      - name: Publish
         run: |
           dotnet publish "src/${{env.projectName}}/${{env.projectName}}.csproj" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
-      # Publish artifact
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:

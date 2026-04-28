@@ -33,7 +33,6 @@ env:
   baseFolderName: SRTHost
   configuration: ${{ github.event.inputs.buildConfiguration || 'Release' }}
   versionPreReleaseTag: ${{ github.event.inputs.versionPreReleaseTag || '' }}
-  createTagsAndRelease: ${{ github.event.inputs.createTagsAndRelease || false }}
 
 jobs:
   setup:
@@ -233,7 +232,7 @@ jobs:
           $zipFile.Dispose()
 
       - name: Create additional version tags
-        if: ${{ env.createTagsAndRelease }}
+        if: ${{ github.event.inputs.createTagsAndRelease }}
         run: |
           git tag -f latest
           git push origin latest --force
@@ -250,7 +249,7 @@ jobs:
       # Pushes the release
       - name: Publish release
         uses: ncipollo/release-action@v1
-        if: ${{ env.createTagsAndRelease }}
+        if: ${{ github.event.inputs.createTagsAndRelease }}
         with:
           name: "Automated Build - v${{needs.Setup.outputs.verSemVerString}} Release"
           tag: v${{needs.Setup.outputs.verFullTag}}

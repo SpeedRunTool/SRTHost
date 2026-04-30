@@ -238,6 +238,9 @@ jobs:
           git tag -f v${{ needs.Setup.outputs.verMajor }}.${{ needs.Setup.outputs.verMinor }}.${{ needs.Setup.outputs.verPatch }}
           git push origin v${{ needs.Setup.outputs.verMajor }}.${{ needs.Setup.outputs.verMinor }}.${{ needs.Setup.outputs.verPatch }} --force
 
+          git tag -f v${{needs.Setup.outputs.verFullTag}}
+          git push origin v${{needs.Setup.outputs.verFullTag}} --force
+
       # Pushes the release
       - name: Publish release
         uses: ncipollo/release-action@v1

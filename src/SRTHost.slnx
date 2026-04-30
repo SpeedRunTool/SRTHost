@@ -3,6 +3,19 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path="../.github/workflows/AutomatedRelease.yml" />
+    <File Path="../.github/workflows/ManualReleaseDevelop.yml" />
+    <File Path="../.gitignore" />
+    <File Path="../BUILDING.md" />
+    <File Path="../LICENSE" />
+    <File Path="../PLUGIN_DEVELOPMENT.md" />
+    <File Path="../README.md" />
+    <File Path="../version.txt" />
+    <File Path="Directory.Build.props" />
+    <File Path="SRTHostSetup/DownloadNetCoreCheckLatest.ps1" />
+    <File Path="SRTHostSetup/SRTHostSetup.iss" />
+  </Folder>
   <Project Path="../../SRTPluginBase/src/SRTPluginBase/SRTPluginBase.csproj" />
   <Project Path="SRTHost/SRTHost.csproj">
     <Platform Solution="*|x64" Project="x64" />

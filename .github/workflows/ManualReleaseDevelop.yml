@@ -139,15 +139,15 @@ jobs:
 
       - name: Build
         run: |
-          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Test
         run: |
-          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Publish
         run: |
-          dotnet publish "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet publish "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7

@@ -135,15 +135,15 @@ jobs:
 
       - name: Restore
         run: |
-          dotnet restore "src/${{env.projectName}}.slnx" -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet restore "src/${{env.projectName}}.slnx" -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Build
         run: |
-          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Test
         run: |
-          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Publish
         run: |

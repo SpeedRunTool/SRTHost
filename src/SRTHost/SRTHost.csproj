@@ -48,38 +48,4 @@
 		</Otherwise>
 	</Choose>
 
-	<!-- Exclude SRTPluginBase.dll from single-file bundle -->
-	<Target Name="ExcludeSRTPluginBaseFromSingleFile"
-			BeforeTargets="GenerateSingleFileBundle"
-			Condition="'$(PublishSingleFile)' == 'true'">
-
-		<ItemGroup>
-			<_SRTPluginBaseFiles
-				Include="@(FilesToBundle)"
-				Condition="'%(Filename)' == 'SRTPluginBase'" />
-		</ItemGroup>
-
-		<ItemGroup>
-			<FilesToBundle
-				Remove="@(_SRTPluginBaseFiles)" />
-		</ItemGroup>
-
-		<Message
-			Importance="high"
-			Text="ExcludeSRTPluginBaseFromSingleFile: removed SRTPluginBase files from single-file bundle." />
-	</Target>
-
-	<Target Name="CopySRTPluginBaseToPublishDir"
-			AfterTargets="Publish"
-			Condition="'$(PublishSingleFile)' == 'true'">
-
-		<Copy SourceFiles="@(_SRTPluginBaseFiles)"
-			  DestinationFolder="$(PublishDir)"
-			  SkipUnchangedFiles="true" />
-
-		<Message
-			Importance="high"
-			Text="CopySRTPluginBaseToPublishDir: copied SRTPluginBase files to $(PublishDir)." />
-	</Target>
-
 </Project>

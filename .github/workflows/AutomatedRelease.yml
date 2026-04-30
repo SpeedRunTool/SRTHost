@@ -137,19 +137,19 @@ jobs:
 
       - name: Restore
         run: |
-          dotnet restore "src/${{env.projectName}}/${{env.projectName}}.csproj" -r win-${{matrix.platform}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet restore "src/${{env.projectName}}.slnx" -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Build
         run: |
-          dotnet build "src/${{env.projectName}}/${{env.projectName}}.csproj" --no-restore -c ${{env.configuration}} -p:Platform=${{matrix.platform}} --self-contained -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet build "src/${{env.projectName}}.slnx" --no-restore -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Test
         run: |
-          dotnet test "src/${{env.projectName}}/${{env.projectName}}.csproj" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet test "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Publish
         run: |
-          dotnet publish "src/${{env.projectName}}/${{env.projectName}}.csproj" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
+          dotnet publish "src/${{env.projectName}}.slnx" --no-restore --no-build -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=win-${{matrix.platform}} -p:VERSION=$env:VERSION -p:FILEVERSION=$env:FILEVERSION -p:ASSEMBLYVERSION=$env:ASSEMBLYVERSION
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7

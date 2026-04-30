@@ -206,7 +206,6 @@ jobs:
           files: |
             ${{ github.workspace }}\ArtifactsCsharp\SRTHost32.exe
             ${{ github.workspace }}\ArtifactsCsharp\SRTHost64.exe
-            ${{ github.workspace }}\ArtifactsCsharp\SRTPluginBase.dll
           file-digest: SHA512
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA512

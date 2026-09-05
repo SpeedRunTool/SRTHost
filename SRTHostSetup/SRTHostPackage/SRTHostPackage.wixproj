@@ -1,0 +1,31 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <Import Project="..\Version.props" />
+
+  <PropertyGroup>
+    <OutputName>SRTHost</OutputName>
+    <OutputType>Package</OutputType>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+
+    <!--
+      x86 rather than x64 on purpose. The package installs into %LOCALAPPDATA%, which is not
+      subject to any WOW64 redirection, so nothing here needs a 64-bit package. Marking it x86
+      keeps it installable on 32-bit Windows while still delivering both host executables.
+    -->
+    <InstallerPlatform>x86</InstallerPlatform>
+
+    <!-- ICE61: fires purely because MajorUpgrade/@AllowSameVersionUpgrades is set. Deliberate.
+         ICE91: warns that per-user-profile files are not per-machine. Also deliberate. -->
+    <SuppressIces>ICE61;ICE91</SuppressIces>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>ProductVersion=$(SRTHostMsiVersion);Manufacturer=$(SRTHostManufacturer);AboutUrl=$(SRTHostAboutUrl);PublishDir=$(SRTHostPublishDir);RepoRoot=$(SRTHostRepoRoot)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+</Project>

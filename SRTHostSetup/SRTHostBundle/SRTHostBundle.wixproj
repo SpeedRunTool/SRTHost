@@ -1,0 +1,30 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <Import Project="..\Version.props" />
+
+  <PropertyGroup>
+    <OutputName>SRTHostSetup-v$(SRTHostProductVersion)</OutputName>
+    <OutputType>Bundle</OutputType>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <SRTHostMsiPath>$(MSBuildThisFileDirectory)..\SRTHostPackage\bin\$(Configuration)\SRTHost.msi</SRTHostMsiPath>
+    <DefineConstants>ProductVersion=$(SRTHostProductVersion);Manufacturer=$(SRTHostManufacturer);AboutUrl=$(SRTHostAboutUrl);MsiPath=$(SRTHostMsiPath)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Bal.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+  <!-- Build ordering only. The MSI is referenced by path above, not by binder variable. -->
+  <ItemGroup>
+    <ProjectReference Include="..\SRTHostPackage\SRTHostPackage.wixproj">
+      <Properties>Configuration=$(Configuration)</Properties>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

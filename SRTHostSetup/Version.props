@@ -1,0 +1,28 @@
+<Project>
+
+  <!--
+    Single source of truth for the installer's versions and inputs.
+
+    SRTHostProductVersion is the four-field marketing/bundle version. Burn compares all four
+    fields, so it is what actually drives bundle-to-bundle upgrade detection.
+
+    SRTHostMsiVersion is the MSI ProductVersion. Windows Installer only compares the FIRST THREE
+    fields, so 3.1.0.1 and 3.1.0.2 are indistinguishable to it. The MSI therefore carries the
+    three-field form and relies on MajorUpgrade/@AllowSameVersionUpgrades to still replace an
+    equal-versioned install. Bump the third field for any release that must upgrade cleanly on
+    its own (i.e. when the MSI is installed without the bundle).
+
+    CI overrides these with -p:SRTHostProductVersion=... -p:SRTHostMsiVersion=...
+  -->
+  <PropertyGroup>
+    <SRTHostProductVersion Condition="'$(SRTHostProductVersion)' == ''">3.1.0.1</SRTHostProductVersion>
+    <SRTHostMsiVersion Condition="'$(SRTHostMsiVersion)' == ''">3.1.0</SRTHostMsiVersion>
+    <SRTHostManufacturer Condition="'$(SRTHostManufacturer)' == ''">Travis J. Gutjahr</SRTHostManufacturer>
+    <SRTHostAboutUrl Condition="'$(SRTHostAboutUrl)' == ''">https://www.speedruntool.com/</SRTHostAboutUrl>
+
+    <!-- Both platforms publish into this one directory, matching the layout of the release zip. -->
+    <SRTHostPublishDir Condition="'$(SRTHostPublishDir)' == ''">$(MSBuildThisFileDirectory)..\SRTHost\bin\Release\net5.0-windows\publish\</SRTHostPublishDir>
+    <SRTHostRepoRoot>$(MSBuildThisFileDirectory)..\</SRTHostRepoRoot>
+  </PropertyGroup>
+
+</Project>

@@ -51,6 +51,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The host guarantees the ASP.NET Core shared framework is available so plugins may use
+         ASP.NET assets. The installer chains the ASP.NET Core 5 runtime to satisfy this. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj">
       <!--<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>-->

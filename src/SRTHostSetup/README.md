@@ -104,7 +104,9 @@ SRTHostSetup-v1.0.0.0.exe /layout <dir>            # download payloads without i
 ```
 
 Three shortcuts are installed, in **both** the Start Menu and on the Desktop: **SRT Host
-(64-bit)**, **SRT Host (32-bit)**, and **SRT Host Plugins**. The last points at the `plugins\`
+(64-bit)**, **SRT Host (32-bit)**, and **SRT Host Plugins**. The Start Menu set is grouped in an
+**SRT Host** folder (removed on uninstall via `RemoveFolder`, or the empty group would be left
+behind); the Desktop set is loose. The last points at the `plugins\`
 folder rather than a program — the install lives under `%LOCALAPPDATA%`, inside a hidden directory,
 so without it a user has to unhide AppData or know the path just to drop a plugin in.
 

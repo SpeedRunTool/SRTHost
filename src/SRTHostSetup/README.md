@@ -20,9 +20,9 @@ A WiX installer for SRT Host.
 
 ## Building
 
-The bundle embeds the MSI, and the MSI embeds the published executables, so **publish both
-platforms first** — into the single shared publish directory, which is what the release zip did
-too:
+The bundle embeds the MSI, and the MSI embeds the published files, so **publish both platforms
+first**. Both publish into the same directory — `PublishDir` in `src/Directory.Build.targets` has
+no `$(Platform)` segment — which is the layout the installer and the release zip both want:
 
 ```powershell
 dotnet publish src\SRTHost.slnx -c Release -p:Platform=x64 -p:PublishProfile=x64
@@ -31,6 +31,14 @@ dotnet build src\SRTHostSetup\SRTHostBundle\SRTHostBundle.wixproj -c Release
 ```
 
 The result lands in `src\SRTHostSetup\SRTHostBundle\bin\Release\`.
+
+`SRTHostPublishDir` locates that directory and defaults to the path above. CI overrides it with the
+folder the two matrix artifacts are merged into, which has the same shape.
+
+These projects sit under `src/`, so they inherit `src/Directory.Build.props` along with the C#
+projects. Anything C#-specific added there must be excluded for `.wixproj` or it breaks the build —
+`DebugType` is passed to WiX as `-pdbType`, which accepts only `full` or `none`, so a `portable`
+value is a hard error (WIX0268), and SourceLink has nothing to embed in an MSI or a bundle.
 
 The wixproj files are deliberately **not** in `src\SRTHost.slnx`. They depend on publish output that a
 plain solution build does not produce, so including them would break `dotnet build src\SRTHost.slnx`.
@@ -46,16 +54,43 @@ Two versions, because Windows Installer and Burn do not agree on how many fields
   version to it. `MajorUpgrade/@AllowSameVersionUpgrades` covers that case by removing and
   reinstalling rather than skipping.
 
-CI overrides both:
+### Payload
 
-```powershell
-dotnet build src\SRTHostSetup\SRTHostBundle\SRTHostBundle.wixproj -c Release -t:Rebuild `
-  -p:SRTHostProductVersion=1.0.0.1 -p:SRTHostMsiVersion=1.0.0
+The host is published as a single file, but `SRTPluginBase.dll` is deliberately left **outside**
+the bundle (`ExcludeFromSingleFile` on the ProjectReference), so plugin authors can reference the
+exact assembly the host will load. Everything else — `System.Text.Json` and friends — stays
+embedded in the executable.
+
+That forces a second, non-obvious requirement: `SRTHost.csproj` also lists
+
+```xml
+<PublishReadyToRunExclude Include="SRTPluginBase.dll" />
 ```
 
-Use `-t:Rebuild` when only the version changes. The output filename depends on the version but the
-incremental up-to-date check does not, so a plain `build` will skip relinking and then fail to find
-the renamed file.
+ReadyToRun rewrites each published assembly into an **architecture-specific** R2R image
+(`Machine=Amd64`, or `I386` with `Requires32Bit`). `SRTHost32.exe` and `SRTHost64.exe` share one
+install directory and therefore one copy of this DLL, so an R2R build of it would be valid for
+exactly one of them — the other dies at startup with `BadImageFormatException`. Excluding it leaves
+plain AnyCPU IL (`Machine=I386`, `ILOnly`), byte-identical from both publishes. The host
+executables themselves are still ReadyToRun.
+
+### Symbols
+
+`DebugType` is `portable` rather than `embedded`, so every assembly has a `.pdb` beside it instead
+of symbols inside the binary. They ship, so a stack trace out of a user's log carries file and line
+numbers. The installer and the portable zip lay them down in the same flat tree:
+
+```
+SRTHost64.exe   SRTHost64.pdb
+SRTHost32.exe   SRTHost32.pdb
+SRTPluginBase.pdb
+```
+
+`SRTPluginBase.pdb` is taken from the **x64** publish only. Both platforms produce one and the two
+are byte-identical — `SRTPluginBase` has no platform-conditional code and the build is
+deterministic — so one copy is enough, and the two matrix artifacts can be merged flat in CI
+without caring which wins. Adding something like a `#if x64` to `SRTPluginBase` would break that
+assumption silently, shipping x64 symbols for both.
 
 ## Command line
 

@@ -138,14 +138,16 @@ jobs:
       # into the executables, so these are ~550 KB each instead of ~150 MB.
       - name: Publish
         run: |
-          dotnet publish "src/${{env.projectName}}/${{env.projectName}}.csproj" -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=${{matrix.platform}} -p:Version=$env:VERSION -p:ProductVersion=$env:PRODUCTVERSION -p:FileVersion=$env:FILEVERSION -p:AssemblyVersion=$env:ASSEMBLYVERSION
+          dotnet publish "src/${{env.projectName}}.slnx" -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=${{matrix.platform}} -p:Version=$env:VERSION -p:ProductVersion=$env:PRODUCTVERSION -p:FileVersion=$env:FILEVERSION -p:AssemblyVersion=$env:ASSEMBLYVERSION
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: Artifacts-${{matrix.platform}}
-          path: |
-            src/${{env.projectName}}/bin/${{env.configuration}}/net5.0-windows/publish/SRTHost*.exe
+          # The whole publish directory: the executable, its .pdb, and the loose
+          # SRTPluginBase.dll/.pdb. Each matrix leg runs on its own runner, so the two legs cannot
+          # collide here even though they use the same path; they are merged in the package job.
+          path: src/${{env.projectName}}/bin/${{env.configuration}}/net5.0-windows/publish/
 
   package:
     name: "Package"
@@ -157,8 +159,9 @@ jobs:
     env:
       working-directory: .
       is-prerelease: true
-      # Both platforms publish into one shared directory, so the two matrix artifacts are merged
-      # back into a single folder here - that is the layout the MSI expects.
+      # Both matrix artifacts are merged into one flat folder - the same shape a local publish
+      # produces. The only filenames they share are SRTPluginBase.dll and SRTPluginBase.pdb, and
+      # both are byte-identical between the two platforms, so whichever wins is immaterial.
       publish-dir: ${{ github.workspace }}\ArtifactsPublish
       msi-path: ${{ github.workspace }}\src\SRTHostSetup\SRTHostPackage\bin\Release\SRTHost.msi
 
@@ -221,7 +224,7 @@ jobs:
 
       - name: Build MSI
         run: |
-          dotnet build "SRTHostSetup\SRTHostPackage\SRTHostPackage.wixproj" -c Release -t:Rebuild -p:SRTHostMsiVersion=$env:SETUP_MSI_VERSION -p:SRTHostPublishDir=${{ env.publish-dir }}\
+          dotnet build "src\SRTHostSetup\SRTHostPackage\SRTHostPackage.wixproj" -c Release -t:Rebuild -p:SRTHostMsiVersion=$env:SETUP_MSI_VERSION -p:SRTHostPublishDir=${{ env.publish-dir }}\
 
       - name: Sign MSI with Trusted Signing
         uses: azure/artifact-signing-action@v1
@@ -241,7 +244,7 @@ jobs:
       # silently discards the signature applied in the previous step.
       - name: Build bundle
         run: |
-          dotnet build "SRTHostSetup\SRTHostBundle\SRTHostBundle.wixproj" -c Release -t:Rebuild -p:BuildProjectReferences=false -p:SRTHostProductVersion=$env:SETUP_PRODUCT_VERSION -p:SRTHostMsiVersion=$env:SETUP_MSI_VERSION -p:SRTHostOutputName=$env:SETUP_OUTPUT_NAME
+          dotnet build "src\SRTHostSetup\SRTHostBundle\SRTHostBundle.wixproj" -c Release -t:Rebuild -p:BuildProjectReferences=false -p:SRTHostProductVersion=$env:SETUP_PRODUCT_VERSION -p:SRTHostMsiVersion=$env:SETUP_MSI_VERSION -p:SRTHostOutputName=$env:SETUP_OUTPUT_NAME
 
       # A Burn bundle cannot be signed by running signtool over the built output, because the
       # payload containers are attached to the engine. Detach the engine, sign it, reattach it,
@@ -291,6 +294,8 @@ jobs:
           Add-Type -assembly 'System.IO.Compression.FileSystem'
           [System.IO.Compression.ZipArchive]$zipFile = [System.IO.Compression.ZipFile]::Open('${{env.projectName}}_${{needs.Setup.outputs.verSemVerString}}.zip', ([System.IO.Compression.ZipArchiveMode]::Create))
           [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, 'LICENSE', ('${{env.baseFolderName}}\' + 'LICENSE'))
+          # Executables and their symbols side by side - the same flat layout the installer lays
+          # down, so a zip user and an installed user debug against an identical tree.
           $filesToZip = (Get-ChildItem -Path '${{ env.publish-dir }}' -File -Recurse).FullName
           foreach ($fileToZip in $filesToZip) {
             $fileNameInZip = $fileToZip.Replace(('${{ env.publish-dir }}' + '\'),'')

@@ -1,0 +1,23 @@
+<Project>
+
+	<!--
+	  PublishDir has to be set here rather than in Directory.Build.props.
+
+	  Directory.Build.props is imported before the project body, so $(TargetFramework) is not set
+	  yet and the segment would silently expand to nothing. Directory.Build.targets is imported
+	  after the body, so the TFM is known here.
+
+	  OutputPath does not have this problem and stays in the .props: the SDK appends the TFM and RID
+	  to OutputPath itself. It does not do that for PublishDir.
+
+	  Note there is deliberately no $(Platform) segment, unlike OutputPath. Both platforms publish
+	  into ONE directory, which is the layout the installer and the release zip both want: the two
+	  executables have distinct names (SRTHost64.exe / SRTHost32.exe) and the only shared filenames,
+	  SRTPluginBase.dll and its .pdb, are byte-identical from either platform. Builds still go to
+	  separate per-Platform directories via OutputPath; it is only publish that converges.
+	-->
+	<PropertyGroup>
+		<PublishDir>bin\$(Configuration)\$(TargetFramework)\publish\</PublishDir>
+	</PropertyGroup>
+
+</Project>

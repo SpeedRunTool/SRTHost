@@ -26,7 +26,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj" />
+    <!--
+      SRTPluginBase ships as a loose file next to the host rather than inside the single-file
+      bundle, so plugin authors can reference the exact assembly the host will load.
+
+      PublishReadyToRunExclude is required, not optional. ReadyToRun compilation rewrites each
+      published assembly into an architecture-specific R2R image (Machine=Amd64, or I386 with
+      Requires32Bit), and SRTHost32.exe and SRTHost64.exe share one directory - so an R2R copy of
+      this assembly would be valid for exactly one of them and the other would fail at startup
+      with BadImageFormatException. Excluding it leaves plain AnyCPU IL, byte-identical from both
+      publishes. The host executables themselves are still ReadyToRun.
+    -->
+    <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </ProjectReference>
+    <PublishReadyToRunExclude Include="SRTPluginBase.dll" />
   </ItemGroup>
   
 </Project>

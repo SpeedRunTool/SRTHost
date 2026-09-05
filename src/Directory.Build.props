@@ -24,8 +24,17 @@
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 		<PublishProtocol>FileSystem</PublishProtocol>
 		<OutputPath>bin\$(Configuration)\$(Platform)</OutputPath>
-		<PublishDir>bin\$(Configuration)\$(Platform)\$(TargetFramework)\publish\</PublishDir>
+		<!-- PublishDir lives in Directory.Build.targets; see the note there. -->
 		<DefineConstants>$(DefineConstants);$(Platform)</DefineConstants>
+	</PropertyGroup>
+
+	<!--
+	  SRTHostSetup's wixproj files live under src/ too, so they inherit everything above. WiX maps
+	  DebugType onto its -pdbType switch, which only accepts full or none - 'portable' is a hard
+	  error (WIX0268). SourceLink has nothing to embed in an MSI or a bundle either.
+	-->
+	<PropertyGroup Condition="'$(MSBuildProjectExtension)'=='.wixproj'">
+		<DebugType>full</DebugType>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -36,7 +45,7 @@
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 	</PropertyGroup>
 
-	<ItemGroup>
+	<ItemGroup Condition="'$(MSBuildProjectExtension)'!='.wixproj'">
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

@@ -55,6 +55,7 @@
 
     <Feature Id="Main" Title="SRT Host" Level="1" AllowAbsent="no">
       <ComponentGroupRef Id="HostFiles" />
+      <ComponentGroupRef Id="Symbols" />
       <ComponentGroupRef Id="Shortcuts" />
     </Feature>
 
@@ -84,6 +85,18 @@
         <RemoveFile Id="Remove_SRTHost32.log" Name="SRTHost32.log" On="uninstall" />
       </Component>
 
+      <!--
+        Published as a loose file rather than bundled into the executables, so plugin authors can
+        reference the exact assembly the host loads. One copy serves both hosts: it is excluded
+        from ReadyToRun in SRTHost.csproj and so is architecture-neutral IL. Taken from the x64
+        publish output; both platforms produce a byte-identical file.
+      -->
+      <Component Id="SRTPluginBase.dll" Guid="B07B1CE0-E856-47DF-AA11-5E3190E5E602">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTPluginBase.dll" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTPluginBase.dll" Source="$(PublishDir)SRTPluginBase.dll" />
+      </Component>
+
       <Component Id="License" Guid="683B5D5C-ECEC-42CE-A5CF-AF7B654F4DD2">
         <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
                        Name="LICENSE.txt" Type="integer" Value="1" KeyPath="yes" />
@@ -101,6 +114,35 @@
           build we did not install) survives uninstall by design.
         -->
         <RemoveFolder Id="Remove_INSTALLFOLDER" Directory="INSTALLFOLDER" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      Symbols ship next to the executables so a stack trace out of a user's log carries file and
+      line numbers. Separate components rather than extra files on the executable components,
+      because adding a file to an existing component violates MSI component rules.
+
+      SRTPluginBase.pdb: both platforms produce one and they are byte-identical (SRTPluginBase has no platform-conditional code and the build is
+      deterministic), so shipping one is enough. If that ever stops being true - a `#if x64` in
+      SRTPluginBase would do it - this silently ships the x64 symbols for both.
+    -->
+    <ComponentGroup Id="Symbols" Directory="INSTALLFOLDER">
+      <Component Id="SRTHost64.pdb" Guid="A16D54D5-2CF5-4F3E-A1A8-385BC8F4060B">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTHost64.pdb" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTHost64.pdb" Source="$(PublishDir)SRTHost64.pdb" />
+      </Component>
+
+      <Component Id="SRTHost32.pdb" Guid="2EE075DC-F2A5-42FE-B9ED-AE3A8A314E8D">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTHost32.pdb" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTHost32.pdb" Source="$(PublishDir)SRTHost32.pdb" />
+      </Component>
+
+      <Component Id="SRTPluginBase.pdb" Guid="C3A68788-E1FA-4100-8C25-6678B0DECE2D">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTPluginBase.pdb" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTPluginBase.pdb" Source="$(PublishDir)SRTPluginBase.pdb" />
       </Component>
     </ComponentGroup>
 

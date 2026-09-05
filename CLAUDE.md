@@ -15,14 +15,15 @@ paths, framework, or API, and `main` contains commits `Issue/35` does not (and v
 
 | | `main` (checked out by default) | `Issue/35` / `develop` (active) |
 |---|---|---|
-| Layout | `SRTHost/`, `SRTPluginBase/` at repo root | everything under `src/` |
-| Solution | `SRTHost.sln` | `src/SRTHost.slnx` |
+| Layout | everything under `src/` | everything under `src/` |
+| Solution | `src/SRTHost.slnx` | `src/SRTHost.slnx` |
 | TFM | `net5.0-windows`, WinForms enabled | `net10.0`, `Microsoft.NET.Sdk.Web` |
 | Version | `version.txt` (`3.1.0`) + CI build number | `version.txt` (`3.5.0`) + CI build number |
-| Contracts | **vendored** `SRTPluginBase/` in this repo (v3.0.0.1, netstandard2.1) | sibling repo / NuGet `SRTPluginBase 5.0.0-*` |
+| Contracts | **vendored** `src/SRTPluginBase/` in this repo (netstandard2.1) | sibling repo / NuGet `SRTPluginBase 5.0.0-*` |
 | Roles | `IPluginProvider` / `IPluginUI` | `IPluginProducer` / `IPluginConsumer` |
 | Shape | static `Program` with a manual polling loop | generic host + DI + `IHostedService` + Kestrel |
-| Deployment | WiX installer (`SRTHostSetup/`), framework-dependent | Inno Setup (`src/SRTHostSetup/`), framework-dependent |
+| Deployment | WiX installer (`src/SRTHostSetup/`), framework-dependent | Inno Setup (`src/SRTHostSetup/`), framework-dependent |
+| Shared props | `src/Directory.Build.props` + `src/Directory.Build.targets` (both also apply to the wixprojs) | `src/Directory.Build.props` |
 
 The vendored `SRTPluginBase/` on `main` is *not* the same code as `S:\SpeedRunTool\SRTPluginBase`.
 Never sync one to the other.
@@ -37,12 +38,17 @@ platform is fine during development; releases ship both.
 ```powershell
 # main — the .NET 10 SDK builds this fine (NETSDK1138 warns the TFM is out of support).
 # .NET 5 SDK 5.0.408 is also installed locally.
-dotnet build SRTHost.sln -c Release -p:Platform=x64      # -> SRTHost\bin\Release\net5.0-windows\SRTHost64.exe
+dotnet build src/SRTHost.slnx -c Release -p:Platform=x64  # -> src\SRTHost\bin\Release\x64\net5.0-windows\win-x64\SRTHost64.exe
 
 # Publish is FRAMEWORK-DEPENDENT as of 2026-09 (~550 KB each, was ~150 MB self-contained).
 # PublishProfile alone does NOT set Configuration/Platform — pass them explicitly or you get a
 # Debug/AnyCPU build named SRTHost.dll instead of SRTHost64.exe.
-dotnet publish SRTHost\SRTHost.csproj -c Release -p:Platform=x64 -p:PublishProfile=x64
+dotnet publish src/SRTHost.slnx -c Release -p:Platform=x64 -p:PublishProfile=x64
+# -> src\SRTHost\bin\Release\x64\net5.0-windows\publish\  (and ...\x86\... for x86)
+# PublishDir carries $(Platform), so the two platforms do NOT share a folder; the installer is
+# handed both paths. It lives in Directory.Build.targets, not .props: .props is imported before
+# the project body sets $(TargetFramework), so the segment would silently expand to nothing.
+# OutputPath does not have that problem - the SDK appends the TFM and RID to it by itself.
 
 # Issue/35 — .NET 10
 dotnet build src/SRTHost.slnx -c Debug -p:Platform=x64
@@ -69,7 +75,7 @@ local signing entirely. **Both generations sign in CI via Azure Trusted Signing*
 The host looks for `plugins\<Name>\<Name>.dll` — **the DLL filename must equal its directory name**,
 or the plugin is invisible. Everything else in that folder is treated as the plugin's private
 dependencies. Plugin repos (`SpeedrunTooling/SRTPlugin*`) build straight into
-`SRTHost\bin\<Config>\...\plugins` via relative paths that resolve through `S:\`, so building a
+`src\SRTHost\bin\<Config>\...\plugins` via relative paths that resolve through `S:\`, so building a
 plugin deploys it here.
 
 ## Assembly load contexts — the part that has caused the most bugs
@@ -137,7 +143,7 @@ mapped yet; `develop` carries MudBlazor work).
 - `src/SRTHostSetup/SRTHostSetup.iss` is an Inno Setup installer packaging both architectures from
   `..\SRTHost\bin\Release\net10.0\publish` (or CI's `artifact\` directory).
 
-## The installer on `main` (`SRTHostSetup/`)
+## The installer on `main` (`src/SRTHostSetup/`)
 
 Added 2026-09. WiX **5.0.2** — pinned there because WiX 6+ refuses to build without accepting the
 Open Source Maintenance Fee EULA (`error WIX7015`). The fee does not apply to an MIT project, but
@@ -145,16 +151,29 @@ the gate does. The authoring uses the v4 schema that 6/7 still accept, so a bump
 
 Two projects: `SRTHostPackage` builds a **per-user** MSI into `%LOCALAPPDATA%\SRTHost`;
 `SRTHostBundle` builds the shippable Burn bundle `SRTHostSetup-v<version>.exe`, which chains the
-.NET 5 prerequisites plus that MSI. Read `SRTHostSetup/README.md` before touching either — it
+.NET 5 prerequisites plus that MSI. Read `src/SRTHostSetup/README.md` before touching either — it
 records the constraints that are easy to violate. The load-bearing ones:
 
-- **Publish both platforms first.** The MSI embeds the published exes from the shared publish dir.
+- **Publish both platforms first.** Both land in one directory - `PublishDir` (in
+  `src/Directory.Build.targets`) has no `$(Platform)` segment, unlike `OutputPath` - and
+  `SRTHostPublishDir` points the MSI at it. CI merges its two matrix artifacts into the same
+  shape.
+- **Symbols ship** flat, next to the executables, in both the installer and the portable zip.
+  `SRTPluginBase.pdb` is taken from the x64 publish only: both platforms build one and they
+  are byte-identical, which is also why the CI matrix artifacts can be merged flat.
+- **`SRTPluginBase.dll` is published loose**, outside the single-file bundle, so plugin authors
+  can reference the assembly the host actually loads. It **must** stay in
+  `PublishReadyToRunExclude`: R2R would stamp it per architecture, and since both hosts share
+  one directory and one copy, the other host would then fail with `BadImageFormatException`.
 - **Two version properties.** Burn compares four version fields, Windows Installer only three, so
   `SRTHostProductVersion` (4-field) and `SRTHostMsiVersion` (3-field) are separate, and the MSI
   leans on `MajorUpgrade/@AllowSameVersionUpgrades` for revision-only releases.
 - **Never change** the `UpgradeCode`s or the explicit component GUIDs in `Package.wxs`.
-- The wixprojs are deliberately **not** in `SRTHost.sln` — they need publish output a solution
-  build does not produce.
+- The wixprojs are deliberately **not** in `src/SRTHost.slnx` — they need publish output a
+  solution build does not produce.
+- They *do* inherit `src/Directory.Build.props`. C#-only settings there must be excluded for
+  `.wixproj`, or they break the build: `DebugType=portable` becomes an invalid `-pdbType`
+  (WIX0268), and SourceLink has nothing to do in an MSI.
 
 `main` now declares `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. ASP.NET Core is a
 platform guarantee for plugins, not something the host itself uses; without the reference the
@@ -163,7 +182,7 @@ fails assembly resolution even when the runtime is installed. Do not "simplify" 
 
 **.NET 5 is out of support**, so the framework-dependent install is not serviced by Windows Update.
 Known interim state until the planned move to a current .NET; the pinned 5.0.17 URLs, SHA-512
-hashes and detection paths in `SRTHostBundle/Prerequisites.wxs` all need retargeting then.
+hashes and detection paths in `src/SRTHostSetup/SRTHostBundle/Prerequisites.wxs` all need retargeting then.
 
 ## Releases
 
@@ -174,7 +193,7 @@ via Azure Trusted Signing, and publishes the installer plus a zip. Bump versions
 not the csproj — csproj values are overridden by `-p:Version/FileVersion/AssemblyVersion` from CI.
 
 Signing a Burn bundle has two traps, both handled in the workflow and explained in
-`SRTHostSetup/README.md`: sign in containment order (exes, then MSI, then bundle) with
+`src/SRTHostSetup/README.md`: sign in containment order (exes, then MSI, then bundle) with
 `-p:BuildProjectReferences=false` so the bundle build does not rebuild and unsign the MSI; and
 detach/sign/reattach the Burn engine (`wix burn detach` / `reattach`) rather than running signtool
 over the finished bundle.

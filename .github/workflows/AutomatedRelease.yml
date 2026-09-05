@@ -348,7 +348,7 @@ jobs:
           tag: v${{needs.Setup.outputs.verFullTag}}
           commit: ${{ github.sha }}
           prerelease: ${{env.is-prerelease}}
-          artifacts: "${{ env.SETUP_OUTPUT_NAME }}.exe,${{env.projectName}}_${{needs.Setup.outputs.verSemVerString}}.zip"
+          artifacts: "${{ env.SETUP_OUTPUT_NAME }}.exe,${{env.projectName}}_v${{needs.Setup.outputs.verSemVerString}}.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
 
   postrun:

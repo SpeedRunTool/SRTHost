@@ -189,7 +189,8 @@ hashes and detection paths in `src/SRTHostSetup/SRTHostBundle/Prerequisites.wxs`
 `main`'s `AutomatedRelease.yml` is live as of 2026-09 and replaces the old dead-code workflow that
 triggered on `master`. It mirrors the `Issue/35` shape: reads `version.txt`, appends the
 `BUILD_NUMBER` repo variable and short SHA into a SemVer string, builds the x86/x64 matrix, signs
-via Azure Trusted Signing, and publishes the installer plus a zip. Bump versions in `version.txt`,
+via Azure Trusted Signing, and publishes the installer plus a zip. The zip's entries sit at the
+archive **root**, matching the 3.1.0.1 release; 3.1.0+2 briefly nested them under `SRTHost/`. Bump versions in `version.txt`,
 not the csproj — csproj values are overridden by `-p:Version/FileVersion/AssemblyVersion` from CI.
 
 Signing a Burn bundle has two traps, both handled in the workflow and explained in

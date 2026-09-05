@@ -61,7 +61,10 @@
       </Directory>
     </StandardDirectory>
 
-    <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="ProgramMenuFolder">
+      <!-- Start Menu shortcuts are grouped in their own folder; the Desktop ones stay loose. -->
+      <Directory Id="APPPROGRAMMENUFOLDER" Name="SRT Host" />
+    </StandardDirectory>
     <StandardDirectory Id="DesktopFolder" />
 
     <Feature Id="Main" Title="SRT Host" Level="1" AllowAbsent="no">
@@ -161,10 +164,10 @@
       <Component Id="StartMenuShortcuts" Directory="INSTALLFOLDER" Condition="STARTMENUSHORTCUT &lt;&gt; &quot;0&quot;">
         <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Shortcuts"
                        Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
-        <Shortcut Id="StartMenu64" Directory="ProgramMenuFolder" Name="SRT Host (64-bit)"
+        <Shortcut Id="StartMenu64" Directory="APPPROGRAMMENUFOLDER" Name="SRT Host (64-bit)"
                   Description="A plugin host for various informational SpeedRun Tools."
                   Target="[INSTALLFOLDER]SRTHost64.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
-        <Shortcut Id="StartMenu32" Directory="ProgramMenuFolder" Name="SRT Host (32-bit)"
+        <Shortcut Id="StartMenu32" Directory="APPPROGRAMMENUFOLDER" Name="SRT Host (32-bit)"
                   Description="A plugin host for various informational SpeedRun Tools."
                   Target="[INSTALLFOLDER]SRTHost32.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
         <!--
@@ -172,9 +175,11 @@
           %LOCALAPPDATA%, which is inside a hidden directory, so without this a user has to know to
           type the path or unhide AppData just to drop a plugin in.
         -->
-        <Shortcut Id="StartMenuPlugins" Directory="ProgramMenuFolder" Name="SRT Host Plugins"
+        <Shortcut Id="StartMenuPlugins" Directory="APPPROGRAMMENUFOLDER" Name="SRT Host Plugins"
                   Description="Opens the folder SRT Host loads plugins from."
                   Target="[PLUGINSFOLDER]" Advertise="no" />
+        <!-- Without this the empty "SRT Host" program group is left in the Start Menu on uninstall. -->
+        <RemoveFolder Id="Remove_APPPROGRAMMENUFOLDER" Directory="APPPROGRAMMENUFOLDER" On="uninstall" />
       </Component>
 
       <Component Id="DesktopShortcuts" Directory="INSTALLFOLDER" Condition="DESKTOPSHORTCUT &lt;&gt; &quot;0&quot;">

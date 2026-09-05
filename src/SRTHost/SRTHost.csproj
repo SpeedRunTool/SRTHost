@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0-windows</TargetFramework>
+    <Platforms>x64;x86</Platforms>
+    <Product>SRT Host</Product>
+    <Description>A plugin-based application for running various informational speedrun tools.</Description>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <AssemblyName>$(AssemblyName)64</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x86'">
+    <AssemblyName>$(AssemblyName)32</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The host guarantees the ASP.NET Core shared framework is available so plugins may use
+         ASP.NET assets. The installer chains the ASP.NET Core runtime to satisfy this. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      SRTPluginBase ships as a loose file next to the host rather than inside the single-file
+      bundle, so plugin authors can reference the exact assembly the host will load.
+
+      PublishReadyToRunExclude is required, not optional. ReadyToRun compilation rewrites each
+      published assembly into an architecture-specific R2R image (Machine=Amd64, or I386 with
+      Requires32Bit), and SRTHost32.exe and SRTHost64.exe share one directory - so an R2R copy of
+      this assembly would be valid for exactly one of them and the other would fail at startup
+      with BadImageFormatException. Excluding it leaves plain AnyCPU IL, byte-identical from both
+      publishes. The host executables themselves are still ReadyToRun.
+    -->
+    <ProjectReference Include="..\SRTPluginBase\SRTPluginBase.csproj">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </ProjectReference>
+    <PublishReadyToRunExclude Include="SRTPluginBase.dll" />
+  </ItemGroup>
+  
+</Project>

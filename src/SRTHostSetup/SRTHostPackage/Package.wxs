@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!--
+    SRT Host, packaged per-user. Nothing in here touches a machine-wide location, so the whole
+    package installs, upgrades and uninstalls without elevation.
+  -->
+  <Package Name="SRT Host"
+           Manufacturer="$(Manufacturer)"
+           Version="$(ProductVersion)"
+           UpgradeCode="E840F490-B7E3-4454-B7F2-16573C687CCE"
+           Scope="perUser"
+           Compressed="yes"
+           InstallerVersion="500">
+
+    <SummaryInformation Description="A plugin-based application for running various informational speedrun tools." />
+
+    <!--
+      AllowSameVersionUpgrades exists because ProductVersion drops the fourth field: 1.0.0.0 and
+      1.0.0.1 both compile to 1.0.0. Without it, shipping a revision-only build would silently
+      leave the old files in place. With it, the old product is removed after InstallValidate and
+      the new one laid down fresh, so files always land regardless of file-version comparison.
+    -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of SRT Host is already installed. Uninstall it first if you want to go back to this version." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Shown in Apps &amp; features. -->
+    <Property Id="ARPURLINFOABOUT" Value="$(AboutUrl)" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+    <!-- INSTALLFOLDER is only resolved during costing, so ARPINSTALLLOCATION has to be set after it. -->
+    <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLFOLDER]" After="CostFinalize" />
+
+    <!--
+      Shortcuts are installed in both locations by default; either can be opted out of:
+
+        msiexec /i SRTHost.msi DESKTOPSHORTCUT=0      (Start Menu only)
+        msiexec /i SRTHost.msi STARTMENUSHORTCUT=0    (Desktop only)
+
+      The conditions below test `<> "0"` rather than testing the property for truthiness, for two
+      reasons. An unset property is empty, and empty is not "0", so the default is to install -
+      which is what makes opt-out work. And a bare `DESKTOPSHORTCUT` condition would be true for
+      any NON-EMPTY value, "0" included, so it could never be switched off at all: the bundle
+      always passes a value.
+
+      Only the exact string "0" opts out. Anything else - including "no" or "false" - installs.
+    -->
+    <Property Id="STARTMENUSHORTCUT" Secure="yes" />
+    <Property Id="DESKTOPSHORTCUT" Secure="yes" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="INSTALLFOLDER" Name="SRTHost">
+        <!--
+          Created empty so the host has somewhere to look on a fresh install. Plugin repos build
+          straight into this directory, so its contents are deliberately NOT owned by this package
+          and are left alone on uninstall.
+        -->
+        <Directory Id="PLUGINSFOLDER" Name="plugins" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="DesktopFolder" />
+
+    <Feature Id="Main" Title="SRT Host" Level="1" AllowAbsent="no">
+      <ComponentGroupRef Id="HostFiles" />
+      <ComponentGroupRef Id="Symbols" />
+      <ComponentGroupRef Id="Shortcuts" />
+    </Feature>
+
+    <!--
+      Every component below takes an HKCU registry value as its KeyPath rather than its file.
+      That is mandatory for a per-user package (ICE38): a file KeyPath under the user profile
+      cannot be used by Windows Installer to detect the component for other users or on repair.
+    -->
+    <!--
+      These three carry an explicit Guid because a component that mixes a registry KeyPath with a
+      file cannot use WiX's automatic guid generation. Never change these values: doing so makes
+      Windows Installer treat the component as new and breaks upgrade/uninstall reference counting.
+    -->
+    <ComponentGroup Id="HostFiles" Directory="INSTALLFOLDER">
+      <Component Id="SRTHost64.exe" Guid="2E438FFD-43EE-47CA-8759-F6AE3150E105">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTHost64.exe" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTHost64.exe" Source="$(PublishDir)SRTHost64.exe" />
+        <!-- The host writes its log next to itself; clean it up so uninstall leaves no directory behind. -->
+        <RemoveFile Id="Remove_SRTHost64.log" Name="SRTHost64.log" On="uninstall" />
+      </Component>
+
+      <Component Id="SRTHost32.exe" Guid="CBF90670-A805-4D2C-BF35-9F5D8E0FF51A">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTHost32.exe" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTHost32.exe" Source="$(PublishDir)SRTHost32.exe" />
+        <RemoveFile Id="Remove_SRTHost32.log" Name="SRTHost32.log" On="uninstall" />
+      </Component>
+
+      <!--
+        Published as a loose file rather than bundled into the executables, so plugin authors can
+        reference the exact assembly the host loads. One copy serves both hosts: it is excluded
+        from ReadyToRun in SRTHost.csproj and so is architecture-neutral IL. Taken from the x64
+        publish output; both platforms produce a byte-identical file.
+      -->
+      <Component Id="SRTPluginBase.dll" Guid="B07B1CE0-E856-47DF-AA11-5E3190E5E602">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTPluginBase.dll" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTPluginBase.dll" Source="$(PublishDir)SRTPluginBase.dll" />
+      </Component>
+
+      <Component Id="License" Guid="683B5D5C-ECEC-42CE-A5CF-AF7B654F4DD2">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="LICENSE.txt" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="LICENSE.txt" Name="LICENSE.txt" Source="$(RepoRoot)LICENSE" />
+      </Component>
+
+      <Component Id="InstallRegistration">
+        <RegistryKey Root="HKCU" Key="Software\$(Manufacturer)\SRTHost">
+          <RegistryValue Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+          <RegistryValue Name="Version" Type="string" Value="$(ProductVersion)" />
+        </RegistryKey>
+        <!--
+          ICE64: directories under the user profile must be explicitly removed. RemoveFolder only
+          deletes them when empty, so anything the user dropped in (plugins, configs, logs from a
+          build we did not install) survives uninstall by design.
+        -->
+        <RemoveFolder Id="Remove_INSTALLFOLDER" Directory="INSTALLFOLDER" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      Symbols ship next to the executables so a stack trace out of a user's log carries file and
+      line numbers. Separate components rather than extra files on the executable components,
+      because adding a file to an existing component violates MSI component rules.
+
+      SRTPluginBase.pdb: both platforms produce one and they are byte-identical (SRTPluginBase has no platform-conditional code and the build is
+      deterministic), so shipping one is enough. If that ever stops being true - a `#if x64` in
+      SRTPluginBase would do it - this silently ships the x64 symbols for both.
+    -->
+    <ComponentGroup Id="Symbols" Directory="INSTALLFOLDER">
+      <Component Id="SRTHost64.pdb" Guid="A16D54D5-2CF5-4F3E-A1A8-385BC8F4060B">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTHost64.pdb" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTHost64.pdb" Source="$(PublishDir)SRTHost64.pdb" />
+      </Component>
+
+      <Component Id="SRTHost32.pdb" Guid="2EE075DC-F2A5-42FE-B9ED-AE3A8A314E8D">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTHost32.pdb" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTHost32.pdb" Source="$(PublishDir)SRTHost32.pdb" />
+      </Component>
+
+      <Component Id="SRTPluginBase.pdb" Guid="C3A68788-E1FA-4100-8C25-6678B0DECE2D">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="SRTPluginBase.pdb" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="SRTPluginBase.pdb" Source="$(PublishDir)SRTPluginBase.pdb" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="Shortcuts">
+      <Component Id="StartMenuShortcuts" Directory="INSTALLFOLDER" Condition="STARTMENUSHORTCUT &lt;&gt; &quot;0&quot;">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Shortcuts"
+                       Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="StartMenu64" Directory="ProgramMenuFolder" Name="SRT Host (64-bit)"
+                  Description="A plugin host for various informational SpeedRun Tools."
+                  Target="[INSTALLFOLDER]SRTHost64.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
+        <Shortcut Id="StartMenu32" Directory="ProgramMenuFolder" Name="SRT Host (32-bit)"
+                  Description="A plugin host for various informational SpeedRun Tools."
+                  Target="[INSTALLFOLDER]SRTHost32.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
+        <!--
+          A shortcut to the plugins folder itself, not to a program. The install lives under
+          %LOCALAPPDATA%, which is inside a hidden directory, so without this a user has to know to
+          type the path or unhide AppData just to drop a plugin in.
+        -->
+        <Shortcut Id="StartMenuPlugins" Directory="ProgramMenuFolder" Name="SRT Host Plugins"
+                  Description="Opens the folder SRT Host loads plugins from."
+                  Target="[PLUGINSFOLDER]" Advertise="no" />
+      </Component>
+
+      <Component Id="DesktopShortcuts" Directory="INSTALLFOLDER" Condition="DESKTOPSHORTCUT &lt;&gt; &quot;0&quot;">
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Shortcuts"
+                       Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="Desktop64" Directory="DesktopFolder" Name="SRT Host (64-bit)"
+                  Target="[INSTALLFOLDER]SRTHost64.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
+        <Shortcut Id="Desktop32" Directory="DesktopFolder" Name="SRT Host (32-bit)"
+                  Target="[INSTALLFOLDER]SRTHost32.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
+        <Shortcut Id="DesktopPlugins" Directory="DesktopFolder" Name="SRT Host Plugins"
+                  Description="Opens the folder SRT Host loads plugins from."
+                  Target="[PLUGINSFOLDER]" Advertise="no" />
+      </Component>
+
+      <!-- Create plugins\ on install; remove it on uninstall only if the user left it empty. -->
+      <Component Id="PluginsFolder" Directory="PLUGINSFOLDER">
+        <CreateFolder />
+        <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Components"
+                       Name="PluginsFolder" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="Remove_PLUGINSFOLDER" Directory="PLUGINSFOLDER" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <!--
+      A running host holds its own exe open. Ask the user to close it rather than forcing a reboot.
+    -->
+    <util:CloseApplication Id="CloseSRTHost64" Target="SRTHost64.exe" CloseMessage="yes"
+                           RebootPrompt="no" PromptToContinue="yes"
+                           Description="SRT Host (64-bit) is running and must be closed before setup can continue." />
+    <util:CloseApplication Id="CloseSRTHost32" Target="SRTHost32.exe" CloseMessage="yes"
+                           RebootPrompt="no" PromptToContinue="yes"
+                           Description="SRT Host (32-bit) is running and must be closed before setup can continue." />
+
+  </Package>
+</Wix>

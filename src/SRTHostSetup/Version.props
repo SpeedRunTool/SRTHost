@@ -1,0 +1,45 @@
+<Project>
+
+  <!--
+    Single source of truth for the installer's versions and inputs.
+
+    SRTHostProductVersion is the four-field marketing/bundle version. Burn compares all four
+    fields, so it is what actually drives bundle-to-bundle upgrade detection.
+
+    SRTHostMsiVersion is the MSI ProductVersion. Windows Installer only compares the FIRST THREE
+    fields, so 1.0.0.0 and 1.0.0.1 are indistinguishable to it. The MSI therefore carries the
+    three-field form and relies on MajorUpgrade/@AllowSameVersionUpgrades to still replace an
+    equal-versioned install. Bump the third field for any release that must upgrade cleanly on
+    its own (i.e. when the MSI is installed without the bundle).
+
+    CI overrides these with -p:SRTHostProductVersion=... -p:SRTHostMsiVersion=...
+  -->
+  <PropertyGroup>
+    <SRTHostProductVersion Condition="'$(SRTHostProductVersion)' == ''">1.0.0.0</SRTHostProductVersion>
+    <SRTHostMsiVersion Condition="'$(SRTHostMsiVersion)' == ''">1.0.0</SRTHostMsiVersion>
+    <SRTHostManufacturer Condition="'$(SRTHostManufacturer)' == ''">SpeedRunTool</SRTHostManufacturer>
+    <SRTHostAboutUrl Condition="'$(SRTHostAboutUrl)' == ''">https://www.speedruntool.com/</SRTHostAboutUrl>
+
+    <!--
+      Bundle filename. Defaults to the four-field version, but CI overrides it with the full
+      SemVer string (which carries the build number and short SHA) so release assets match the
+      naming used by the other SpeedRunTool repos. Kept separate from SRTHostProductVersion
+      because Bundle/@Version must parse as a version, while the asset name need not.
+    -->
+    <SRTHostOutputName Condition="'$(SRTHostOutputName)' == ''">SRTHostSetup-v$(SRTHostProductVersion)</SRTHostOutputName>
+
+    <!--
+      Publish output. Both platforms publish into this one directory (PublishDir in
+      Directory.Build.targets has no $(Platform) segment), which is also the shape CI produces
+      when it merges the two matrix artifacts - so one property covers both.
+    -->
+    <SRTHostPublishConfiguration Condition="'$(SRTHostPublishConfiguration)' == ''">$(Configuration)</SRTHostPublishConfiguration>
+    <SRTHostPublishConfiguration Condition="'$(SRTHostPublishConfiguration)' == ''">Release</SRTHostPublishConfiguration>
+    <!-- Must track TargetFramework in src/SRTHost/SRTHost.csproj; it is part of PublishDir. -->
+    <SRTHostTargetFramework Condition="'$(SRTHostTargetFramework)' == ''">net5.0-windows</SRTHostTargetFramework>
+    <SRTHostPublishDir Condition="'$(SRTHostPublishDir)' == ''">$(MSBuildThisFileDirectory)..\SRTHost\bin\$(SRTHostPublishConfiguration)\$(SRTHostTargetFramework)\publish\</SRTHostPublishDir>
+    <!-- Version.props sits at src/SRTHostSetup/, so the repo root is two levels up. Used for LICENSE. -->
+    <SRTHostRepoRoot>$(MSBuildThisFileDirectory)..\..\</SRTHostRepoRoot>
+  </PropertyGroup>
+
+</Project>

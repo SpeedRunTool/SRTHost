@@ -1,0 +1,54 @@
+<Project>
+	<PropertyGroup>
+		<LangVersion>latest</LangVersion>
+		<Authors>SpeedRunTool</Authors>
+		<Company>$(Authors)</Company>
+		<CopyrightYear>$([System.DateTime]::UtcNow.ToString("yyyy"))</CopyrightYear>
+		<Copyright>Copyright © $(CopyrightYear) $(Company)</Copyright>
+		<RepositoryUrl>https://github.com/$(Company)/SRTHost</RepositoryUrl>
+		<Version>1.0.0+0</Version>
+		<ProductVersion>1.0.0+0</ProductVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<DebugType>portable</DebugType>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+		<PublishProtocol>FileSystem</PublishProtocol>
+		<OutputPath>bin\$(Configuration)\$(Platform)</OutputPath>
+		<!-- PublishDir lives in Directory.Build.targets; see the note there. -->
+		<DefineConstants>$(DefineConstants);$(Platform)</DefineConstants>
+	</PropertyGroup>
+
+	<!--
+	  SRTHostSetup's wixproj files live under src/ too, so they inherit everything above. WiX maps
+	  DebugType onto its -pdbType switch, which only accepts full or none - 'portable' is a hard
+	  error (WIX0268). SourceLink has nothing to embed in an MSI or a bundle either.
+	-->
+	<PropertyGroup Condition="'$(MSBuildProjectExtension)'=='.wixproj'">
+		<DebugType>full</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(MSBuildProjectExtension)'!='.wixproj'">
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+</Project>

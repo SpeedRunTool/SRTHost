@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!--
+    .NET shared frameworks required by SRT Host.
+
+    Two frameworks, two architectures:
+      * Microsoft.WindowsDesktop.App - the host targets net?.?-windows with WPF and WinForms enabled.
+        Its installer also carries Microsoft.NETCore.App, which is why it is chained first.
+      * Microsoft.AspNetCore.App    - not used by the host itself. It is a platform guarantee for
+        plugins, declared via FrameworkReference in SRTHost.csproj, so it must be present or the
+        host will not start.
+    SRTHost32.exe needs the x86 frameworks and SRTHost64.exe needs the x64 ones, so a 64-bit
+    machine legitimately needs both sets.
+
+    5.0.17 is the final .NET 5 release (2022-05-10); .NET 5 is out of support and will receive no
+    further updates, so pinning an exact version here is correct rather than fragile. Detection is
+    an exact-version directory probe against the default install location for the same reason.
+
+    Hashes and sizes are the published values from
+    https://builds.dotnet.microsoft.com/dotnet/release-metadata/5.0/releases.json
+    and are verified by Burn before each payload is executed.
+  -->
+  <Fragment>
+
+    <util:DirectorySearch Id="SearchNetDesktop50x64" Variable="NetDesktop50x64" Result="exists"
+                          Path="[ProgramFiles64Folder]dotnet\shared\Microsoft.WindowsDesktop.App\5.0.17"
+                          Condition="VersionNT64" />
+    <util:DirectorySearch Id="SearchNetAspNet50x64" Variable="NetAspNet50x64" Result="exists"
+                          Path="[ProgramFiles64Folder]dotnet\shared\Microsoft.AspNetCore.App\5.0.17"
+                          Condition="VersionNT64" />
+    <util:DirectorySearch Id="SearchNetDesktop50x86" Variable="NetDesktop50x86" Result="exists"
+                          Path="[ProgramFilesFolder]dotnet\shared\Microsoft.WindowsDesktop.App\5.0.17" />
+    <util:DirectorySearch Id="SearchNetAspNet50x86" Variable="NetAspNet50x86" Result="exists"
+                          Path="[ProgramFilesFolder]dotnet\shared\Microsoft.AspNetCore.App\5.0.17" />
+
+    <PackageGroup Id="NetRuntimePrerequisites">
+
+      <!--
+        PerMachine="no" keeps the *bundle* per-user so SRT Host itself installs and uninstalls
+        without elevation. These runtime installers are per-machine and carry their own
+        requireAdministrator manifest, so Windows raises a single UAC prompt for them - and only
+        when a framework is genuinely missing. On a machine that already has .NET 5, every package
+        below is detected as present and the whole install runs with no prompt at all.
+
+        Permanent="yes": removing SRT Host must not rip the .NET runtime out from under anything
+        else on the machine.
+        Cache="remove": these are ~55 MB each; do not leave them in the package cache.
+      -->
+      <ExePackage Id="NetDesktop50x86"
+                  DisplayName=".NET Desktop Runtime 5.0.17 (x86)"
+                  DetectCondition="NetDesktop50x86"
+                  PerMachine="no" Permanent="yes" Vital="yes" Cache="remove"
+                  InstallArguments="/install /quiet /norestart">
+        <ExePackagePayload Name="windowsdesktop-runtime-5.0.17-win-x86.exe"
+                           ProductName=".NET Desktop Runtime 5.0.17 (x86)"
+                           Description="Microsoft Windows Desktop Runtime 5.0.17 (x86)"
+                           Version="5.0.17"
+                           Size="49729032"
+                           Hash="74a379323e52172f563cd996880f58d58a19303ae59b3f55ff52625dfe8a4a602609785b1174b38f2da97282f90f1ade53194354f48773512943eae249926ee8"
+                           DownloadUrl="https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/5.0.17/windowsdesktop-runtime-5.0.17-win-x86.exe" />
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <ExePackage Id="NetAspNet50x86"
+                  DisplayName="ASP.NET Core Runtime 5.0.17 (x86)"
+                  DetectCondition="NetAspNet50x86"
+                  PerMachine="no" Permanent="yes" Vital="yes" Cache="remove"
+                  InstallArguments="/install /quiet /norestart">
+        <ExePackagePayload Name="aspnetcore-runtime-5.0.17-win-x86.exe"
+                           ProductName="ASP.NET Core Runtime 5.0.17 (x86)"
+                           Description="Microsoft ASP.NET Core 5.0.17 Shared Framework (x86)"
+                           Version="5.0.17"
+                           Size="7674816"
+                           Hash="04f9f5760d7fe08cbccc3a9274956129c634debcd2a51c2b7349a25a104528f49aad01bb66cdf790e793c5b03dcf1ec7c742656360dfb85b95f1ab9f15debc35"
+                           DownloadUrl="https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/5.0.17/aspnetcore-runtime-5.0.17-win-x86.exe" />
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <ExePackage Id="NetDesktop50x64"
+                  DisplayName=".NET Desktop Runtime 5.0.17 (x64)"
+                  DetectCondition="NetDesktop50x64"
+                  InstallCondition="VersionNT64"
+                  PerMachine="no" Permanent="yes" Vital="yes" Cache="remove"
+                  InstallArguments="/install /quiet /norestart">
+        <ExePackagePayload Name="windowsdesktop-runtime-5.0.17-win-x64.exe"
+                           ProductName=".NET Desktop Runtime 5.0.17 (x64)"
+                           Description="Microsoft Windows Desktop Runtime 5.0.17 (x64)"
+                           Version="5.0.17"
+                           Size="55338488"
+                           Hash="f7eb69a953ff6346a180e5200075120b4b47cb89a75bc36c76a9e468c037bb2376f497dbf8e0bada152bc3ec35dceaad55d0a811586569575bf5b201d1e32baf"
+                           DownloadUrl="https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/5.0.17/windowsdesktop-runtime-5.0.17-win-x64.exe" />
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+      <ExePackage Id="NetAspNet50x64"
+                  DisplayName="ASP.NET Core Runtime 5.0.17 (x64)"
+                  DetectCondition="NetAspNet50x64"
+                  InstallCondition="VersionNT64"
+                  PerMachine="no" Permanent="yes" Vital="yes" Cache="remove"
+                  InstallArguments="/install /quiet /norestart">
+        <ExePackagePayload Name="aspnetcore-runtime-5.0.17-win-x64.exe"
+                           ProductName="ASP.NET Core Runtime 5.0.17 (x64)"
+                           Description="Microsoft ASP.NET Core 5.0.17 Shared Framework (x64)"
+                           Version="5.0.17"
+                           Size="8492712"
+                           Hash="85a4b4efa51d20fed86aa87576c1679a8123187116323cf8708ee904208960862bdb834d21ac2b1565b26afd7ce92c360e2f52f5067d20db3be76247f888b8e0"
+                           DownloadUrl="https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/5.0.17/aspnetcore-runtime-5.0.17-win-x64.exe" />
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+      </ExePackage>
+
+    </PackageGroup>
+  </Fragment>
+</Wix>

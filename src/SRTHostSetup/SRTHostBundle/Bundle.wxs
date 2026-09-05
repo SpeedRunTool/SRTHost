@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <!--
+    SRTHostSetup - the shippable installer.
+
+    It chains the .NET prerequisites and the per-user SRT Host MSI. The runtime payloads are
+    NOT embedded (Compressed="no" on each ExePackage), so this executable stays around 1 MB and
+    only downloads a runtime when one is actually missing.
+
+    Version is the full four-field product version. Burn compares all four fields when detecting
+    a related bundle, so 1.0.0.0 -> 1.0.0.1 upgrades correctly here even though the MSI inside
+    can only express 1.0.0. See Version.props.
+  -->
+  <Bundle Name="SRT Host"
+          Manufacturer="$(Manufacturer)"
+          Version="$(ProductVersion)"
+          UpgradeCode="1E925787-801C-4D19-9F29-456C1F1E74CC"
+          AboutUrl="$(AboutUrl)"
+          Compressed="yes"
+          DisableModify="yes">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="hyperlinkLicense"
+          LicenseUrl="https://github.com/SpeedRunTool/SRTHost/blob/main/LICENSE"
+          SuppressOptionsUI="yes"
+          ShowVersion="yes" />
+    </BootstrapperApplication>
+
+    <!--
+      Shortcuts go to both the Start Menu and the Desktop by default. Either can be turned off:
+
+        SRTHostSetup.exe DesktopShortcut=0
+        SRTHostSetup.exe StartMenuShortcut=0
+
+      These are passed through to the MSI below. Note the bootstrapper UI has no checkboxes for
+      them - WixStandardBootstrapperApplication cannot add custom controls without a custom theme -
+      so opting out is command-line only for now.
+    -->
+    <Variable Name="StartMenuShortcut" Value="1" Type="numeric" bal:Overridable="yes" />
+    <Variable Name="DesktopShortcut" Value="1" Type="numeric" bal:Overridable="yes" />
+
+    <Chain>
+      <PackageGroupRef Id="NetRuntimePrerequisites" />
+
+      <MsiPackage Id="SRTHost"
+                  SourceFile="$(MsiPath)"
+                  Compressed="yes"
+                  Vital="yes">
+        <MsiProperty Name="STARTMENUSHORTCUT" Value="[StartMenuShortcut]" />
+        <MsiProperty Name="DESKTOPSHORTCUT" Value="[DesktopShortcut]" />
+      </MsiPackage>
+    </Chain>
+
+  </Bundle>
+</Wix>

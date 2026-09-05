@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Plugin Base</Product>
+    <Description>The plugin interfaces required to develop plugins for the SRT Host.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="5.0.2" />
+  </ItemGroup>
+  
+</Project>

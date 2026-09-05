@@ -34,9 +34,20 @@
     <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLFOLDER]" After="CostFinalize" />
 
     <!--
-      Off by default, matching the old Inno installer where the desktop icon was an unchecked
-      task. Turn on with: msiexec /i SRTHost.msi DESKTOPSHORTCUT=1
+      Shortcuts are installed in both locations by default; either can be opted out of:
+
+        msiexec /i SRTHost.msi DESKTOPSHORTCUT=0      (Start Menu only)
+        msiexec /i SRTHost.msi STARTMENUSHORTCUT=0    (Desktop only)
+
+      The conditions below test `<> "0"` rather than testing the property for truthiness, for two
+      reasons. An unset property is empty, and empty is not "0", so the default is to install -
+      which is what makes opt-out work. And a bare `DESKTOPSHORTCUT` condition would be true for
+      any NON-EMPTY value, "0" included, so it could never be switched off at all: the bundle
+      always passes a value.
+
+      Only the exact string "0" opts out. Anything else - including "no" or "false" - installs.
     -->
+    <Property Id="STARTMENUSHORTCUT" Secure="yes" />
     <Property Id="DESKTOPSHORTCUT" Secure="yes" />
 
     <StandardDirectory Id="LocalAppDataFolder">
@@ -147,7 +158,7 @@
     </ComponentGroup>
 
     <ComponentGroup Id="Shortcuts">
-      <Component Id="StartMenuShortcuts" Directory="INSTALLFOLDER">
+      <Component Id="StartMenuShortcuts" Directory="INSTALLFOLDER" Condition="STARTMENUSHORTCUT &lt;&gt; &quot;0&quot;">
         <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Shortcuts"
                        Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
         <Shortcut Id="StartMenu64" Directory="ProgramMenuFolder" Name="SRT Host (64-bit)"
@@ -156,15 +167,26 @@
         <Shortcut Id="StartMenu32" Directory="ProgramMenuFolder" Name="SRT Host (32-bit)"
                   Description="A plugin host for various informational SpeedRun Tools."
                   Target="[INSTALLFOLDER]SRTHost32.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
+        <!--
+          A shortcut to the plugins folder itself, not to a program. The install lives under
+          %LOCALAPPDATA%, which is inside a hidden directory, so without this a user has to know to
+          type the path or unhide AppData just to drop a plugin in.
+        -->
+        <Shortcut Id="StartMenuPlugins" Directory="ProgramMenuFolder" Name="SRT Host Plugins"
+                  Description="Opens the folder SRT Host loads plugins from."
+                  Target="[PLUGINSFOLDER]" Advertise="no" />
       </Component>
 
-      <Component Id="DesktopShortcuts" Directory="INSTALLFOLDER" Condition="DESKTOPSHORTCUT">
+      <Component Id="DesktopShortcuts" Directory="INSTALLFOLDER" Condition="DESKTOPSHORTCUT &lt;&gt; &quot;0&quot;">
         <RegistryValue Root="HKCU" Key="Software\$(Manufacturer)\SRTHost\Shortcuts"
                        Name="Desktop" Type="integer" Value="1" KeyPath="yes" />
         <Shortcut Id="Desktop64" Directory="DesktopFolder" Name="SRT Host (64-bit)"
                   Target="[INSTALLFOLDER]SRTHost64.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
         <Shortcut Id="Desktop32" Directory="DesktopFolder" Name="SRT Host (32-bit)"
                   Target="[INSTALLFOLDER]SRTHost32.exe" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
+        <Shortcut Id="DesktopPlugins" Directory="DesktopFolder" Name="SRT Host Plugins"
+                  Description="Opens the folder SRT Host loads plugins from."
+                  Target="[PLUGINSFOLDER]" Advertise="no" />
       </Component>
 
       <!-- Create plugins\ on install; remove it on uninstall only if the user left it empty. -->

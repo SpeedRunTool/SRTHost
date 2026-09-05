@@ -29,9 +29,18 @@
           ShowVersion="yes" />
     </BootstrapperApplication>
 
-    <!-- SRTHostSetup.exe DesktopShortcut=1 also creates desktop shortcuts. Off by default, which
-         matches the old Inno installer's unchecked "Create a desktop icon" task. -->
-    <Variable Name="DesktopShortcut" Value="0" Type="numeric" bal:Overridable="yes" />
+    <!--
+      Shortcuts go to both the Start Menu and the Desktop by default. Either can be turned off:
+
+        SRTHostSetup.exe DesktopShortcut=0
+        SRTHostSetup.exe StartMenuShortcut=0
+
+      These are passed through to the MSI below. Note the bootstrapper UI has no checkboxes for
+      them - WixStandardBootstrapperApplication cannot add custom controls without a custom theme -
+      so opting out is command-line only for now.
+    -->
+    <Variable Name="StartMenuShortcut" Value="1" Type="numeric" bal:Overridable="yes" />
+    <Variable Name="DesktopShortcut" Value="1" Type="numeric" bal:Overridable="yes" />
 
     <Chain>
       <PackageGroupRef Id="NetRuntimePrerequisites" />
@@ -40,6 +49,7 @@
                   SourceFile="$(MsiPath)"
                   Compressed="yes"
                   Vital="yes">
+        <MsiProperty Name="STARTMENUSHORTCUT" Value="[StartMenuShortcut]" />
         <MsiProperty Name="DESKTOPSHORTCUT" Value="[DesktopShortcut]" />
       </MsiPackage>
     </Chain>

@@ -13,7 +13,7 @@ A WiX installer for SRT Host.
 
 | Project | Output | What it is |
 |---|---|---|
-| `SRTHostPackage` | `SRTHost.msi` | Per-user MSI: the two host executables, LICENSE, shortcuts, `plugins\`. Installs standalone with no elevation, but performs **no** .NET runtime check. |
+| `SRTHostPackage` | `SRTHost.msi` | Per-user MSI: the two host executables, `SRTPluginBase.dll`, symbols, LICENSE, shortcuts, `plugins\`. Installs standalone with no elevation, but performs **no** .NET runtime check. |
 | `SRTHostBundle` | `SRTHostSetup-v<version>.exe` | Burn bundle: the .NET prerequisites plus the MSI. **This is the shippable artifact.** |
 
 `Version.props` holds the versions and the path to the publish output for both projects.
@@ -98,12 +98,29 @@ assumption silently, shipping x64 symbols for both.
 SRTHostSetup-v1.0.0.0.exe                          # interactive
 SRTHostSetup-v1.0.0.0.exe /install /quiet /norestart
 SRTHostSetup-v1.0.0.0.exe /uninstall /quiet
-SRTHostSetup-v1.0.0.0.exe DesktopShortcut=1        # also create desktop shortcuts
+SRTHostSetup-v1.0.0.0.exe DesktopShortcut=0        # skip the desktop shortcuts
+SRTHostSetup-v1.0.0.0.exe StartMenuShortcut=0      # skip the Start Menu shortcuts
 SRTHostSetup-v1.0.0.0.exe /layout <dir>            # download payloads without installing
 ```
 
-Start Menu shortcuts are always created. Desktop shortcuts are off by default, matching the
-unchecked "Create a desktop icon" task in the old Inno script.
+Three shortcuts are installed, in **both** the Start Menu and on the Desktop: **SRT Host
+(64-bit)**, **SRT Host (32-bit)**, and **SRT Host Plugins**. The last points at the `plugins\`
+folder rather than a program — the install lives under `%LOCALAPPDATA%`, inside a hidden directory,
+so without it a user has to unhide AppData or know the path just to drop a plugin in.
+
+Either location can be opted out of, via the bundle (`StartMenuShortcut=0` / `DesktopShortcut=0`)
+or the MSI directly (`STARTMENUSHORTCUT=0` / `DESKTOPSHORTCUT=0`).
+
+Both conditions test `<> "0"`, which is what makes *opt-out* rather than opt-in work: an unset
+property is empty, and empty is not `"0"`, so the default installs. A bare `DESKTOPSHORTCUT`
+truthiness test would be wrong twice over — it is true for any non-empty value, `"0"` included, so
+the bundle (which always passes a value) could never switch it off. Only the exact string `"0"`
+opts out; `no` or `false` will still install.
+
+> There are no checkboxes for this in the installer UI.
+> `WixStandardBootstrapperApplication` cannot add custom controls without a custom Burn theme, so
+> opting out is command-line only. The bundle variables are already in place if a themed UI is
+> added later.
 
 ## The .NET prerequisites
 

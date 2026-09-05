@@ -122,8 +122,9 @@ jobs:
       - name: Set versioning environment variable
         run: |
           echo 'VERSION=${{needs.Setup.outputs.verSemVerString}}' >> $env:GITHUB_ENV
+          echo 'PRODUCTVERSION=${{needs.Setup.outputs.verSemVerString}}' >> $env:GITHUB_ENV
           echo 'FILEVERSION=${{needs.Setup.outputs.verMajor}}.${{needs.Setup.outputs.verMinor}}.${{needs.Setup.outputs.verPatch}}.${{needs.Setup.outputs.verBuild}}' >> $env:GITHUB_ENV
-          echo 'ASSEMBLYVERSION=${{needs.Setup.outputs.verMajor}}.${{needs.Setup.outputs.verMinor}}.0.0' >> $env:GITHUB_ENV
+          echo 'ASSEMBLYVERSION=${{needs.Setup.outputs.verMajor}}.0.0.0' >> $env:GITHUB_ENV
 
       # The .NET 10 SDK builds this net5.0-windows project fine; it only warns NETSDK1138 that the
       # target framework is out of support. No .NET 5 SDK is needed on the runner.
@@ -137,14 +138,14 @@ jobs:
       # into the executables, so these are ~550 KB each instead of ~150 MB.
       - name: Publish
         run: |
-          dotnet publish "${{env.projectName}}/${{env.projectName}}.csproj" -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=${{matrix.platform}} -p:Version=$env:VERSION -p:FileVersion=$env:FILEVERSION -p:AssemblyVersion=$env:ASSEMBLYVERSION
+          dotnet publish "src/${{env.projectName}}/${{env.projectName}}.csproj" -c ${{env.configuration}} -p:Platform=${{matrix.platform}} -p:PublishProfile=${{matrix.platform}} -p:Version=$env:VERSION -p:ProductVersion=$env:PRODUCTVERSION -p:FileVersion=$env:FILEVERSION -p:AssemblyVersion=$env:ASSEMBLYVERSION
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: Artifacts-${{matrix.platform}}
           path: |
-            ${{env.projectName}}/bin/${{env.configuration}}/net5.0-windows/publish/SRTHost*.exe
+            src/${{env.projectName}}/bin/${{env.configuration}}/net5.0-windows/publish/SRTHost*.exe
 
   package:
     name: "Package"
@@ -159,7 +160,7 @@ jobs:
       # Both platforms publish into one shared directory, so the two matrix artifacts are merged
       # back into a single folder here - that is the layout the MSI expects.
       publish-dir: ${{ github.workspace }}\ArtifactsPublish
-      msi-path: ${{ github.workspace }}\SRTHostSetup\SRTHostPackage\bin\Release\SRTHost.msi
+      msi-path: ${{ github.workspace }}\src\SRTHostSetup\SRTHostPackage\bin\Release\SRTHost.msi
 
     steps:
       - name: Checkout
@@ -247,7 +248,7 @@ jobs:
       # then sign the whole thing. This is the WiX v4+ replacement for v3's `insignia -ib` / `-ab`.
       - name: Detach Burn engine
         run: |
-          wix burn detach "SRTHostSetup\SRTHostBundle\bin\Release\$env:SETUP_OUTPUT_NAME.exe" -engine "${{ github.workspace }}\engine.exe"
+          wix burn detach "src\SRTHostSetup\SRTHostBundle\bin\Release\$env:SETUP_OUTPUT_NAME.exe" -engine "${{ github.workspace }}\engine.exe"
 
       - name: Sign Burn engine with Trusted Signing
         uses: azure/artifact-signing-action@v1
@@ -265,7 +266,7 @@ jobs:
 
       - name: Reattach signed Burn engine
         run: |
-          wix burn reattach "SRTHostSetup\SRTHostBundle\bin\Release\$env:SETUP_OUTPUT_NAME.exe" -engine "${{ github.workspace }}\engine.exe" -o "${{ github.workspace }}\$env:SETUP_OUTPUT_NAME.exe"
+          wix burn reattach "src\SRTHostSetup\SRTHostBundle\bin\Release\$env:SETUP_OUTPUT_NAME.exe" -engine "${{ github.workspace }}\engine.exe" -o "${{ github.workspace }}\$env:SETUP_OUTPUT_NAME.exe"
 
       - name: Sign installer with Trusted Signing
         uses: azure/artifact-signing-action@v1
@@ -341,7 +342,7 @@ jobs:
           tag: v${{needs.Setup.outputs.verFullTag}}
           commit: ${{ github.sha }}
           prerelease: ${{env.is-prerelease}}
-          artifacts: "${{ env.SETUP_OUTPUT_NAME }}.exe,${{env.projectName}}_${{needs.Setup.outputs.verSemVerString}}.zip"
+          artifacts: "${{ env. }}.exe,${{env.projectName}}_${{needs.Setup.outputs.verSemVerString}}.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
 
   postrun:

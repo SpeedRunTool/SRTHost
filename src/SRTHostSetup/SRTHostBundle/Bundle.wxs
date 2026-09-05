@@ -5,13 +5,13 @@
   <!--
     SRTHostSetup - the shippable installer.
 
-    It chains the .NET 5 prerequisites and the per-user SRT Host MSI. The runtime payloads are
+    It chains the .NET prerequisites and the per-user SRT Host MSI. The runtime payloads are
     NOT embedded (Compressed="no" on each ExePackage), so this executable stays around 1 MB and
     only downloads a runtime when one is actually missing.
 
     Version is the full four-field product version. Burn compares all four fields when detecting
-    a related bundle, so 3.1.0.1 -> 3.1.0.2 upgrades correctly here even though the MSI inside
-    can only express 3.1.0. See Version.props.
+    a related bundle, so 1.0.0.0 -> 1.0.0.1 upgrades correctly here even though the MSI inside
+    can only express 1.0.0. See Version.props.
   -->
   <Bundle Name="SRT Host"
           Manufacturer="$(Manufacturer)"

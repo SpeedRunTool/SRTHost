@@ -14,11 +14,11 @@
            Compressed="yes"
            InstallerVersion="500">
 
-    <SummaryInformation Description="A plugin host for various informational SpeedRun Tools." />
+    <SummaryInformation Description="A plugin-based application for running various informational speedrun tools." />
 
     <!--
-      AllowSameVersionUpgrades exists because ProductVersion drops the fourth field: 3.1.0.1 and
-      3.1.0.2 both compile to 3.1.0. Without it, shipping a revision-only build would silently
+      AllowSameVersionUpgrades exists because ProductVersion drops the fourth field: 1.0.0.0 and
+      1.0.0.1 both compile to 1.0.0. Without it, shipping a revision-only build would silently
       leave the old files in place. With it, the old product is removed after InstallValidate and
       the new one laid down fresh, so files always land regardless of file-version comparison.
     -->

@@ -3,10 +3,10 @@
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <!--
-    .NET 5 shared frameworks required by SRT Host.
+    .NET shared frameworks required by SRT Host.
 
     Two frameworks, two architectures:
-      * Microsoft.WindowsDesktop.App - the host targets net5.0-windows with WinForms enabled.
+      * Microsoft.WindowsDesktop.App - the host targets net?.?-windows with WPF and WinForms enabled.
         Its installer also carries Microsoft.NETCore.App, which is why it is chained first.
       * Microsoft.AspNetCore.App    - not used by the host itself. It is a platform guarantee for
         plugins, declared via FrameworkReference in SRTHost.csproj, so it must be present or the

@@ -170,7 +170,25 @@ Source Maintenance Fee EULA before the toolset will build (`error WIX7015`). The
 apply to an MIT project like this one, but the acceptance gate does. Revisit later if wanted; the
 authoring here uses the v4 schema that 6 and 7 still accept.
 
-## Not covered
+## Releasing
 
-* **`ManualReleaseDevelop.yml`.** Still triggers on a `master` branch that no longer exists, and
-  still references the old PFX-based signing. It was left alone.
+`AutomatedRelease.yml` is the only release workflow. There is no separate manual/beta workflow —
+`ManualReleaseDevelop.yml` was a near-verbatim copy of the old automated one differing only in its
+trigger, a hardcoded `ref: develop`, and its release tag, so it was removed in favour of
+`workflow_dispatch` here.
+
+| Trigger | What happens |
+|---|---|
+| Push to `main` | Builds, signs, uploads the installer as a workflow artifact. **No tags, no release.** |
+| `workflow_dispatch` | Same, plus tags and a GitHub release when `createTagsAndRelease` is checked. Pick the branch to build in the Run workflow dropdown; `versionPreReleaseTag` marks it `alpha`/`beta`/`RC`. |
+
+Tags and the release are gated on `createTagsAndRelease`, which only has a value on a dispatched
+run — that is what keeps a push to `main` from publishing on its own.
+
+> Note that a dispatched run with `createTagsAndRelease` enabled **force-moves `latest`** along
+> with `vN`, `vN.M` and `vN.M.P`, whatever branch it was dispatched from. The old
+> `ManualReleaseDevelop.yml` avoided this by publishing develop builds under a separate
+> `develop-build` tag. Releases are always marked pre-release, and a pre-release tag gives the
+> build its own distinct `vN.M.P-beta+B` tag, but the rolling tags are still repointed. If beta
+> builds from side branches should leave `latest` alone, guard that step on
+> `github.ref == 'refs/heads/main'`.

@@ -173,11 +173,14 @@ Two things about this are easy to get wrong:
 container captures an unsigned copy:
 
 ```
-sign SRTHost32.exe, SRTHost64.exe
-  -> build SRTHost.msi        (embeds the signed executables)
+sign SRTHost32.exe, SRTHost64.exe, SRTPluginBase.dll
+  -> build SRTHost.msi        (embeds the signed files)
   -> sign SRTHost.msi
     -> build the bundle       (embeds the signed MSI)
 ```
+
+`SRTPluginBase.dll` is in that first list because it is published loose rather than bundled into
+the executables, so no other step would cover it.
 
 The bundle build passes `-p:BuildProjectReferences=false`. Without it, the bundle rebuilds the MSI
 from the wixproj ProjectReference and silently throws away the signature applied a step earlier.

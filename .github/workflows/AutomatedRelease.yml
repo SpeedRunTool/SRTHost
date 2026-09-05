@@ -205,8 +205,11 @@ jobs:
 
       # Signing must follow containment order. Each file is signed before whatever embeds it is
       # built, otherwise the outer container captures an unsigned copy:
-      #   host exes -> MSI -> bundle (engine detached, signed, reattached) -> bundle as a whole
-      - name: Sign executables with Trusted Signing
+      #   host binaries -> MSI -> bundle (engine detached, signed, reattached) -> bundle as a whole
+      #
+      # SRTPluginBase.dll is signed here too: it is published loose rather than bundled into the
+      # executables, so nothing else would cover it.
+      - name: Sign host binaries with Trusted Signing
         uses: azure/artifact-signing-action@v1
         with:
           azure-tenant-id: ${{ secrets.ASTJG_AZURE_TENANT_ID }}
@@ -218,6 +221,7 @@ jobs:
           files: |
             ${{ env.publish-dir }}\SRTHost32.exe
             ${{ env.publish-dir }}\SRTHost64.exe
+            ${{ env.publish-dir }}\SRTPluginBase.dll
           file-digest: SHA512
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA512

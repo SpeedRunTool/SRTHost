@@ -128,9 +128,49 @@ installers are idempotent and exit quickly when already satisfied.
   with a file, which rules out WiX's automatic GUIDs; changing them breaks upgrade and uninstall
   reference counting.
 
+## Code signing
+
+`.github/workflows/AutomatedRelease.yml` signs everything with Azure Trusted Signing, using the
+same account and certificate profile as the other SpeedRunTool repos.
+
+Two things about this are easy to get wrong:
+
+**Order matters.** Each file must be signed *before* whatever embeds it is built, or the outer
+container captures an unsigned copy:
+
+```
+sign SRTHost32.exe, SRTHost64.exe
+  -> build SRTHost.msi        (embeds the signed executables)
+  -> sign SRTHost.msi
+    -> build the bundle       (embeds the signed MSI)
+```
+
+The bundle build passes `-p:BuildProjectReferences=false`. Without it, the bundle rebuilds the MSI
+from the wixproj ProjectReference and silently throws away the signature applied a step earlier.
+
+**A Burn bundle cannot be signed by running signtool over the output.** The payload containers are
+attached to the engine, so signing the whole file directly produces a bundle that fails its own
+integrity check. The engine has to be detached, signed, and reattached first — the WiX v4+
+replacement for v3's `insignia -ib` / `-ab`:
+
+```powershell
+wix burn detach   SRTHostSetup-v<version>.exe -engine engine.exe
+# sign engine.exe
+wix burn reattach SRTHostSetup-v<version>.exe -engine engine.exe -o final.exe
+# sign final.exe
+```
+
+This needs the WiX CLI (`dotnet tool install --global wix --version 5.0.2`), which is separate
+from the `WixToolset.Sdk` PackageReference used to build.
+
+## WiX version
+
+Pinned to **5.0.2**, the last release under plain MIT. WiX 6 and later require accepting the Open
+Source Maintenance Fee EULA before the toolset will build (`error WIX7015`). The fee does not
+apply to an MIT project like this one, but the acceptance gate does. Revisit later if wanted; the
+authoring here uses the v4 schema that 6 and 7 still accept.
+
 ## Not covered
 
-* **Code signing.** The bundle and MSI are unsigned. Signing a Burn bundle requires
-  `insignia`-style detach/reattach of the engine, not a plain `signtool` pass over the output.
-* **Release automation.** `.github/workflows/` on this branch still zips the executables and, as
-  noted in `CLAUDE.md`, triggers on a `master` branch that no longer exists.
+* **`ManualReleaseDevelop.yml`.** Still triggers on a `master` branch that no longer exists, and
+  still references the old PFX-based signing. It was left alone.

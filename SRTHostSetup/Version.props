@@ -20,6 +20,14 @@
     <SRTHostManufacturer Condition="'$(SRTHostManufacturer)' == ''">Travis J. Gutjahr</SRTHostManufacturer>
     <SRTHostAboutUrl Condition="'$(SRTHostAboutUrl)' == ''">https://www.speedruntool.com/</SRTHostAboutUrl>
 
+    <!--
+      Bundle filename. Defaults to the four-field version, but CI overrides it with the full
+      SemVer string (which carries the build number and short SHA) so release assets match the
+      naming used by the other SpeedRunTool repos. Kept separate from SRTHostProductVersion
+      because Bundle/@Version must parse as a version, while the asset name need not.
+    -->
+    <SRTHostOutputName Condition="'$(SRTHostOutputName)' == ''">SRTHostSetup-v$(SRTHostProductVersion)</SRTHostOutputName>
+
     <!-- Both platforms publish into this one directory, matching the layout of the release zip. -->
     <SRTHostPublishDir Condition="'$(SRTHostPublishDir)' == ''">$(MSBuildThisFileDirectory)..\SRTHost\bin\Release\net5.0-windows\publish\</SRTHostPublishDir>
     <SRTHostRepoRoot>$(MSBuildThisFileDirectory)..\</SRTHostRepoRoot>

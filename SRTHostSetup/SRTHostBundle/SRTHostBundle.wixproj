@@ -3,7 +3,7 @@
   <Import Project="..\Version.props" />
 
   <PropertyGroup>
-    <OutputName>SRTHostSetup-v$(SRTHostProductVersion)</OutputName>
+    <OutputName>$(SRTHostOutputName)</OutputName>
     <OutputType>Bundle</OutputType>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>

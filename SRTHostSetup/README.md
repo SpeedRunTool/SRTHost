@@ -180,15 +180,17 @@ trigger, a hardcoded `ref: develop`, and its release tag, so it was removed in f
 | Trigger | What happens |
 |---|---|
 | Push to `main` | Builds, signs, uploads the installer as a workflow artifact. **No tags, no release.** |
-| `workflow_dispatch` | Same, plus tags and a GitHub release when `createTagsAndRelease` is checked. Pick the branch to build in the Run workflow dropdown; `versionPreReleaseTag` marks it `alpha`/`beta`/`RC`. |
+| `workflow_dispatch` from `main` | Same, plus a GitHub release and the rolling tags when `createTagsAndRelease` is checked. |
+| `workflow_dispatch` from any other branch | Same, plus a GitHub release — but **no rolling tags**. Pick the branch in the Run workflow dropdown; `versionPreReleaseTag` marks it `alpha`/`beta`/`RC`. |
 
 Tags and the release are gated on `createTagsAndRelease`, which only has a value on a dispatched
 run — that is what keeps a push to `main` from publishing on its own.
 
-> Note that a dispatched run with `createTagsAndRelease` enabled **force-moves `latest`** along
-> with `vN`, `vN.M` and `vN.M.P`, whatever branch it was dispatched from. The old
-> `ManualReleaseDevelop.yml` avoided this by publishing develop builds under a separate
-> `develop-build` tag. Releases are always marked pre-release, and a pre-release tag gives the
-> build its own distinct `vN.M.P-beta+B` tag, but the rolling tags are still repointed. If beta
-> builds from side branches should leave `latest` alone, guard that step on
-> `github.ref == 'refs/heads/main'`.
+The tag step carries a second condition, `github.ref == 'refs/heads/main'`, because it
+**force-moves** `latest`, `vN`, `vN.M` and `vN.M.P`. Without it a beta dispatched from a side
+branch would repoint `latest` at a non-main build, which is exactly what the removed
+`ManualReleaseDevelop.yml` avoided by publishing under its own `develop-build` tag.
+
+The release step is deliberately *not* guarded that way. It creates its own distinct
+`vN.M.P[-tag]+B` tag and is always marked pre-release, so a side-branch build still produces a
+downloadable release without disturbing anything that points at `main`.

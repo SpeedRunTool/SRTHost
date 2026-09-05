@@ -291,8 +291,12 @@ jobs:
           name: Installer
           path: ${{ github.workspace }}\${{ env.SETUP_OUTPUT_NAME }}.exe
 
+      # Guarded on main as well as on the dispatch input. `latest` and the rolling vN/vN.M/vN.M.P
+      # tags are force-moved here, so a beta dispatched from a side branch must not run this or it
+      # would repoint `latest` at a non-main build. The release step below is not guarded: it
+      # creates its own distinct vN.M.P[-tag]+B tag and is always marked pre-release.
       - name: Create additional version tags
-        if: ${{ github.event.inputs.createTagsAndRelease == 'true' }}
+        if: ${{ github.event.inputs.createTagsAndRelease == 'true' && github.ref == 'refs/heads/main' }}
         run: |
           git tag -f latest
           git push origin latest --force

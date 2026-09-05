@@ -177,20 +177,28 @@ authoring here uses the v4 schema that 6 and 7 still accept.
 trigger, a hardcoded `ref: develop`, and its release tag, so it was removed in favour of
 `workflow_dispatch` here.
 
-| Trigger | What happens |
-|---|---|
-| Push to `main` | Builds, signs, uploads the installer as a workflow artifact. **No tags, no release.** |
-| `workflow_dispatch` from `main` | Same, plus a GitHub release and the rolling tags when `createTagsAndRelease` is checked. |
-| `workflow_dispatch` from any other branch | Same, plus a GitHub release — but **no rolling tags**. Pick the branch in the Run workflow dropdown; `versionPreReleaseTag` marks it `alpha`/`beta`/`RC`. |
+| Trigger | Release | Tags |
+|---|---|---|
+| Push to `main` | Always | `latest`, `vN`, `vN.M`, `vN.M.P`, `vN.M.P+B` |
+| Dispatch against `main`, **Create Tags and Release** checked | Yes | `latest`, `vN`, `vN.M`, `vN.M.P`, `vN.M.P+B` |
+| Dispatch against `main`, unchecked | No | none |
+| Dispatch against any other branch, **checked** | Yes | `vN.M.P-<preReleaseTag>+B` only |
+| Dispatch against any other branch, unchecked | No | none |
 
-Tags and the release are gated on `createTagsAndRelease`, which only has a value on a dispatched
-run — that is what keeps a push to `main` from publishing on its own.
+Every run builds, signs and uploads the installer as a workflow artifact; the table is only about
+what gets *published*. **Every release is marked pre-release** — unchecking that is a manual step
+once the build has been reviewed.
 
-The tag step carries a second condition, `github.ref == 'refs/heads/main'`, because it
-**force-moves** `latest`, `vN`, `vN.M` and `vN.M.P`. Without it a beta dispatched from a side
-branch would repoint `latest` at a non-main build, which is exactly what the removed
-`ManualReleaseDevelop.yml` avoided by publishing under its own `develop-build` tag.
+The rolling tags are force-moved, which is why they are restricted to the main line. A dispatch off
+a side branch never touches them; its only tag is the `vN.M.P-<preReleaseTag>+B` that the release
+step creates. That also makes a **pre-release tag mandatory off `main`**: `setup` fails fast if
+`versionPreReleaseTag` is empty there, before anything is built or signed, since an empty one would
+publish a stable-looking `vN.M.P+B` from a side branch.
 
-The release step is deliberately *not* guarded that way. It creates its own distinct
-`vN.M.P[-tag]+B` tag and is always marked pre-release, so a side-branch build still produces a
-downloadable release without disturbing anything that points at `main`.
+`github.event_name == 'push'` is used as shorthand for "on `main`" in these conditions, which holds
+because the push trigger is restricted to that branch. `createTagsAndRelease` is only consulted for
+`workflow_dispatch`; a push to `main` ignores it.
+
+There is deliberately **no `pull_request` trigger**. On a pull request `actions/checkout` resolves
+an ephemeral merge ref that is not on any branch, so tagging it would point the rolling tags at a
+commit outside `main`'s history.

@@ -25,7 +25,8 @@ on:
           - "RC"
           - ""
       createTagsAndRelease:
-        description: "Whether to automatically create tags and a release"
+        # Only consulted for workflow_dispatch. A push to main always releases and tags.
+        description: "Create Tags and Release"
         required: true
         default: true
         type: boolean
@@ -53,6 +54,14 @@ jobs:
       verSemVerString: ${{steps.semver-string.outputs.semver_string}}
 
     steps:
+      # Off main the build's only tag is vN.M.P-<tag>+B, so an empty pre-release tag would publish
+      # a stable-looking vN.M.P+B from a side branch. Fail before anything is built or signed.
+      - name: Require a pre-release tag when releasing off main
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && github.event.inputs.createTagsAndRelease == 'true' && github.event.inputs.versionPreReleaseTag == '' }}
+        run: |
+          Write-Output "::error::Releasing from ${{ github.ref_name }} requires a Pre-Release Tag of alpha, beta or RC."
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -141,6 +150,9 @@ jobs:
     name: "Package"
     runs-on: windows-2025-vs2026
     needs: [ setup, build ]
+    # Moving tags and publishing a release both need write access to repo contents.
+    permissions:
+      contents: write
     env:
       working-directory: .
       is-prerelease: true
@@ -291,12 +303,15 @@ jobs:
           name: Installer
           path: ${{ github.workspace }}\${{ env.SETUP_OUTPUT_NAME }}.exe
 
-      # Guarded on main as well as on the dispatch input. `latest` and the rolling vN/vN.M/vN.M.P
-      # tags are force-moved here, so a beta dispatched from a side branch must not run this or it
-      # would repoint `latest` at a non-main build. The release step below is not guarded: it
-      # creates its own distinct vN.M.P[-tag]+B tag and is always marked pre-release.
+      # The rolling tags (latest, vN, vN.M, vN.M.P) plus this build's own vN.M.P+B. Force-moved,
+      # so this runs for the main line only: every push to main, and a dispatch against main when
+      # Create Tags and Release is checked. A dispatch against any other branch skips this
+      # entirely and gets just its own vN.M.P-<tag>+B, created by the release step below.
+      #
+      # `github.event_name == 'push'` is sufficient to mean main here because the push trigger is
+      # restricted to that branch.
       - name: Create additional version tags
-        if: ${{ github.event.inputs.createTagsAndRelease == 'true' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' || (github.event.inputs.createTagsAndRelease == 'true' && github.ref == 'refs/heads/main') }}
         run: |
           git tag -f latest
           git push origin latest --force
@@ -313,12 +328,18 @@ jobs:
           git tag -f v${{needs.Setup.outputs.verFullTag}}
           git push origin v${{needs.Setup.outputs.verFullTag}} --force
 
+      # Always released for a push to main; for a dispatch, only when Create Tags and Release is
+      # checked - on any branch. Off main this step is what creates the build's only tag,
+      # vN.M.P-<tag>+B, since the rolling-tag step above does not run there.
+      #
+      # Everything is published as a pre-release. Unchecking that is a manual step after review.
       - name: Publish release
         uses: ncipollo/release-action@v1
-        if: ${{ github.event.inputs.createTagsAndRelease == 'true' }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.createTagsAndRelease == 'true' }}
         with:
           name: "Automated Build - v${{needs.Setup.outputs.verSemVerString}} Release"
           tag: v${{needs.Setup.outputs.verFullTag}}
+          commit: ${{ github.sha }}
           prerelease: ${{env.is-prerelease}}
           artifacts: "${{ env.SETUP_OUTPUT_NAME }}.exe,${{env.projectName}}_${{needs.Setup.outputs.verSemVerString}}.zip"
           token: ${{ secrets.GITHUB_TOKEN }}

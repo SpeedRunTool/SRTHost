@@ -3,6 +3,22 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path="../.github/workflows/AutomatedRelease.yml" />
+    <File Path="../.gitignore" />
+    <File Path="../CLAUDE.md" />
+    <File Path="../LICENSE" />
+    <File Path="../README.md" />
+    <File Path="../version.txt" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="SRTHostSetup/SRTHostBundle/Bundle.wxs" />
+    <File Path="SRTHostSetup/SRTHostBundle/Prerequisites.wxs" />
+    <File Path="SRTHostSetup/SRTHostBundle/SRTHostBundle.wixproj" />
+    <File Path="SRTHostSetup/SRTHostPackage/Package.wxs" />
+    <File Path="SRTHostSetup/SRTHostPackage/SRTHostPackage.wixproj" />
+    <File Path="SRTHostSetup/Version.props" />
+  </Folder>
   <Project Path="SRTHost/SRTHost.csproj">
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />

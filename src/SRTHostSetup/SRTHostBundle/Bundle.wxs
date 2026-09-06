@@ -19,11 +19,24 @@
           UpgradeCode="1E925787-801C-4D19-9F29-456C1F1E74CC"
           AboutUrl="$(AboutUrl)"
           Compressed="yes"
-          DisableModify="yes">
+          DisableModify="yes"
+          IconSourceFile="..\..\assets\SRT.ico">
 
     <BootstrapperApplication>
+      <!--
+        hyperlinkSidebarLicense is the 600x450 two-pane theme: branded sidebar on the left,
+        content on the right. The stock assets it expects are exact sizes and are NOT scaled
+        gracefully on high-DPI displays, so match them:
+
+          LogoSideFile  165x400 - Install, Modify, Success and Failure pages
+          LogoFile       64x64  - Help, Options and Progress pages
+
+        Both must be supplied or those pages fall back to the WiX Toolset logo.
+      -->
       <bal:WixStandardBootstrapperApplication
-          Theme="hyperlinkLicense"
+          Theme="hyperlinkSidebarLicense"
+          LogoSideFile="assets\logoside.png"
+          LogoFile="assets\logo.png"
           LicenseUrl="https://github.com/SpeedRunTool/SRTHost/blob/main/LICENSE"
           SuppressOptionsUI="yes"
           ShowVersion="yes" />

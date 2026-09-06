@@ -28,6 +28,8 @@
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <!-- Shown in Apps &amp; features. -->
+    <Icon Id="SRT.ico" SourceFile="$(RepoRoot)src\assets\SRT.ico" />
+    <Property Id="ARPPRODUCTICON" Value="SRT.ico" />
     <Property Id="ARPURLINFOABOUT" Value="$(AboutUrl)" />
     <Property Id="ARPNOREPAIR" Value="1" />
     <!-- INSTALLFOLDER is only resolved during costing, so ARPINSTALLLOCATION has to be set after it. -->

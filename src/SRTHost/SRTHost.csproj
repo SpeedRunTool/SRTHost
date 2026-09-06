@@ -9,6 +9,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
+    <!-- Stamped into both SRTHost64.exe and SRTHost32.exe. The MSI's shortcuts are
+         non-advertised and point straight at the exe, so they inherit this too. -->
+    <ApplicationIcon>..\assets\SRT.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)'=='x64'">

@@ -32,14 +32,30 @@
           LogoFile       64x64  - Help, Options and Progress pages
 
         Both must be supplied or those pages fall back to the WiX Toolset logo.
+
+        ThemeFile/LocalizationFile are verbatim copies of the extension's own
+        HyperlinkSidebarTheme.xml and HyperlinkTheme.wxl, with one edit: Window/@IconFile.
+        That attribute is the only way to set the installer window's title-bar and taskbar icon,
+        and it cannot be reached without owning a copy of the theme. The copies are therefore
+        pinned to WiX 5.0.2 - re-extract them from the wixext if the toolset is upgraded.
       -->
       <bal:WixStandardBootstrapperApplication
           Theme="hyperlinkSidebarLicense"
+          ThemeFile="assets\SRTHostTheme.xml"
+          LocalizationFile="assets\SRTHostTheme.wxl"
           LogoSideFile="assets\logoside.png"
           LogoFile="assets\logo.png"
           LicenseUrl="https://github.com/SpeedRunTool/SRTHost/blob/main/LICENSE"
           SuppressOptionsUI="yes"
           ShowVersion="yes" />
+
+      <!--
+        The theme's Window/@IconFile sets the title-bar and taskbar icon, and it resolves against
+        the BA payload directory - so the .ico has to travel with the BA, not just be a PE
+        resource on the bundle. Bundle/@IconSourceFile above is a separate thing: that is what
+        Explorer shows for SRTHostSetup.exe itself.
+      -->
+      <Payload SourceFile="..\..\assets\SRT.ico" Name="SRT.ico" />
     </BootstrapperApplication>
 
     <!--
@@ -48,9 +64,10 @@
         SRTHostSetup.exe DesktopShortcut=0
         SRTHostSetup.exe StartMenuShortcut=0
 
-      These are passed through to the MSI below. Note the bootstrapper UI has no checkboxes for
-      them - WixStandardBootstrapperApplication cannot add custom controls without a custom theme -
-      so opting out is command-line only for now.
+      These are passed through to the MSI below. The Install page also carries a checkbox for
+      each: a theme Checkbox whose Name matches a Burn variable is two-way bound to it, so the
+      controls in SRTHostTheme.xml and these declarations are the same two values. Both default
+      to 1, so both boxes come up checked.
     -->
     <Variable Name="StartMenuShortcut" Value="1" Type="numeric" bal:Overridable="yes" />
     <Variable Name="DesktopShortcut" Value="1" Type="numeric" bal:Overridable="yes" />

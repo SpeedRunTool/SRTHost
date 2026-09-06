@@ -119,10 +119,13 @@ truthiness test would be wrong twice over — it is true for any non-empty value
 the bundle (which always passes a value) could never switch it off. Only the exact string `"0"`
 opts out; `no` or `false` will still install.
 
-> There are no checkboxes for this in the installer UI.
-> `WixStandardBootstrapperApplication` cannot add custom controls without a custom Burn theme, so
-> opting out is command-line only. The bundle variables are already in place if a themed UI is
-> added later.
+The installer's Install page carries a checkbox for each, both checked by default. A theme
+`Checkbox` whose `Name` matches a Burn variable is two-way bound to it, so the controls in
+`SRTHostBundle/assets/SRTHostTheme.xml` and the `Variable` declarations in `Bundle.wxs` are the
+same two values - there is no glue code. This is only possible because the theme is a local copy;
+see **Branding** for why that copy exists and what it costs.
+
+The command line still wins in quiet mode, where no UI runs at all.
 
 ## The .NET prerequisites
 
@@ -180,6 +183,33 @@ installers are idempotent and exit quickly when already satisfied.
 * The explicit component `Guid`s in `Package.wxs`. Those three components mix a registry KeyPath
   with a file, which rules out WiX's automatic GUIDs; changing them breaks upgrade and uninstall
   reference counting.
+
+## Branding
+
+Every branded asset is generated from `src/assets/SRT-Logo.png` (1024x1024, transparent, white
+wordmark with a blue swoosh - accent `#0078FE`). The wordmark is white, so anything it sits on
+needs a dark plate or it disappears.
+
+There are **three separate icon paths**, and setting one does not set the others:
+
+| What the user sees | Set by |
+|---|---|
+| `SRTHostSetup.exe` in Explorer | `Bundle/@IconSourceFile` |
+| The installer window title bar and taskbar | `Window/@IconFile` in the theme file |
+| Apps & features, and the installed exes | `ARPPRODUCTICON` in `Package.wxs`; `ApplicationIcon` in `SRTHost.csproj` |
+
+Shortcuts need nothing: they are `Advertise="no"` and point at the exe, so they inherit its icon.
+
+`SRTHostBundle/assets/SRTHostTheme.xml` and `.wxl` are **verbatim copies** of the extension's
+`HyperlinkSidebarTheme.xml` and `HyperlinkTheme.wxl`, extracted from
+`WixToolset.Bal.wixext` 5.0.2, with exactly one edit: `Window/@IconFile="SRT.ico"`. The window
+icon cannot be set any other way - the stock theme is an embedded resource. Because they are
+copies, they are pinned to 5.0.2 and will not pick up upstream theme changes; re-extract and
+re-apply that one attribute if the toolset is upgraded. The `.ico` is a `BootstrapperApplication`
+`Payload` because `IconFile` resolves against the BA payload directory at runtime.
+
+The sidebar image is **165x400** and the page logo **64x64** - the sizes the theme's
+`ImageControl` elements declare. They are not scaled gracefully, so match them exactly.
 
 ## Code signing
 

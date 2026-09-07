@@ -51,6 +51,31 @@
 				<PackageReference Include="SRTPluginBase" Version="$(SRTContractsVersion)" />
 			</ItemGroup>
 		</When>
+
+		<!--
+		  Abstractions on its own, for the host's own assemblies rather than for plugins.
+
+		  SRTHost.Ipc puts PluginStatus, PluginSubStatus, PluginArchitecture and PayloadCodec on the
+		  wire; they are contract types and must not be redeclared here, because a second copy of an
+		  enum whose numeric values are a wire format is a silent drift waiting to happen.
+
+		  It is deliberately NOT <SRTReferenceContracts>. That pulls in SRTPluginBase, the base classes
+		  plugin authors derive from, which brings Microsoft.Extensions.* along and - because the
+		  manifest generator treats a direct SRTPluginBase reference as "this project is a plugin" -
+		  would fail the build with SRT1001 for want of a [SrtPluginAssembly]. Abstractions is
+		  deliberately excluded from that detection for exactly this case: the host implements the
+		  other side of the contract.
+		-->
+		<When Condition="'$(SRTReferenceAbstractions)'=='true' AND '$(SRTUseLocalContracts)'=='true'">
+			<ItemGroup>
+				<ProjectReference Include="$(SRTContractsPath)SRTPluginBase.Abstractions\SRTPluginBase.Abstractions.csproj" />
+			</ItemGroup>
+		</When>
+		<When Condition="'$(SRTReferenceAbstractions)'=='true'">
+			<ItemGroup>
+				<PackageReference Include="SRTPluginBase.Abstractions" Version="$(SRTContractsVersion)" />
+			</ItemGroup>
+		</When>
 	</Choose>
 
 	<!--

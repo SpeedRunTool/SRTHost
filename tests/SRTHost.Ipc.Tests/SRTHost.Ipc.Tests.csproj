@@ -4,6 +4,8 @@
     <Platforms>AnyCPU</Platforms>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- The wire carries contract enums; the tests assert on them. -->
+    <SRTReferenceAbstractions>true</SRTReferenceAbstractions>
   </PropertyGroup>
 
   <ItemGroup>

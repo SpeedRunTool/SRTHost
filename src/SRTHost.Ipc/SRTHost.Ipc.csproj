@@ -5,11 +5,24 @@
     <Platforms>AnyCPU</Platforms>
     <Product>SRT Host IPC</Product>
     <Description>Frame codec and message contracts for the SRT Host router/runner protocol.</Description>
+    <!--
+      Abstractions only, never SRTPluginBase: PluginStatus, PluginArchitecture and PayloadCodec go on
+      the wire and must not be redeclared here. See the note in Directory.Build.targets for why the
+      distinction matters to the manifest generator.
+    -->
+    <SRTReferenceAbstractions>true</SRTReferenceAbstractions>
   </PropertyGroup>
 
   <!--
     System.IO.Pipelines, which the frame codec is built on, ships in the Microsoft.NETCore.App
     shared framework - no PackageReference needed (NU1510 if you add one).
+
+    Microsoft.Extensions.Logging.Abstractions does not, and is referenced for LogLevel alone: the Log
+    channel is part of this protocol, and mirroring that enum locally would put a second copy of a
+    set of wire values in the codebase for the sake of avoiding one small, ubiquitous package.
   -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
 
 </Project>

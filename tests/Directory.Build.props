@@ -1,0 +1,18 @@
+<Project>
+	<!--
+	  tests/ sits outside src/, so it does not pick up src/Directory.Build.props by directory
+	  walking. Import it explicitly rather than duplicating the settings, so the test projects
+	  always compile under the same TFM, nullable and warning rules as the code they test.
+	-->
+	<Import Project="..\src\Directory.Build.props" />
+
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+		<!-- xunit.v3 test projects are executables: they host their own in-process runner. -->
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit" />
+	</ItemGroup>
+</Project>

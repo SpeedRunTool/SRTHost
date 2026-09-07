@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Platforms>x64;x86</Platforms>
+    <Product>SRT Host Plugin Runner</Product>
+    <Description>Headless host process for a single SRT Host plugin.</Description>
+  </PropertyGroup>
+
+  <!--
+    One project, built twice. The code is identical; only the assembly name and the $(Platform)
+    DefineConstants (injected by src/Directory.Build.props) differ. The architecture matters because
+    a producer must match the bitness of the game process it reads.
+  -->
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <AssemblyName>$(AssemblyName)64</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x86'">
+    <AssemblyName>$(AssemblyName)32</AssemblyName>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SRTHost.Core\SRTHost.Core.csproj" />
+    <ProjectReference Include="..\SRTHost.Ipc\SRTHost.Ipc.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Host IPC</Product>
+    <Description>Frame codec and message contracts for the SRT Host router/runner protocol.</Description>
+  </PropertyGroup>
+
+  <!--
+    System.IO.Pipelines, which the frame codec is built on, ships in the Microsoft.NETCore.App
+    shared framework - no PackageReference needed (NU1510 if you add one).
+  -->
+
+</Project>

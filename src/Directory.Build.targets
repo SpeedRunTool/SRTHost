@@ -10,11 +10,19 @@
 	  OutputPath does not have this problem and stays in the .props: the SDK appends the TFM and RID
 	  to OutputPath itself. It does not do that for PublishDir.
 
-	  Note there is deliberately no $(Platform) segment, unlike OutputPath. Both platforms publish
-	  into ONE directory, which is the layout the installer and the release zip both want: the two
-	  executables have distinct names (SRTHost64.exe / SRTHost32.exe) and the only shared filenames,
-	  SRTPluginBase.dll and its .pdb, are byte-identical from either platform. Builds still go to
-	  separate per-Platform directories via OutputPath; it is only publish that converges.
+	  Note there is deliberately no $(Platform) segment, unlike OutputPath. Every project publishes
+	  into ONE directory, which is the layout the installer and the release zip both want. The three
+	  executables have distinct names (SRTHost.exe / SRTHost.PluginRunner64.exe /
+	  SRTHost.PluginRunner32.exe), and the files the x64 and x86 runner legs DO share -
+	  SRTPluginBase.Abstractions.dll, SRTHost.Ipc.dll, SRTHost.Core.dll and their .pdb files - are
+	  plain AnyCPU IL and byte-identical from either leg, because ReadyToRun is off everywhere
+	  (see Directory.Build.props). Builds still go to separate per-Platform directories via
+	  OutputPath; it is only publish that converges.
+
+	  That byte-identical property is load-bearing and spans several files, so CI enforces it: the
+	  package job fails if merging the two matrix artifacts would overwrite any file with differing
+	  content. If you ever add a native or RID-specific asset to the runner, this invariant breaks
+	  and the guard is what will tell you.
 	-->
 	<PropertyGroup>
 		<PublishDir>bin\$(Configuration)\$(TargetFramework)\publish\</PublishDir>

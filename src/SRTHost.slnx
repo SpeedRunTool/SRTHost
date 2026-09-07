@@ -12,6 +12,7 @@
     <File Path="../version.txt" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Build.targets" />
+    <File Path="../tests/Directory.Build.props" />
     <File Path="SRTHostSetup/SRTHostBundle/Bundle.wxs" />
     <File Path="SRTHostSetup/SRTHostBundle/Prerequisites.wxs" />
     <File Path="SRTHostSetup/SRTHostBundle/SRTHostBundle.wixproj" />
@@ -19,9 +20,32 @@
     <File Path="SRTHostSetup/SRTHostPackage/SRTHostPackage.wixproj" />
     <File Path="SRTHostSetup/Version.props" />
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="../tests/SRTHost.Core.Tests/SRTHost.Core.Tests.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
+    <Project Path="../tests/SRTHost.Ipc.Tests/SRTHost.Ipc.Tests.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
+  </Folder>
+  <!-- UI + IPC router. AnyCPU: only the plugin runners need to match a game's bitness. -->
   <Project Path="SRTHost/SRTHost.csproj">
+    <Platform Solution="*|x64" Project="AnyCPU" />
+    <Platform Solution="*|x86" Project="AnyCPU" />
+  </Project>
+  <!-- One project, built twice, into SRTHost.PluginRunner64.exe and SRTHost.PluginRunner32.exe. -->
+  <Project Path="SRTHost.PluginRunner/SRTHost.PluginRunner.csproj">
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="SRTPluginBase/SRTPluginBase.csproj" />
+  <Project Path="SRTHost.Core/SRTHost.Core.csproj">
+    <Platform Solution="*|x64" Project="AnyCPU" />
+    <Platform Solution="*|x86" Project="AnyCPU" />
+  </Project>
+  <Project Path="SRTHost.Ipc/SRTHost.Ipc.csproj">
+    <Platform Solution="*|x64" Project="AnyCPU" />
+    <Platform Solution="*|x86" Project="AnyCPU" />
+  </Project>
 </Solution>

@@ -1,8 +1,11 @@
 {
   "profiles": {
     "SRTHost": {
+      "commandName": "Project"
+    },
+    "SRTHost (headless)": {
       "commandName": "Project",
-      "nativeDebugging": true
+      "commandLineArgs": "--headless"
     }
   }
 }

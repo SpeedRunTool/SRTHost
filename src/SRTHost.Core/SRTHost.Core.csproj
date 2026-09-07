@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Host Core</Product>
+    <Description>Plugin discovery, configuration, catalog models and logging shared by the SRT Host router and plugin runners.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SRTHost.Ipc\SRTHost.Ipc.csproj" />
+  </ItemGroup>
+
+</Project>

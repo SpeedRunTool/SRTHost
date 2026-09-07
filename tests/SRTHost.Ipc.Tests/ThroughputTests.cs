@@ -43,7 +43,7 @@ public class ThroughputTests(ITestOutputHelper output)
         TaskCompletionSource done = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await using PipePair pair = await PipePair.CreateAsync(
-            onData: (_, _, _) =>
+            onData: (_, _, _, _) =>
             {
                 if (Interlocked.Increment(ref received) == Frames)
                     done.TrySetResult();
@@ -102,7 +102,7 @@ public class ThroughputTests(ITestOutputHelper output)
         TaskCompletionSource done = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await using PipePair pair = await PipePair.CreateAsync(
-            onData: (header, _, _) =>
+            onData: (header, _, _, _) =>
             {
                 long elapsed = DateTime.UtcNow.Ticks - header.TimestampUtcTicks;
                 int slot = Interlocked.Increment(ref index) - 1;

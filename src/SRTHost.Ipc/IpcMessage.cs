@@ -30,6 +30,7 @@ namespace SRTHost.Ipc;
 [JsonDerivedType(typeof(SetProduceIntervalMessage), nameof(ControlMessageKind.SetProduceInterval))]
 [JsonDerivedType(typeof(PingMessage), nameof(ControlMessageKind.Ping))]
 [JsonDerivedType(typeof(ShutdownMessage), nameof(ControlMessageKind.Shutdown))]
+[JsonDerivedType(typeof(ChannelClosedMessage), nameof(ControlMessageKind.ChannelClosed))]
 [JsonDerivedType(typeof(HelloAckMessage), nameof(ControlMessageKind.HelloAck))]
 [JsonDerivedType(typeof(ReadyMessage), nameof(ControlMessageKind.Ready))]
 [JsonDerivedType(typeof(PluginStatusChangedMessage), nameof(ControlMessageKind.PluginStatusChanged))]
@@ -152,6 +153,25 @@ public sealed record ShutdownMessage : IpcMessage
 
     /// <summary>Why, for the runner's log.</summary>
     public string? Reason { get; init; }
+}
+
+/// <summary>
+/// Tell a consumer that a channel it subscribes to has gone away.
+/// </summary>
+/// <remarks>
+/// The counterpart of <see cref="SourceAvailabilityChangedMessage"/> on the other side of the star:
+/// a producer tells the router its game closed, and the router tells every consumer bound to that
+/// channel. It exists because <c>IConsumerPlugin.OnChannelClosedAsync</c> is part of the contract and
+/// nothing else on the wire can invoke it - an overlay left showing the last frame of a game that
+/// has exited is worse than a blank one, and that is a promise the transport has to be able to keep.
+/// </remarks>
+public sealed record ChannelClosedMessage : IpcMessage
+{
+    /// <inheritdoc />
+    public override ControlMessageKind Kind => ControlMessageKind.ChannelClosed;
+
+    /// <summary>The channel that is no longer being published.</summary>
+    public required string ChannelId { get; init; }
 }
 
 #endregion

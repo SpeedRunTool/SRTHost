@@ -30,6 +30,15 @@
       <Platform Solution="*|x64" Project="AnyCPU" />
       <Platform Solution="*|x86" Project="AnyCPU" />
     </Project>
+    <!--
+      Drives a real SRTHost.PluginRunner process over a real pipe. AnyCPU like its siblings: it
+      starts the runner rather than linking it, and builds both architectures itself so there is
+      always one to start.
+    -->
+    <Project Path="../tests/SRTHost.PluginRunner.Tests/SRTHost.PluginRunner.Tests.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
   </Folder>
   <!-- UI + IPC router. AnyCPU: only the plugin runners need to match a game's bitness. -->
   <Project Path="SRTHost/SRTHost.csproj">

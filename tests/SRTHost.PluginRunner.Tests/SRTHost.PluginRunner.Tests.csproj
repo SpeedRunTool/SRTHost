@@ -1,0 +1,78 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Platforms>AnyCPU</Platforms>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- The harness asserts on contract enums that travel on the wire. -->
+    <SRTReferenceAbstractions>true</SRTReferenceAbstractions>
+    <Product>SRT Host Plugin Runner Tests</Product>
+    <Description>End-to-end tests that drive a real SRTHost.PluginRunner process over a named pipe.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit.v3" Version="3.1.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SRTHost.Ipc\SRTHost.Ipc.csproj" />
+  </ItemGroup>
+
+  <!--
+    The demo plugins are referenced so that building this project builds them and drops their
+    assemblies here, ready to be staged below. Nothing in the tests calls into them: the whole point
+    is that the runner loads them out of a directory, in another process, the way a real plugin is
+    loaded. ReferenceOutputAssembly is left on only because the copy step reads the results out of
+    $(OutDir), which is where a plain reference puts them.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SpeedRunTool.Demo.Contracts\SpeedRunTool.Demo.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\SpeedRunTool.Demo.Producer\SpeedRunTool.Demo.Producer.csproj" />
+    <ProjectReference Include="..\..\src\SpeedRunTool.Demo.Consumer\SpeedRunTool.Demo.Consumer.csproj" />
+  </ItemGroup>
+
+  <!--
+    Build the runner alongside these tests, for both architectures, so the harness always has an
+    executable to drive. ReferenceOutputAssembly=false because a runner is a process this project
+    starts, not an assembly it links: referencing an x64 executable from an AnyCPU test project would
+    be meaningless even where it is legal.
+
+    Two entries for one project is the same "one project, built twice" arrangement the solution uses.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SRTHost.PluginRunner\SRTHost.PluginRunner.csproj"
+                      ReferenceOutputAssembly="false"
+                      SetPlatform="Platform=x64" />
+    <ProjectReference Include="..\..\src\SRTHost.PluginRunner\SRTHost.PluginRunner.csproj"
+                      ReferenceOutputAssembly="false"
+                      SetPlatform="Platform=x86" />
+  </ItemGroup>
+
+  <!--
+    Lay the demo plugins out the way the host requires: plugins\<Name>\<Name>.dll, with the plugin's
+    private dependencies beside it. The runner's load context probes that folder, so this is the
+    thing actually under test - a plugin folder assembled by copying files, which is what every
+    hand-installed plugin in the ecosystem looks like.
+
+    Deliberately no .deps.json is staged. Without one the AssemblyDependencyResolver resolves
+    nothing and every dependency has to come from the load context's root probe, which is the path
+    a hand-assembled folder takes and therefore the one worth exercising here.
+  -->
+  <Target Name="StageDemoPlugins" AfterTargets="Build">
+    <ItemGroup>
+      <_SrtPluginDependency Include="$(OutDir)SpeedRunTool.Demo.Contracts.dll" />
+      <_SrtPluginDependency Include="$(OutDir)SRTPluginBase.dll" />
+    </ItemGroup>
+
+    <Copy SourceFiles="$(OutDir)SpeedRunTool.Demo.Producer.dll;@(_SrtPluginDependency)"
+          DestinationFolder="$(OutDir)plugins\SpeedRunTool.Demo.Producer\"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="$(OutDir)SpeedRunTool.Demo.Consumer.dll;@(_SrtPluginDependency)"
+          DestinationFolder="$(OutDir)plugins\SpeedRunTool.Demo.Consumer\"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

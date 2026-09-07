@@ -5,6 +5,22 @@
     <Platforms>x64;x86</Platforms>
     <Product>SRT Host Plugin Runner</Product>
     <Description>Headless host process for a single SRT Host plugin.</Description>
+    <!--
+      The runner implements the other side of the plugin contract - it constructs an IPlugin, hands
+      it an IPluginContext and reads its IPluginInfo - so it needs Abstractions directly. Not
+      SRTReferenceContracts: that pulls in SRTPluginBase, the base classes plugin authors derive
+      from, and the manifest generator would then treat this project as a plugin and fail it for
+      want of a [SrtPluginAssembly].
+    -->
+    <SRTReferenceAbstractions>true</SRTReferenceAbstractions>
+    <!--
+      Workstation, concurrent GC. The runner is one of up to twenty processes on a machine that is
+      also running a game, and server GC would reserve a heap and a dedicated thread per core in
+      every one of them. The work here is a few kilobytes of payload per tick; latency and footprint
+      matter, throughput does not.
+    -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <!--
@@ -21,6 +37,11 @@
     <AssemblyName>$(AssemblyName)32</AssemblyName>
     <RuntimeIdentifier>win-x86</RuntimeIdentifier>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SRTHost.Core\SRTHost.Core.csproj" />

@@ -58,6 +58,11 @@ public enum ControlMessageKind : ushort
     /// <summary>Shut down cleanly. The runner disposes the plugin and exits.</summary>
     Shutdown = 10,
 
+    /// <summary>
+    /// A channel a consumer subscribes to has gone away, so it can clear what it is displaying.
+    /// </summary>
+    ChannelClosed = 11,
+
     #endregion
 
     #region Runner to router

@@ -92,7 +92,7 @@ public class IpcConnectionTests
         TaskCompletionSource<(DataFrameHeader Header, byte[] Payload)> received = new();
 
         await using Fixture fixture = await Fixture.CreateAsync(
-            onServerData: (header, payload, _) =>
+            onServerData: (header, payload, _, _) =>
             {
                 received.TrySetResult((header, payload.ToArray()));
                 return ValueTask.CompletedTask;

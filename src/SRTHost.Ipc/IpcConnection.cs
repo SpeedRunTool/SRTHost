@@ -19,9 +19,17 @@ public delegate ValueTask<IpcMessage?> ControlMessageHandler(
 /// <summary>
 /// Handles an inbound data frame. The payload is valid only until the returned task completes.
 /// </summary>
+/// <remarks>
+/// The codec comes from the frame header rather than the data preamble, and it is passed through
+/// here because the consumer end genuinely needs it: a runner hosting a consumer has to hand the
+/// plugin a <c>PayloadFrame</c>, which carries the codec so the plugin knows whether it is holding
+/// JSON, UTF-8 text or the raw memory of a blittable struct. The router still never reads it for
+/// anything but forwarding.
+/// </remarks>
 public delegate ValueTask DataFrameHandler(
     DataFrameHeader header,
     ReadOnlySequence<byte> payload,
+    PayloadCodec codec,
     CancellationToken cancellationToken);
 
 /// <summary>
@@ -269,7 +277,7 @@ public sealed class IpcConnection : IAsyncDisposable
 
             case IpcChannel.Data when OnDataFrame is not null:
                 DataFrameHeader dataHeader = DataFrameHeader.Read(payload, out ReadOnlySequence<byte> body);
-                await OnDataFrame(dataHeader, body, cancellationToken).ConfigureAwait(false);
+                await OnDataFrame(dataHeader, body, header.Codec, cancellationToken).ConfigureAwait(false);
                 break;
 
             case IpcChannel.Log when OnLogRecord is not null:

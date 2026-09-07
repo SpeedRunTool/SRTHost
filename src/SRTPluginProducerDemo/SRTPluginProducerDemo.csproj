@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <!-- These three become the plugin's Name, Description and Author; see PluginInfo.FromAssembly. -->
+    <Product>Demo Producer</Product>
+    <Description>A synthetic producer used to smoke-test the SRT Host plugin pipeline.</Description>
+    <Authors>SpeedRunTool</Authors>
+    <SRTReferenceContracts>true</SRTReferenceContracts>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SRTPluginDemo.Contracts\SRTPluginDemo.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

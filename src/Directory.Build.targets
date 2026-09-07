@@ -28,4 +28,29 @@
 		<PublishDir>bin\$(Configuration)\$(TargetFramework)\publish\</PublishDir>
 	</PropertyGroup>
 
+	<!--
+	  Contract references have to be resolved HERE, not in Directory.Build.props.
+
+	  A project opts in with <SRTReferenceContracts>true</SRTReferenceContracts> in its own body, and
+	  .props is imported before that body runs - so the condition would always read an empty string
+	  and silently reference nothing. .targets is imported afterwards, when the property is set.
+	  NuGet restore evaluates the project fully, so items introduced here are still restored.
+
+	  SRTUseLocalContracts=true swaps the package for the sibling repo's sources; see the note in
+	  Directory.Build.props.
+	-->
+	<Choose>
+		<When Condition="'$(SRTReferenceContracts)'=='true' AND '$(SRTUseLocalContracts)'=='true'">
+			<ItemGroup>
+				<ProjectReference Include="$(SRTContractsPath)SRTPluginBase.Abstractions\SRTPluginBase.Abstractions.csproj" />
+				<ProjectReference Include="$(SRTContractsPath)SRTPluginBase\SRTPluginBase.csproj" />
+			</ItemGroup>
+		</When>
+		<When Condition="'$(SRTReferenceContracts)'=='true'">
+			<ItemGroup>
+				<PackageReference Include="SRTPluginBase" Version="$(SRTContractsVersion)" />
+			</ItemGroup>
+		</When>
+	</Choose>
+
 </Project>

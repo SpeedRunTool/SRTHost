@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Demo Payload Contracts</Product>
+    <Description>Payload types published by the demo producer.</Description>
+  </PropertyGroup>
+
+  <!--
+    A payload-contract assembly, and the pattern every real producer should follow.
+
+    It holds the DTOs and nothing else: no dependency on the producer, no dependency on
+    SRTPluginBase, no logic. The producer and every consumer reference THIS, which is what lets a
+    consumer decode a producer's data without referencing the producer assembly.
+
+    That reference was the concrete failing of the previous generation: the RE4 overlay was declared
+    as PluginBase<SRTPluginProducerRE4R>, a hard binary dependency on the producer class. It could
+    not survive a process boundary, and it should not have survived in-process either.
+  -->
+
+</Project>

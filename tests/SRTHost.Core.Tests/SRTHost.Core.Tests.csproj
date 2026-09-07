@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SRTHost.Core\SRTHost.Core.csproj" />
+    <ProjectReference Include="..\..\src\SRTPluginProducerDemo\SRTPluginProducerDemo.csproj" />
+    <ProjectReference Include="..\..\src\SRTPluginConsumerDemo\SRTPluginConsumerDemo.csproj" />
   </ItemGroup>
 
 </Project>

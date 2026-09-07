@@ -17,19 +17,20 @@
 	</PropertyGroup>
 
 	<!--
-	  Give $(Platform) a value before anything below consumes it.
+	  Give $(Platform) and $(Configuration) values before anything below consumes them.
 
-	  Directory.Build.props is imported before the SDK applies its own AnyCPU default, so on a direct
-	  `dotnet build some.csproj` the OutputPath and DefineConstants below would expand $(Platform) to
-	  an empty string - putting output in bin\Debug
-et10.0 instead of bin\Debug\AnyCPU
-et10.0 and
-	  silently dropping the platform compile constant. Building through the solution passes Platform
-	  as a global property and does not hit it, so the two entry points would otherwise disagree and
-	  you would find yourself running a stale binary.
+	  Directory.Build.props is imported before the SDK applies its own AnyCPU/Debug defaults, so on a
+	  direct `dotnet build some.csproj` the OutputPath and DefineConstants below would expand them to
+	  empty strings - putting output in bin
+et10.0 rather than bin\Debug\AnyCPU
+et10.0, silently
+	  dropping the platform compile constant, and letting Debug and Release overwrite each other.
+	  Building through the solution passes both as global properties and does not hit it, so the two
+	  entry points would otherwise disagree and you would find yourself running a stale binary.
 	-->
 	<PropertyGroup>
 		<Platform Condition="'$(Platform)'==''">AnyCPU</Platform>
+		<Configuration Condition="'$(Configuration)'==''">Debug</Configuration>
 	</PropertyGroup>
 
 	<PropertyGroup>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>Demo Consumer</Product>
+    <Description>A synthetic consumer used to smoke-test the SRT Host plugin pipeline.</Description>
+    <Authors>SpeedRunTool</Authors>
+    <SRTReferenceContracts>true</SRTReferenceContracts>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      The payload contracts, and NOT SRTPluginProducerDemo. A consumer never references the producer
+      it reads from: it binds to a channel id at runtime, so any producer publishing that channel
+      will do. This is the coupling the previous generation could not express.
+    -->
+    <ProjectReference Include="..\SRTPluginDemo.Contracts\SRTPluginDemo.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

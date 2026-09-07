@@ -11,7 +11,7 @@
     <File Path="../README.md" />
     <File Path="../version.txt" />
     <File Path="Directory.Build.props" />
-    <File Path="nuget.config" />
+    <File Path="../nuget.config" />
     <File Path="Directory.Build.targets" />
     <File Path="../tests/Directory.Build.props" />
     <File Path="SRTHostSetup/SRTHostBundle/Bundle.wxs" />
@@ -50,19 +50,19 @@
     <Platform Solution="*|x86" Project="AnyCPU" />
   </Project>
   <!--
-    In-repo smoke-test plugins. SRTPluginDemo.Contracts holds only the payload DTOs; the consumer
+    In-repo smoke-test plugins. SpeedRunTool.Demo.Contracts holds only the payload DTOs; the consumer
     references it and never the producer, which is the decoupling the contracts split exists for.
   -->
   <Folder Name="/Demo Plugins/">
-    <Project Path="SRTPluginDemo.Contracts/SRTPluginDemo.Contracts.csproj">
+    <Project Path="SpeedRunTool.Demo.Contracts/SpeedRunTool.Demo.Contracts.csproj">
       <Platform Solution="*|x64" Project="AnyCPU" />
       <Platform Solution="*|x86" Project="AnyCPU" />
     </Project>
-    <Project Path="SRTPluginProducerDemo/SRTPluginProducerDemo.csproj">
+    <Project Path="SpeedRunTool.Demo.Producer/SpeedRunTool.Demo.Producer.csproj">
       <Platform Solution="*|x64" Project="AnyCPU" />
       <Platform Solution="*|x86" Project="AnyCPU" />
     </Project>
-    <Project Path="SRTPluginConsumerDemo/SRTPluginConsumerDemo.csproj">
+    <Project Path="SpeedRunTool.Demo.Consumer/SpeedRunTool.Demo.Consumer.csproj">
       <Platform Solution="*|x64" Project="AnyCPU" />
       <Platform Solution="*|x86" Project="AnyCPU" />
     </Project>

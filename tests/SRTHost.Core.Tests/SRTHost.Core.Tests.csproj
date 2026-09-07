@@ -14,8 +14,28 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SRTHost.Core\SRTHost.Core.csproj" />
-    <ProjectReference Include="..\..\src\SRTPluginProducerDemo\SRTPluginProducerDemo.csproj" />
-    <ProjectReference Include="..\..\src\SRTPluginConsumerDemo\SRTPluginConsumerDemo.csproj" />
+    <ProjectReference Include="..\..\src\SpeedRunTool.Demo.Producer\SpeedRunTool.Demo.Producer.csproj" />
+    <ProjectReference Include="..\..\src\SpeedRunTool.Demo.Consumer\SpeedRunTool.Demo.Consumer.csproj" />
+  </ItemGroup>
+
+  <!--
+    Where each demo plugin's generated srtplugin.json lands, handed to the tests as assembly
+    metadata.
+
+    Both plugins emit a file of that one name, and a ProjectReference copies a referenced project's
+    content into the referencing project's output - so this project's own bin\ receives one of the
+    two manifests, arbitrarily. Reading them from where they were generated is the only way to test
+    both, and it is exact rather than a search.
+  -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>ProducerManifest</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)..\..\src\SpeedRunTool.Demo.Producer\bin\$(Configuration)\$(Platform)\$(TargetFramework)\srtplugin.json</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>ConsumerManifest</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)..\..\src\SpeedRunTool.Demo.Consumer\bin\$(Configuration)\$(Platform)\$(TargetFramework)\srtplugin.json</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>

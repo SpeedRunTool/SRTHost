@@ -12,9 +12,9 @@ public class DemoPluginMetadataTests
     [Fact]
     public void ProducerInfoIsDerivedFromAssemblyMetadata()
     {
-        IPluginInfo info = new SRTPluginProducerDemo.DemoProducer().Info;
+        IPluginInfo info = new SpeedRunTool.Demo.Producer.DemoProducer().Info;
 
-        Assert.Equal("com.speedruntool.demo.producer", info.Id);
+        Assert.Equal("SpeedRunTool.Demo.Producer", info.Id);
         Assert.Equal("Demo Producer", info.Name);                  // from <Product>
         Assert.Equal("SpeedRunTool", info.Author);                 // from <Authors>
         Assert.StartsWith("A synthetic producer", info.Description); // from <Description>
@@ -25,7 +25,7 @@ public class DemoPluginMetadataTests
     [Fact]
     public void ConsumerKindIsInferredFromTheInterfaceItImplements()
     {
-        Assert.Equal(PluginKind.Consumer, new SRTPluginConsumerDemo.DemoConsumer().Info.Kind);
+        Assert.Equal(PluginKind.Consumer, new SpeedRunTool.Demo.Consumer.DemoConsumer().Info.Kind);
     }
 
     [Fact]
@@ -33,15 +33,15 @@ public class DemoPluginMetadataTests
     {
         // The whole point of the contracts split: the consumer assembly must not reference the
         // producer assembly. If someone reintroduces that coupling, this fails.
-        string[] referenced = typeof(SRTPluginConsumerDemo.DemoConsumer).Assembly
+        string[] referenced = typeof(SpeedRunTool.Demo.Consumer.DemoConsumer).Assembly
             .GetReferencedAssemblies()
             .Select(name => name.Name!)
             .ToArray();
 
-        Assert.DoesNotContain("SRTPluginProducerDemo", referenced);
-        Assert.Contains("SRTPluginDemo.Contracts", referenced);
+        Assert.DoesNotContain("SpeedRunTool.Demo.Producer", referenced);
+        Assert.Contains("SpeedRunTool.Demo.Contracts", referenced);
 
-        ChannelSubscription subscription = Assert.Single(new SRTPluginConsumerDemo.DemoConsumer().Subscriptions);
-        Assert.Equal(SRTPluginDemo.Contracts.DemoChannel.Id, subscription.ChannelId);
+        ChannelSubscription subscription = Assert.Single(new SpeedRunTool.Demo.Consumer.DemoConsumer().Subscriptions);
+        Assert.Equal(SpeedRunTool.Demo.Contracts.DemoChannel.Id, subscription.ChannelId);
     }
 }

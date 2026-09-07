@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace SRTPluginDemo.Contracts;
+namespace SpeedRunTool.Demo.Contracts;
 
 /// <summary>Channel constants for the demo producer.</summary>
 public static class DemoChannel

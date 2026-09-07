@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SRTPluginDemo.Contracts\SRTPluginDemo.Contracts.csproj" />
+    <ProjectReference Include="..\SpeedRunTool.Demo.Contracts\SpeedRunTool.Demo.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

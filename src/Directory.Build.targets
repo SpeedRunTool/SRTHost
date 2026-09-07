@@ -53,4 +53,25 @@
 		</When>
 	</Choose>
 
+	<!--
+	  The srtplugin.json generator rides along in the SRTPluginBase package's buildTransitive/ folder,
+	  so the PackageReference branch above gets it for free. A ProjectReference carries no build
+	  targets, so the local-contracts branch has to import the same file by hand and point the
+	  UsingTask at the task project's build output instead of the tasks/ folder a package would have.
+
+	  Without this, a -p:SRTUseLocalContracts=true build would silently stop emitting manifests, and
+	  the host would stop seeing its own demo plugins - the exact kind of Debug-versus-Release
+	  divergence the SRTReferenceContracts opt-in exists to prevent.
+	-->
+	<PropertyGroup Condition="'$(SRTReferenceContracts)'=='true' AND '$(SRTUseLocalContracts)'=='true'">
+		<_SrtLocalBuildTasksTfm Condition="'$(MSBuildRuntimeType)'=='Core'">net10.0</_SrtLocalBuildTasksTfm>
+		<_SrtLocalBuildTasksTfm Condition="'$(_SrtLocalBuildTasksTfm)'==''">net48</_SrtLocalBuildTasksTfm>
+		<SrtBuildTasksAssembly>$(SRTContractsPath)SRTPluginBase.BuildTasks\bin\$(Configuration)\$(_SrtLocalBuildTasksTfm)\SRTPluginBase.BuildTasks.dll</SrtBuildTasksAssembly>
+	</PropertyGroup>
+
+	<Import Project="$(SRTContractsPath)SRTPluginBase\buildTransitive\SRTPluginBase.props"
+	        Condition="'$(SRTReferenceContracts)'=='true' AND '$(SRTUseLocalContracts)'=='true'" />
+	<Import Project="$(SRTContractsPath)SRTPluginBase\buildTransitive\SRTPluginBase.targets"
+	        Condition="'$(SRTReferenceContracts)'=='true' AND '$(SRTUseLocalContracts)'=='true'" />
+
 </Project>

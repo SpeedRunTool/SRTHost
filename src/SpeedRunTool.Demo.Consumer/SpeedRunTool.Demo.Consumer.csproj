@@ -11,11 +11,11 @@
 
   <ItemGroup>
     <!--
-      The payload contracts, and NOT SRTPluginProducerDemo. A consumer never references the producer
+      The payload contracts, and NOT SpeedRunTool.Demo.Producer. A consumer never references the producer
       it reads from: it binds to a channel id at runtime, so any producer publishing that channel
       will do. This is the coupling the previous generation could not express.
     -->
-    <ProjectReference Include="..\SRTPluginDemo.Contracts\SRTPluginDemo.Contracts.csproj" />
+    <ProjectReference Include="..\SpeedRunTool.Demo.Contracts\SpeedRunTool.Demo.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

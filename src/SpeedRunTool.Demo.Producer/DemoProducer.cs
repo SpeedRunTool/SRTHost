@@ -1,11 +1,11 @@
 using System.Text.Json.Serialization.Metadata;
 using SRTPluginBase;
 using SRTPluginBase.Abstractions;
-using SRTPluginDemo.Contracts;
+using SpeedRunTool.Demo.Contracts;
 
-[assembly: SrtPluginAssembly("com.speedruntool.demo.producer", typeof(SRTPluginProducerDemo.DemoProducer))]
+[assembly: SrtPluginAssembly("SpeedRunTool.Demo.Producer", typeof(SpeedRunTool.Demo.Producer.DemoProducer))]
 
-namespace SRTPluginProducerDemo;
+namespace SpeedRunTool.Demo.Producer;
 
 /// <summary>
 /// Publishes a synthetic payload on <see cref="DemoChannel.Id"/>.

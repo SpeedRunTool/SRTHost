@@ -2,11 +2,11 @@ using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using SRTPluginBase;
 using SRTPluginBase.Abstractions;
-using SRTPluginDemo.Contracts;
+using SpeedRunTool.Demo.Contracts;
 
-[assembly: SrtPluginAssembly("com.speedruntool.demo.consumer", typeof(SRTPluginConsumerDemo.DemoConsumer))]
+[assembly: SrtPluginAssembly("SpeedRunTool.Demo.Consumer", typeof(SpeedRunTool.Demo.Consumer.DemoConsumer))]
 
-namespace SRTPluginConsumerDemo;
+namespace SpeedRunTool.Demo.Consumer;
 
 /// <summary>
 /// Logs whatever arrives on <see cref="DemoChannel.Id"/>.

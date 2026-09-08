@@ -24,6 +24,15 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <!--
+    Microsoft.Extensions.Logging and its console provider are NOT PackageReferences here: the
+    ASP.NET Core shared framework above already carries them, and referencing them explicitly is
+    NU1510. The plugin runner does need its own copies, because it declares no framework reference -
+    which is fine even though the two share a publish directory, since a framework-dependent app
+    resolves what its own deps.json says and ignores the rest of the folder.
+  -->
+
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
@@ -36,5 +45,55 @@
     <ProjectReference Include="..\SRTHost.Core\SRTHost.Core.csproj" />
     <ProjectReference Include="..\SRTHost.Ipc\SRTHost.Ipc.csproj" />
   </ItemGroup>
+
+  <!--
+    Build the plugin runner alongside this project, so there is always one to launch.
+
+    ReferenceOutputAssembly=false because a runner is a process this project starts, not an assembly
+    it links - and it is x64/x86 while this project is AnyCPU, so linking it would be meaningless
+    even where it is legal.
+
+    One reference, not one per architecture: SetPlatform loses to a global -p:Platform, which is how
+    every build here is invoked, so a second reference would have quietly built the same
+    architecture twice. The runner that gets built is the one matching the build, which is the one
+    the AnyCPU demo plugins need; a release builds both platforms anyway and the publish merges them
+    into one directory.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\SRTHost.PluginRunner\SRTHost.PluginRunner.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="false" />
+  </ItemGroup>
+
+  <!--
+    Copy whichever runners have been built next to SRTHost.exe, which is what makes
+    HostPaths.RunnerExecutable work from a build output as well as from an install - the publish
+    layout already puts all three executables in one directory, and this makes a plain build match
+    it.
+
+    The runners' WHOLE output is copied, not just the two executables. The tempting shortcut - "a
+    runner's dependency closure is a subset of the host's, so only its own files are needed" - is
+    wrong in a way that takes a while to see: the host declares a FrameworkReference on
+    Microsoft.AspNetCore.App and so resolves Microsoft.Extensions.Logging and friends from the shared
+    framework with no local copy, while the runner declares no framework reference and its deps.json
+    expects those assemblies as files beside it. Copying only the executables produced a runner that
+    died on startup with a FileNotFoundException for Microsoft.Extensions.Logging.Abstractions, which
+    the host could only see as a connect timeout.
+
+    Copying everything is also what publish does, since each project publishes its own closure into
+    the shared directory; the overlapping files are byte-identical because ReadyToRun is off
+    everywhere (see Directory.Build.props), which is the same invariant CI enforces when it merges
+    the two platform artifacts.
+  -->
+  <Target Name="CopyPluginRunners" AfterTargets="Build">
+    <ItemGroup>
+      <_SrtRunnerOutput Include="..\SRTHost.PluginRunner\bin\$(Configuration)\x64\$(TargetFramework)\win-x64\**\*" />
+      <_SrtRunnerOutput Include="..\SRTHost.PluginRunner\bin\$(Configuration)\x86\$(TargetFramework)\win-x86\**\*" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_SrtRunnerOutput)"
+          DestinationFiles="@(_SrtRunnerOutput->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

@@ -34,20 +34,21 @@
   </ItemGroup>
 
   <!--
-    Build the runner alongside these tests, for both architectures, so the harness always has an
-    executable to drive. ReferenceOutputAssembly=false because a runner is a process this project
-    starts, not an assembly it links: referencing an x64 executable from an AnyCPU test project would
-    be meaningless even where it is legal.
+    Build the plugin runner alongside this project, so there is always one to launch.
 
-    Two entries for one project is the same "one project, built twice" arrangement the solution uses.
+    ReferenceOutputAssembly=false because a runner is a process these tests start, not an assembly
+    it links - and it is x64/x86 while this project is AnyCPU, so linking it would be meaningless
+    even where it is legal.
+
+    One reference, not one per architecture: SetPlatform loses to a global -p:Platform, which is how
+    every build here is invoked, so a second reference would have quietly built the same
+    architecture twice. The runner that gets built is the one matching the build, which is the one
+    the AnyCPU demo plugins need; a release builds both platforms anyway and the publish merges them
+    into one directory.
   -->
   <ItemGroup>
     <ProjectReference Include="..\..\src\SRTHost.PluginRunner\SRTHost.PluginRunner.csproj"
-                      ReferenceOutputAssembly="false"
-                      SetPlatform="Platform=x64" />
-    <ProjectReference Include="..\..\src\SRTHost.PluginRunner\SRTHost.PluginRunner.csproj"
-                      ReferenceOutputAssembly="false"
-                      SetPlatform="Platform=x86" />
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!--

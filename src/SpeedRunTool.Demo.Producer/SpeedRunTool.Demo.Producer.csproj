@@ -8,6 +8,8 @@
     <Description>A synthetic producer used to smoke-test the SRT Host plugin pipeline.</Description>
     <Authors>SpeedRunTool</Authors>
     <SRTReferenceContracts>true</SRTReferenceContracts>
+    <!-- Deploys into the host's plugins folder on build; see Directory.Build.targets. -->
+    <SRTDeployAsPlugin>true</SRTDeployAsPlugin>
   </PropertyGroup>
 
   <ItemGroup>

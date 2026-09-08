@@ -43,8 +43,13 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
   </ItemGroup>
 
+  <!--
+    SRTHost.Ipc only. The runner deliberately does not reference SRTHost.Core: Core is the router's
+    half of the application - discovery, subscription routing, supervision, job-object interop - and
+    a runner that linked it would carry the code that supervises it. The two processes share the
+    protocol and nothing else.
+  -->
   <ItemGroup>
-    <ProjectReference Include="..\SRTHost.Core\SRTHost.Core.csproj" />
     <ProjectReference Include="..\SRTHost.Ipc\SRTHost.Ipc.csproj" />
   </ItemGroup>
 

@@ -99,4 +99,58 @@
 	<Import Project="$(SRTContractsPath)SRTPluginBase\buildTransitive\SRTPluginBase.targets"
 	        Condition="'$(SRTReferenceContracts)'=='true' AND '$(SRTUseLocalContracts)'=='true'" />
 
+	<!--
+	  A plugin project's output has to be self-contained, so its package dependencies are copied
+	  beside it.
+
+	  The SDK defaults CopyLocalLockFileAssemblies to false for a library, on the reasonable grounds
+	  that whatever consumes the library will resolve its packages itself. A plugin has no such
+	  consumer: it is loaded out of a directory by a runner that knows nothing about NuGet, so
+	  anything not in that directory has to come from the runner's own closure or it does not resolve
+	  at all. Without this, SRTPluginBase.dll is absent from every plugin folder and every plugin
+	  fails to load with a FileNotFoundException naming the base class it derives from.
+
+	  Note this also drops Microsoft.Extensions.*.Abstractions.dll into the folder. That is expected,
+	  and it is exactly the case PluginLoadContext's shared-assembly list exists for: those load from
+	  the runner's own context so the types stay reference-identical across the boundary.
+	-->
+	<PropertyGroup Condition="'$(SRTReferenceContracts)'=='true' AND '$(CopyLocalLockFileAssemblies)'==''">
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
+
+	<!--
+	  Deploy a plugin into the host's plugins folder as part of building it.
+
+	  Opt in with <SRTDeployAsPlugin>true</SRTDeployAsPlugin>. This is the same arrangement the
+	  out-of-repo plugin repositories use - they build straight into the host's output through a
+	  relative path - so the in-repo demo plugins exercise the real convention rather than a
+	  convenience that only exists here.
+
+	  The layout written is plugins\<AssemblyName>\, holding the plugin, its private dependencies,
+	  its .deps.json and the generated srtplugin.json. Including the .deps.json is deliberate: it is
+	  what the runner's AssemblyDependencyResolver reads, so this exercises the resolver path, while
+	  the runner's own test harness stages a folder without one to exercise the root-probe fallback.
+	  Both are real ways a plugin folder arrives on disk.
+
+	  It runs after Build rather than after the manifest target and takes srtplugin.json from
+	  $(TargetDir), so it copies whatever that build produced - a manifest that failed to generate is
+	  a missing file here rather than a stale one silently redeployed.
+	-->
+	<Target Name="SrtDeployPlugin" AfterTargets="Build" Condition="'$(SRTDeployAsPlugin)'=='true'">
+		<PropertyGroup>
+			<SrtHostPluginsDir Condition="'$(SrtHostPluginsDir)'==''">$(MSBuildThisFileDirectory)SRTHost\bin\$(Configuration)\AnyCPU\$(TargetFramework)\plugins\$(AssemblyName)\</SrtHostPluginsDir>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<_SrtPluginPayload Include="$(TargetDir)*.dll" />
+			<_SrtPluginPayload Include="$(TargetDir)*.pdb" />
+			<_SrtPluginPayload Include="$(TargetDir)$(AssemblyName).deps.json" />
+			<_SrtPluginPayload Include="$(TargetDir)srtplugin.json" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(_SrtPluginPayload)" DestinationFolder="$(SrtHostPluginsDir)" SkipUnchangedFiles="true" />
+
+		<Message Importance="normal" Text="Deployed $(AssemblyName) to $(SrtHostPluginsDir)" />
+	</Target>
+
 </Project>

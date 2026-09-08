@@ -22,6 +22,39 @@ public readonly record struct EdgeSnapshot(
     long Dropped,
     bool Degraded);
 
+/// <summary>One channel a producer is currently publishing.</summary>
+/// <param name="ProducerId">The plugin publishing it.</param>
+/// <param name="ChannelId">The channel id consumers bind to.</param>
+/// <param name="ContractVersion">The payload contract version the producer declared.</param>
+/// <param name="Codec">How payloads on the channel are encoded.</param>
+/// <param name="Subscribers">How many consumers are wired to it right now.</param>
+public readonly record struct ChannelSnapshot(
+    string ProducerId,
+    string ChannelId,
+    string ContractVersion,
+    PayloadCodec Codec,
+    int Subscribers);
+
+/// <summary>One payload, copied out for a watcher rather than for a consumer.</summary>
+/// <remarks>
+/// Deliberately a copy. The buffer the router fans out is rented and returned as soon as the last
+/// subscriber has written it, so anything a watcher kept a reference to would be recycled underneath
+/// it - and the data inspector's whole job is to hold a frame still while somebody reads it.
+/// </remarks>
+/// <param name="ProducerId">Who published it.</param>
+/// <param name="ChannelId">Which channel it went out on.</param>
+/// <param name="Sequence">The producer's monotonic sequence number.</param>
+/// <param name="TimestampUtc">When the producer stamped it.</param>
+/// <param name="Codec">How the payload is encoded.</param>
+/// <param name="Payload">The payload bytes, still undecoded.</param>
+public sealed record ObservedFrame(
+    string ProducerId,
+    string ChannelId,
+    ulong Sequence,
+    DateTimeOffset TimestampUtc,
+    PayloadCodec Codec,
+    ReadOnlyMemory<byte> Payload);
+
 /// <summary>
 /// The star: every payload goes producer runner → here → consumer runners.
 /// </summary>
@@ -87,6 +120,24 @@ public sealed class IpcRouter : IAsyncDisposable
 
     /// <summary>Time spent inside the router itself, from frame arrival to enqueue for every subscriber.</summary>
     public LatencyStatistics RoutingLatency { get; } = new();
+
+    /// <summary>
+    /// A watcher for published payloads, for the UI's data inspector. Null - and free - when nothing
+    /// is watching.
+    /// </summary>
+    /// <remarks>
+    /// A single settable delegate rather than an event, and that is the honest shape for what this
+    /// is: there is exactly one inspector, it is attached while a panel is open and detached when it
+    /// closes, and a multicast list would make the hot path's cost depend on how many subscribers
+    /// forgot to unsubscribe.
+    /// <para>
+    /// The cost when nothing is watching is one null check per published frame. When something is
+    /// watching it is an allocation and a copy per frame, which is why the inspector attaches only
+    /// while its panel is open. The observer is called on the producer runner's read loop, so an
+    /// implementation must hand off and return; anything slow here is backpressure on the producer.
+    /// </para>
+    /// </remarks>
+    public Action<ObservedFrame>? FrameObserver { get; set; }
 
     /// <summary>Registers a producer and wires it to any consumer already waiting for its channel.</summary>
     public void RegisterProducer(IRouterEndpoint endpoint, ChannelDescriptor channel)
@@ -168,6 +219,20 @@ public sealed class IpcRouter : IAsyncDisposable
 
         long startedTicks = DateTime.UtcNow.Ticks;
 
+        // Before the early return below, not after: a producer with no consumers is exactly the case
+        // somebody opens the inspector to diagnose, and a tap that only fired on delivered frames
+        // would show nothing precisely when it is needed.
+        if (FrameObserver is { } observe)
+        {
+            observe(new ObservedFrame(
+                producerId,
+                header.ChannelId,
+                header.Sequence,
+                new DateTimeOffset(header.TimestampUtcTicks, TimeSpan.Zero),
+                codec,
+                payload.ToArray()));
+        }
+
         ConsumerEdge[] edges = producer.Edges;
 
         if (edges.Length == 0)
@@ -182,6 +247,17 @@ public sealed class IpcRouter : IAsyncDisposable
 
         RoutingLatency.Record(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - startedTicks));
     }
+
+    /// <summary>Everything currently being published, whether or not anyone is listening.</summary>
+    public IReadOnlyList<ChannelSnapshot> Channels =>
+    [
+        .. producers.Values.Select(producer => new ChannelSnapshot(
+            producer.Endpoint.PluginId,
+            producer.Channel.ChannelId,
+            producer.Channel.ContractVersion,
+            producer.Channel.Codec,
+            producer.Edges.Length)),
+    ];
 
     /// <summary>Everything currently known about the wired-up edges.</summary>
     public IReadOnlyList<EdgeSnapshot> Edges =>

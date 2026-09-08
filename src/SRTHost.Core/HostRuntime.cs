@@ -53,6 +53,9 @@ public sealed class HostRuntime : IAsyncDisposable
     /// <summary>The process plane.</summary>
     public PluginSupervisor Supervisor { get; }
 
+    /// <summary>Where this host is looking for plugins.</summary>
+    public string PluginsDirectory => options.PluginsDirectory;
+
     /// <summary>Whatever the last scan could not use, and why.</summary>
     public IReadOnlyList<DiscoveryProblem> Problems { get; private set; } = [];
 

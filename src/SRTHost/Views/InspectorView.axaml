@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SRTHost.ViewModels"
+             xmlns:routing="clr-namespace:SRTHost.Core.Routing;assembly=SRTHost.Core"
+             x:Class="SRTHost.Views.InspectorView"
+             x:DataType="vm:InspectorViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+    <!-- Wraps: the channel picker alone is 320px, and this row does not fit a narrow window. -->
+    <WrapPanel Grid.Row="0" ItemSpacing="6" LineSpacing="6" Margin="0,0,0,8">
+      <ComboBox ItemsSource="{Binding Channels}" SelectedItem="{Binding SelectedChannel}" MinWidth="320">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="routing:ChannelSnapshot">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{Binding ChannelId}" />
+              <TextBlock Text="{Binding ProducerId}" Opacity="0.6" />
+            </StackPanel>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <Button Content="Refresh channels" Command="{Binding RefreshChannelsCommand}" />
+      <Rectangle Width="1" Fill="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="4,2" />
+      <NumericUpDown Value="{Binding RecordCount}" Minimum="1" Maximum="10000" Increment="100" Width="130" />
+      <Button Content="Record" Command="{Binding RecordCommand}" IsEnabled="{Binding !Recording}" />
+      <Button Content="Stop" Command="{Binding StopRecordingCommand}" IsEnabled="{Binding Recording}" />
+    </WrapPanel>
+
+    <TextBlock Grid.Row="1" Text="{Binding FrameInfo}" Opacity="0.7"
+               FontFamily="Consolas,Menlo,monospace" Margin="0,0,0,6" />
+
+    <!--
+      Read-only and monospaced. It shows re-indented JSON when the producer declared JSON, and a hex
+      dump otherwise - the router forwards opaque bytes and the host has no way to decode a payload
+      type it never loads, so guessing would be worse than showing the bytes.
+    -->
+    <Border Grid.Row="2" BorderThickness="1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            CornerRadius="4">
+      <TextBox Text="{Binding Payload, Mode=OneWay}"
+               IsReadOnly="True"
+               AcceptsReturn="True"
+               TextWrapping="NoWrap"
+               FontFamily="Consolas,Menlo,monospace"
+               BorderThickness="0" />
+    </Border>
+
+    <TextBlock Grid.Row="3" Text="{Binding RecordingStatus}" Opacity="0.7" TextWrapping="Wrap" Margin="2,6,0,8" />
+
+  </Grid>
+
+</UserControl>

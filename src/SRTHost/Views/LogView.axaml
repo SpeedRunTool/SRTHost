@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SRTHost.ViewModels"
+             xmlns:logging="clr-namespace:SRTHost.Core.Logging;assembly=SRTHost.Core"
+             x:Class="SRTHost.Views.LogView"
+             x:DataType="vm:LogViewModel">
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Wraps for the same reason the inspector's does: two combo boxes and a filter box do not
+         fit a narrow window in one row. -->
+    <WrapPanel Grid.Row="0" ItemSpacing="6" LineSpacing="6" Margin="0,0,0,8">
+      <ComboBox ItemsSource="{Binding Levels}" SelectedItem="{Binding MinimumLevel}" Width="130" />
+      <!-- Populated as sources appear, so a plugin that has not logged yet is not offered. -->
+      <ComboBox ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" Width="220" />
+      <TextBox Text="{Binding SearchText}" Watermark="Filter…" Width="220" />
+      <CheckBox Content="Follow" IsChecked="{Binding FollowTail}" VerticalAlignment="Center" />
+      <Button Content="Copy" Command="{Binding CopyCommand}" />
+      <Button Content="Clear" Command="{Binding ClearCommand}" />
+      <Button Content="Log folder" Command="{Binding OpenLogFolderCommand}" />
+    </WrapPanel>
+
+    <!--
+      A ListBox rather than a DataGrid: this is one column of text, it is virtualised, and it is the
+      control the follow-tail code-behind can scroll into view cheaply.
+    -->
+    <ListBox Grid.Row="1" Name="Entries" ItemsSource="{Binding Entries}" FontFamily="Consolas,Menlo,monospace">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="logging:LogEntry">
+          <!--
+            Fixed widths sized to the widest value each column can hold - "23:46:10.327",
+            "Information" - rather than Auto. Auto would make every row's columns line up with
+            themselves and not with the row above, which is the one thing a log has to do.
+          -->
+          <Grid ColumnDefinitions="112,96,220,*">
+            <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss.fff}'}" Opacity="0.6" />
+            <TextBlock Grid.Column="1" Text="{Binding Level}" Opacity="0.8" />
+            <TextBlock Grid.Column="2" Text="{Binding ShortCategory}" Opacity="0.6"
+                       TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+            <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <TextBlock Grid.Row="2" Text="{Binding Summary}" Opacity="0.6" Margin="2,6,0,8" />
+
+  </Grid>
+
+</UserControl>

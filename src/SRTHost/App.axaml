@@ -1,10 +1,58 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SRTHost"
+             xmlns:views="clr-namespace:SRTHost.Views"
              x:Class="SRTHost.App"
              RequestedThemeVariant="Default">
 
+  <Application.DataTemplates>
+    <!-- FooViewModel -> Views.FooView, so the nav rail never names a control. -->
+    <local:ViewLocator />
+  </Application.DataTemplates>
+
   <Application.Styles>
     <FluentTheme />
+    <!-- The DataGrid ships its own theme; the Fluent one has to be included explicitly. -->
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
   </Application.Styles>
+
+  <Application.Resources>
+    <!--
+      The four states the status dot can be in, keyed by the string PluginRowViewModel.StatusSeverity
+      returns. Kept as resources rather than as a converter so the palette is in one place and the
+      view models stay free of Avalonia types.
+    -->
+    <SolidColorBrush x:Key="SeverityOk" Color="#2FA84F" />
+    <SolidColorBrush x:Key="SeverityBusy" Color="#3B82F6" />
+    <SolidColorBrush x:Key="SeverityIdle" Color="#9CA3AF" />
+    <SolidColorBrush x:Key="SeverityWarning" Color="#D97706" />
+    <SolidColorBrush x:Key="SeverityError" Color="#DC2626" />
+
+    <views:SeverityBrushConverter x:Key="SeverityBrush" />
+    <views:SourceAvailabilityConverter x:Key="SourceAvailability" />
+  </Application.Resources>
+
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <!--
+        The tray icon is the application's real lifetime, not a convenience: the plugin runners are
+        children of this process and die with it, so closing the window must not mean stopping the
+        overlay somebody is mid-run with. Hence close-to-tray by default, and an Exit item that says
+        plainly it is stopping everything.
+      -->
+      <TrayIcon Icon="/Assets/SRT.ico" ToolTipText="SRT Host" Clicked="OnTrayClicked">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Show SRT Host" Click="OnShowClicked" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Pause all plugins" Click="OnPauseClicked" />
+            <NativeMenuItem Header="Open plugins folder" Click="OnOpenPluginsClicked" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Exit (stops all plugins)" Click="OnExitClicked" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
 
 </Application>

@@ -113,6 +113,13 @@ public sealed class PluginSupervisor : IAsyncDisposable
 
         Supervised entry = supervised.GetOrAdd(plugin.Id, _ => new Supervised(plugin));
 
+        // Idempotent, which is what makes a rescan safe to run against a live host: HostRuntime's
+        // scan calls this for every plugin it finds, including the ones already running. Launching
+        // again would overwrite entry.Runner and leave the first process orphaned - alive, still
+        // holding its pipe, and invisible to everything but the job object that eventually kills it.
+        if (entry.Runner is not null)
+            return entry.State.Status == PluginStatus.Running;
+
         return await LaunchAsync(entry, cancellationToken).ConfigureAwait(false);
     }
 
@@ -145,6 +152,61 @@ public sealed class PluginSupervisor : IAsyncDisposable
 
         return await LaunchAsync(entry, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Stops a plugin's runner but keeps supervising it, so it can be started again.
+    /// </summary>
+    /// <remarks>
+    /// The distinction from <see cref="RemoveAsync"/> is what the UI's Stop button needs: a stopped
+    /// plugin still has a row, still shows its last fault and is one click from running again. A
+    /// removed one is gone until the next scan. Both tear the process down the same way - a stopped
+    /// plugin holds no runner, no pipe and no lock on its own DLL, which is what makes an in-app
+    /// update of a stopped plugin possible.
+    /// </remarks>
+    /// <returns>Whether the plugin was under supervision at all.</returns>
+    public async Task<bool> StopAsync(string pluginId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
+
+        if (!supervised.TryGetValue(pluginId, out Supervised? entry))
+            return false;
+
+        await TearDownAsync(entry, "stopped by the user", cancellationToken).ConfigureAwait(false);
+
+        // A user-initiated stop clears the crash budget for the same reason a reload does: the next
+        // start is a fresh decision by a person, not the continuation of a crash loop.
+        entry.Restarts.Clear();
+
+        Update(entry, state => state with { RestartCount = 0 });
+
+        return true;
+    }
+
+    /// <summary>Starts a plugin that is under supervision but not running.</summary>
+    /// <returns>Whether it reached <see cref="PluginStatus.Running"/>.</returns>
+    public async Task<bool> StartAsync(string pluginId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
+
+        if (!supervised.TryGetValue(pluginId, out Supervised? entry))
+            return false;
+
+        // Already up. Returning true rather than relaunching keeps a double-click on Start from
+        // recycling a healthy runner.
+        if (entry.Runner is not null)
+            return entry.State.Status == PluginStatus.Running;
+
+        return await LaunchAsync(entry, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The plugin behind a supervised id, for a caller that needs its manifest or folder.</summary>
+    /// <remarks>
+    /// The UI's detail pane and its "Open folder" command both want the discovery record, and
+    /// <see cref="PluginState"/> deliberately does not carry one: state is replaced on every change
+    /// and copying an immutable manifest into each new instance would say the same thing many times.
+    /// </remarks>
+    public DiscoveredPlugin? Find(string pluginId)
+        => supervised.TryGetValue(pluginId, out Supervised? entry) ? entry.Plugin : null;
 
     private async Task<bool> LaunchAsync(Supervised entry, CancellationToken cancellationToken)
     {

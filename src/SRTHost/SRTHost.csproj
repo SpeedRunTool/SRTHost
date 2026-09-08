@@ -38,7 +38,19 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <!-- The plugin list is a grid of columns a user sorts and resizes; this is that control. -->
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <!--
+    The application icon is shared with the installer and lives outside this project, so it is linked
+    in rather than copied. Linked as Assets/SRT.ico because that is the avares:// path the window and
+    the tray icon reference, and an AvaloniaResource keeps its identity from its link rather than its
+    location on disk.
+  -->
+  <ItemGroup>
+    <AvaloniaResource Include="..\assets\SRT.ico" Link="Assets/SRT.ico" />
   </ItemGroup>
 
   <ItemGroup>

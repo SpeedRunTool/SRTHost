@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SRTHost.ViewModels"
+             xmlns:routing="clr-namespace:SRTHost.Core.Routing;assembly=SRTHost.Core"
+             xmlns:discovery="clr-namespace:SRTHost.Core.Discovery;assembly=SRTHost.Core"
+             x:Class="SRTHost.Views.PluginsView"
+             x:DataType="vm:PluginsViewModel">
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Commands act on the selected row, so they read the same whether pressed here or in a menu. -->
+    <WrapPanel Grid.Row="0" ItemSpacing="6" LineSpacing="6" Margin="0,0,0,8">
+      <Button Content="Start"
+              Command="{Binding StartCommand}"
+              CommandParameter="{Binding Selected}"
+              IsEnabled="{Binding Selected.CanStart, FallbackValue=False}" />
+      <Button Content="Stop"
+              Command="{Binding StopCommand}"
+              CommandParameter="{Binding Selected}"
+              IsEnabled="{Binding Selected.CanStop, FallbackValue=False}" />
+      <Button Content="Reload"
+              Command="{Binding ReloadPluginCommand}"
+              CommandParameter="{Binding Selected}" />
+      <Button Content="Open folder"
+              Command="{Binding OpenFolderCommand}"
+              CommandParameter="{Binding Selected}" />
+      <Rectangle Width="1" Fill="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="4,2" />
+      <Button Content="Rescan" Command="{Binding RescanCommand}" />
+      <Button Content="Plugins folder" Command="{Binding OpenPluginsFolderCommand}" />
+      <ProgressBar IsIndeterminate="True" Width="80" VerticalAlignment="Center"
+                   IsVisible="{Binding Busy}" />
+    </WrapPanel>
+
+    <!--
+      A DockPanel rather than a two-column Grid, so the detail pane's width is reserved before the
+      list is measured. The list is the part that can usefully absorb whatever is left over - it
+      scrolls - while the pane is a column of labels that has to wrap to a known width.
+    -->
+    <DockPanel Grid.Row="1" LastChildFill="True">
+
+      <ScrollViewer DockPanel.Dock="Right"
+                    Width="340"
+                    Margin="10,0,0,0"
+                    HorizontalScrollBarVisibility="Disabled"
+                    IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel Spacing="10" DataContext="{Binding Selected}" x:DataType="vm:PluginRowViewModel">
+
+          <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Id}" Opacity="0.6" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Grid.Row="7" Grid.Column="0" Text="Author" Opacity="0.6" Margin="0,6,12,2" />
+            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Author}" TextWrapping="Wrap" Margin="0,6,0,0" />
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Version" Opacity="0.6" Margin="0,0,12,2" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Version}" TextWrapping="Wrap" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Status" Opacity="0.6" Margin="0,0,12,2" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding StatusText}" TextWrapping="Wrap" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Runner" Opacity="0.6" Margin="0,0,12,2" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProcessText}" />
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Memory" Opacity="0.6" Margin="0,0,12,2" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding WorkingSetText}" />
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Uptime" Opacity="0.6" Margin="0,0,12,2" />
+            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding UptimeText}" />
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="Restarts" Opacity="0.6" Margin="0,0,12,2" />
+            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding RestartCount}" />
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="Source" Opacity="0.6" Margin="0,0,12,2" />
+            <TextBlock Grid.Row="6" Grid.Column="1"
+                       Text="{Binding SourceAvailable, Converter={StaticResource SourceAvailability}}" />
+          </Grid>
+
+          <!-- The last fault, in full. It is the reason somebody opened this pane. -->
+          <Border IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                  Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+                  CornerRadius="4" Padding="8">
+            <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" />
+          </Border>
+
+          <TextBlock Text="Channels" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <ItemsControl ItemsSource="{Binding Edges}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="routing:EdgeSnapshot">
+                <!-- Which producer feeds this consumer, or which consumers this producer feeds. -->
+                <StackPanel Margin="0,0,0,6">
+                  <TextBlock Text="{Binding ProducerId}" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding ConsumerId, StringFormat='→ {0}'}" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding ChannelId}" Opacity="0.6" TextWrapping="Wrap" />
+                  <StackPanel Orientation="Horizontal" Spacing="4" Opacity="0.6">
+                    <TextBlock Text="{Binding Delivered}" />
+                    <TextBlock Text="delivered," />
+                    <TextBlock Text="{Binding Dropped}" />
+                    <TextBlock Text="dropped" />
+                  </StackPanel>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="Folder" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <SelectableTextBlock Text="{Binding Directory}" TextWrapping="Wrap" Opacity="0.7" />
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!--
+        Scrolls horizontally rather than squeezing its columns. On a narrow window the Auto columns
+        can add up to more than the pane, and the star-sized Name column - the one thing a person
+        actually reads - is the only one that can give; MinWidth plus a scrollbar is what stops it
+        collapsing.
+      -->
+      <DataGrid ItemsSource="{Binding Plugins}"
+                SelectedItem="{Binding Selected}"
+                IsReadOnly="True"
+                CanUserResizeColumns="True"
+                HorizontalScrollBarVisibility="Auto"
+                GridLinesVisibility="Horizontal">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="" Width="28">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:PluginRowViewModel">
+                <!--
+                  The status dot is the one thing a person reads without reading. Its brush comes from
+                  a string key on the view model so the palette lives in App.axaml and the view models
+                  stay free of Avalonia types.
+                -->
+                <Ellipse Width="10" Height="10" VerticalAlignment="Center" HorizontalAlignment="Center"
+                         Fill="{Binding StatusSeverity, Converter={StaticResource SeverityBrush}}" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" MinWidth="160" />
+          <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="Auto" />
+          <DataGridTextColumn Header="Arch" Binding="{Binding Architecture}" Width="Auto" />
+          <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="Auto" />
+          <DataGridTextColumn Header="Delivered" Binding="{Binding Delivered}" Width="Auto" />
+          <DataGridTextColumn Header="Dropped" Binding="{Binding Dropped}" Width="Auto" />
+        </DataGrid.Columns>
+      </DataGrid>
+
+    </DockPanel>
+
+    <!--
+      "Why is my plugin not in the list" is the most common question a plugin host gets, and this is
+      always the answer. It stays collapsed when there is nothing to say.
+    -->
+    <Expander Grid.Row="2" Margin="0,8,0,8"
+              IsVisible="{Binding HasProblems}"
+              Header="Plugins that could not be loaded">
+      <ItemsControl ItemsSource="{Binding Problems}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="discovery:DiscoveryProblem">
+            <StackPanel Margin="0,0,0,6">
+              <TextBlock Text="{Binding Path}" FontFamily="Consolas,Menlo,monospace" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Reason}" Opacity="0.7" TextWrapping="Wrap" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Expander>
+
+  </Grid>
+
+</UserControl>

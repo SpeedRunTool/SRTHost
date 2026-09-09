@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using SRTPluginBase.Abstractions;
 
 namespace SRTHost.Core.Discovery;
@@ -34,6 +33,12 @@ public sealed record PluginManifest
     public string Id { get; init; } = string.Empty;
 
     /// <summary>Display name.</summary>
+    /// <remarks>
+    /// The defaults on this and the other optional strings below are only honoured because the
+    /// manifest is read through <see cref="SrtJson.PluginManifest"/> rather than a source-generated
+    /// context - the generator does not run property initialisers, and these would arrive null. See
+    /// <see cref="SrtJson"/>; <c>PluginManifestDefaultsTests</c> is the regression test.
+    /// </remarks>
     public string Name { get; init; } = string.Empty;
 
     /// <summary>One-line description.</summary>
@@ -70,20 +75,3 @@ public sealed record PluginManifest
     /// <summary>Full name of the type implementing <c>IPlugin</c>.</summary>
     public string EntryType { get; init; } = string.Empty;
 }
-
-/// <summary>
-/// Source-generated serialisation for <see cref="PluginManifest"/>.
-/// </summary>
-/// <remarks>
-/// <see cref="JsonStringEnumConverter"/> because the generator writes <c>"Producer"</c> and
-/// <c>"X64"</c>, which is the right call for a file a plugin author may end up reading in a bug
-/// report - and which means the enum's numeric values stay free to change without invalidating
-/// every manifest on disk.
-/// </remarks>
-[JsonSourceGenerationOptions(
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    UseStringEnumConverter = true,
-    AllowTrailingCommas = true,
-    ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip)]
-[JsonSerializable(typeof(PluginManifest))]
-public sealed partial class PluginManifestJsonContext : JsonSerializerContext;

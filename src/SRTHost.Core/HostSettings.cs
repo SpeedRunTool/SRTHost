@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using SRTHost.Core.Supervision;
 
@@ -28,25 +27,11 @@ public sealed record HostSettings
     /// How the settings file is read and written.
     /// </summary>
     /// <remarks>
-    /// Reflection-based, and it is the one place in this solution that is - everything else goes
-    /// through a source-generated <see cref="JsonSerializerContext"/>. The generator's deserialiser
-    /// does not run property initialisers, which was measured rather than assumed: a file omitting
-    /// <c>closeToTray</c> came back with it <see langword="false"/> instead of its declared default,
-    /// and the same would have happened to the log level, the retention count and the restart policy.
-    /// That is precisely the failure this type is written to avoid, since a settings file written by
-    /// an older version omits exactly the fields a newer version added.
-    /// <para>
-    /// Nothing is lost by it here: the host is not trimmed, single-file or AOT-compiled (see
-    /// <c>Directory.Build.props</c>), this runs twice per launch, and the type is a dozen scalars.
-    /// </para>
+    /// Reflection-based rather than source-generated, and deliberately so: the generator drops the
+    /// property initialisers above, which would silently reset every setting a file did not mention.
+    /// <see cref="SrtJson"/> carries the measurement and the reasoning.
     /// </remarks>
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() },
-    };
+    private static JsonSerializerOptions SerializerOptions => SrtJson.HostSettings;
 
     /// <summary>Where to look for plugins, or null for the folder beside the executable.</summary>
     /// <remarks>

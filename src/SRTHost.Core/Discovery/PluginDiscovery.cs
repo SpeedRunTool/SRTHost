@@ -87,9 +87,9 @@ public static class PluginDiscovery
 
             try
             {
-                manifest = JsonSerializer.Deserialize(
+                manifest = JsonSerializer.Deserialize<PluginManifest>(
                     File.ReadAllText(manifestPath),
-                    PluginManifestJsonContext.Default.PluginManifest);
+                    SrtJson.PluginManifest);
             }
             catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
             {

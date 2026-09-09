@@ -242,6 +242,16 @@ public sealed record ReadyMessage : IpcMessage
     public ChannelDescriptor? Channel { get; init; }
 
     /// <summary>What this consumer subscribes to, empty for a producer.</summary>
+    /// <remarks>
+    /// The <c>= []</c> is a promise this type cannot keep on its own: the source-generated
+    /// deserialiser does not run property initialisers, so a <c>Ready</c> that omitted
+    /// <c>subscriptions</c> would arrive here as null rather than as an empty list. Nothing in this
+    /// repository sends one - the runner builds the list with <c>Describe</c>, which answers <c>[]</c>
+    /// for a producer, and an empty array is written rather than omitted because
+    /// <c>DefaultIgnoreCondition</c> is <c>WhenWritingNull</c> - and the only reader is guarded by
+    /// <c>PluginKind == Consumer</c>. It is therefore safe by construction rather than by type, which
+    /// is worth knowing before something else starts writing this message.
+    /// </remarks>
     public IReadOnlyList<SubscriptionDescriptor> Subscriptions { get; init; } = [];
 
     /// <summary>Whether the plugin needs a UI thread, echoed from its manifest.</summary>

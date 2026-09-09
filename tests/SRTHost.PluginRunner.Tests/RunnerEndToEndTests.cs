@@ -169,7 +169,11 @@ public class RunnerEndToEndTests
     {
         await using RunnerHarness harness = await RunnerHarness.StartAsync(Token);
 
-        ReadyMessage ready = await harness.LoadAsync(ConsumerId, ConsumerType, Token);
+        // The demo consumer logs one payload in every LogEvery, which defaults to 30 - a producer at
+        // 30 Hz is otherwise a line a frame. This test publishes exactly one payload, so it turns
+        // that down, which incidentally exercises settings arriving with LoadPlugin.
+        ReadyMessage ready = await harness.LoadAsync(
+            ConsumerId, ConsumerType, Token, configurationJson: """{"LogEvery":1}""");
 
         Assert.Equal(PluginKind.Consumer, ready.PluginKind);
         Assert.Null(ready.Channel);

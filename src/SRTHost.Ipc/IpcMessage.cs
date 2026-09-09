@@ -256,6 +256,40 @@ public sealed record ReadyMessage : IpcMessage
 
     /// <summary>Whether the plugin needs a UI thread, echoed from its manifest.</summary>
     public bool RequiresUiThread { get; init; }
+
+    /// <summary>
+    /// JSON Schema 2020-12 for the plugin's settings, or null when it has none.
+    /// </summary>
+    /// <remarks>
+    /// It rides back on the load reply rather than being fetched when the user opens the settings
+    /// tab, so the host holds a complete picture of every plugin the moment it is up: a form can be
+    /// built without a round trip, and the schema is refreshed automatically by the restart that
+    /// follows a plugin being updated. Extraction is one reflection pass over a small POCO and the
+    /// document is a couple of kilobytes, against a message that is sent once per plugin lifetime.
+    /// <para>
+    /// Nullable rather than defaulted, which also keeps it clear of the source-generated
+    /// deserialiser's habit of dropping property initialisers - see <see cref="Subscriptions"/>.
+    /// </para>
+    /// </remarks>
+    public string? ConfigurationSchemaJson { get; init; }
+
+    /// <summary>
+    /// The UI hints for those settings - group, order, advanced, editor, help text, dependencies -
+    /// keyed by JSON pointer-style path.
+    /// </summary>
+    /// <remarks>
+    /// Kept beside the schema rather than inside it so the schema stays a plain JSON Schema document
+    /// that any other tool can read, and so an unrecognised hint can be ignored without a schema
+    /// validator objecting to an unknown keyword.
+    /// </remarks>
+    public string? ConfigurationHintsJson { get; init; }
+
+    /// <summary>The plugin's settings as they stand right now, or null when it has none.</summary>
+    /// <remarks>
+    /// Not the same thing as the file the host sent in <c>LoadPlugin</c>: a plugin fills in its own
+    /// defaults for anything the file omitted, and the form has to show what is actually in force.
+    /// </remarks>
+    public string? ConfigurationJson { get; init; }
 }
 
 /// <summary>The plugin's lifecycle state changed.</summary>
@@ -341,6 +375,12 @@ public sealed record ErrorMessage : IpcMessage
 }
 
 /// <summary>Answer to <see cref="GetConfigurationSchemaMessage"/>.</summary>
+/// <remarks>
+/// The same three documents <see cref="ReadyMessage"/> carries. Load answers them once so the host
+/// needs no round trip to render a form; this exists to re-read the current values after something
+/// outside the host has changed them, and to recover if the load reply is ever handled by a code
+/// path that discards them.
+/// </remarks>
 public sealed record ConfigurationSchemaMessage : IpcMessage
 {
     /// <inheritdoc />
@@ -348,6 +388,9 @@ public sealed record ConfigurationSchemaMessage : IpcMessage
 
     /// <summary>The schema the settings form is generated from.</summary>
     public required string SchemaJson { get; init; }
+
+    /// <summary>The UI hints for that schema, keyed by setting path.</summary>
+    public required string HintsJson { get; init; }
 
     /// <summary>The plugin's current configuration values.</summary>
     public required string CurrentJson { get; init; }

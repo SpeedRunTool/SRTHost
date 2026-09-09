@@ -103,8 +103,33 @@
       <_SrtRunnerOutput Include="..\SRTHost.PluginRunner\bin\$(Configuration)\x86\$(TargetFramework)\win-x86\**\*" />
     </ItemGroup>
 
-    <Copy SourceFiles="@(_SrtRunnerOutput)"
-          DestinationFiles="@(_SrtRunnerOutput->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
+    <!--
+      Anything this project puts in OutDir itself is off limits to the copy, and that exclusion is
+      load-bearing rather than tidy.
+
+      Both platform folders contain the assemblies the executables share - SRTHost.Ipc.dll most of
+      all - and a local build usually builds one platform, so the other folder holds whatever was
+      last built there, which can be days old. Copying both unconditionally means the stale one
+      lands last and wins, overwriting the fresh assembly this project just referenced. The symptom
+      is a runner dying on MissingMethodException for a member added since, which the host can only
+      report as a failed load: SRT Host comes up with every plugin Faulted after a change to a
+      shared assembly, and rebuilding does not help, because the copy is deterministic.
+
+      A release builds both platforms from the same sources, so nothing there is stale and this
+      changes nothing - which is why the bug survived Phase 4 and Phase 5 and surfaced only when
+      Phase 6 added members to a message type.
+    -->
+    <PropertyGroup>
+      <_SrtHostOwnOutput>;@(ReferenceCopyLocalPaths->'%(Filename)%(Extension)');$(TargetFileName);</_SrtHostOwnOutput>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_SrtRunnerCopy Include="@(_SrtRunnerOutput)"
+                      Condition="!$(_SrtHostOwnOutput.Contains(';%(Filename)%(Extension);'))" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_SrtRunnerCopy)"
+          DestinationFiles="@(_SrtRunnerCopy->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 

@@ -57,6 +57,10 @@ public sealed partial class PluginsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     public partial PluginRowViewModel? Selected { get; set; }
 
+    /// <summary>The selected plugin's settings page, built on demand.</summary>
+    [ObservableProperty]
+    public partial PluginSettingsViewModel? Settings { get; set; }
+
     /// <summary>Whether a start, stop or reload is in flight, so the buttons can disable themselves.</summary>
     [ObservableProperty]
     public partial bool Busy { get; set; }
@@ -203,6 +207,15 @@ public sealed partial class PluginsViewModel : ViewModelBase, IDisposable
             // and belongs back on the UI thread. Everything it awaits is a supervisor call that
             // spans a process launch and a handshake, so the thread is genuinely released meanwhile.
             await operation(CancellationToken.None).ConfigureAwait(true);
+
+            // Starting a plugin is what makes its settings schema available, and stopping it takes
+            // that away, so the settings page follows the operation - unless there are unsaved edits
+            // on it, which are not ours to discard.
+            if (Settings is { IsDirty: false, PluginId: var id } settings
+                && string.Equals(id, row.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                settings.Reload();
+            }
         }
         catch (Exception ex)
         {
@@ -242,7 +255,15 @@ public sealed partial class PluginsViewModel : ViewModelBase, IDisposable
     partial void OnSelectedChanged(PluginRowViewModel? value)
     {
         if (value is null && Plugins.Count > 0)
+        {
             Dispatcher.UIThread.Post(() => Selected ??= Plugins.FirstOrDefault());
+            return;
+        }
+
+        // Built when a row is first selected rather than for every plugin at startup: the page reads
+        // the machine's font list and parses two JSON documents, which is not worth doing twenty
+        // times over for plugins nobody opens.
+        Settings = value is null ? null : new PluginSettingsViewModel(host, value.Id);
     }
 
     private PluginRowViewModel? Find(string pluginId)

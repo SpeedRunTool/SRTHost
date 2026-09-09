@@ -184,7 +184,18 @@ internal sealed class RunnerHarness : IAsyncDisposable
     }
 
     /// <summary>Loads the demo plugin whose folder is named <paramref name="pluginId"/>.</summary>
-    public Task<ReadyMessage> LoadAsync(string pluginId, string entryType, CancellationToken cancellationToken)
+    /// <param name="pluginId">The plugin's id, which is also its folder and assembly name.</param>
+    /// <param name="entryType">Full name of the type implementing the plugin.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <param name="configurationJson">
+    /// Settings to apply before the plugin starts, as the router passes from
+    /// <c>config\&lt;pluginId&gt;.json</c>.
+    /// </param>
+    public Task<ReadyMessage> LoadAsync(
+        string pluginId,
+        string entryType,
+        CancellationToken cancellationToken,
+        string? configurationJson = null)
         => RequestAsync<ReadyMessage>(
             new LoadPluginMessage
             {
@@ -192,6 +203,7 @@ internal sealed class RunnerHarness : IAsyncDisposable
                 PluginDirectory = Path.Combine(AppContext.BaseDirectory, "plugins", pluginId),
                 EntryAssembly = pluginId + ".dll",
                 EntryType = entryType,
+                ConfigurationJson = configurationJson,
             },
             cancellationToken);
 

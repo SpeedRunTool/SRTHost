@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Diagnostics;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SRTHost.Ipc;
 using SRTPluginBase.Abstractions;
@@ -277,12 +276,22 @@ internal sealed class RunnerHost : IAsyncDisposable
         // The router needs the channel list before it can wire anything up, and correlating it to
         // the request it answers means there is no window in which the plugin is loaded but the
         // router does not yet know what it publishes.
+        // The settings description rides along rather than waiting to be asked for. The host can then
+        // draw a form the instant the user selects the plugin, and the description is refreshed by
+        // the same restart that picks up a new version of the plugin.
+        SchemaExtractor.ConfigurationDescription? settings = plugin.Configurable is { } configurable
+            ? SchemaExtractor.Describe(configurable)
+            : null;
+
         return new ReadyMessage
         {
             PluginKind = plugin.Info.Kind,
             Channel = Describe(plugin.Producer?.Channel),
             Subscriptions = Describe(plugin.Consumer?.Subscriptions),
             RequiresUiThread = plugin.Info.RequiresUiThread,
+            ConfigurationSchemaJson = settings?.SchemaJson,
+            ConfigurationHintsJson = settings?.HintsJson,
+            ConfigurationJson = settings?.CurrentJson,
         };
     }
 
@@ -514,14 +523,16 @@ internal sealed class RunnerHost : IAsyncDisposable
             };
         }
 
-        // An empty schema is the honest answer until the schema extractor lands: the host's
-        // documented fallback for anything it cannot render as a form is the raw JSON editor, and
-        // the current values below are exactly what that editor needs. Reporting no schema is
-        // therefore a working settings experience, not a stub.
+        // The same three documents the load reply already carried. This path exists to re-read the
+        // current values, which change whenever settings are applied, and it costs one reflection
+        // pass over a small type - so it is not worth caching what Ready already sent.
+        SchemaExtractor.ConfigurationDescription settings = SchemaExtractor.Describe(configurable);
+
         return new ConfigurationSchemaMessage
         {
-            SchemaJson = "{}",
-            CurrentJson = JsonSerializer.Serialize(configurable.Configuration, configurable.ConfigurationType),
+            SchemaJson = settings.SchemaJson,
+            HintsJson = settings.HintsJson,
+            CurrentJson = settings.CurrentJson,
         };
     }
 

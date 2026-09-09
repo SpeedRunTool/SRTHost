@@ -53,6 +53,7 @@ public class IpcConnectionTests
                 return new ConfigurationSchemaMessage
                 {
                     SchemaJson = interval.IntervalMilliseconds.ToString(),
+                    HintsJson = "{}",
                     CurrentJson = "{}",
                 };
             });

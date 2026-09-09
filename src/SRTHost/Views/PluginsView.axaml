@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SRTHost.ViewModels"
+             xmlns:views="clr-namespace:SRTHost.Views"
              xmlns:routing="clr-namespace:SRTHost.Core.Routing;assembly=SRTHost.Core"
              xmlns:discovery="clr-namespace:SRTHost.Core.Discovery;assembly=SRTHost.Core"
              x:Class="SRTHost.Views.PluginsView"
@@ -38,11 +39,19 @@
     -->
     <DockPanel Grid.Row="1" LastChildFill="True">
 
-      <ScrollViewer DockPanel.Dock="Right"
-                    Width="340"
-                    Margin="10,0,0,0"
-                    HorizontalScrollBarVisibility="Disabled"
-                    IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <!--
+        Two tabs rather than one long column: a settings form has its own scrolling and its own Save
+        button, and stacking it under the diagnostics would put that button below a fault trace of
+        unpredictable length. Wider than the pane was, because a column of labelled controls needs
+        it.
+      -->
+      <TabControl DockPanel.Dock="Right"
+                  Width="420"
+                  Margin="10,0,0,0"
+                  IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+
+      <TabItem Header="Details">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
         <StackPanel Spacing="10" DataContext="{Binding Selected}" x:DataType="vm:PluginRowViewModel">
 
           <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -101,6 +110,18 @@
 
         </StackPanel>
       </ScrollViewer>
+      </TabItem>
+
+        <!--
+          The settings page for the selected plugin, rebuilt whenever the selection changes.
+          Named directly rather than reached through ViewLocator, which maps only the nav rail's
+          pages - this is not one of them and giving it a Title to become one would be a fiction.
+        -->
+        <TabItem Header="Settings">
+          <views:PluginSettingsView DataContext="{Binding Settings}" Margin="0,4,0,0" />
+        </TabItem>
+
+      </TabControl>
 
       <!--
         Scrolls horizontally rather than squeezing its columns. On a narrow window the Auto columns

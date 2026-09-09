@@ -30,6 +30,8 @@
 
     <views:SeverityBrushConverter x:Key="SeverityBrush" />
     <views:SourceAvailabilityConverter x:Key="SourceAvailability" />
+    <views:ColorSwatchConverter x:Key="ColorSwatch" />
+    <views:StatusBrushConverter x:Key="StatusBrush" />
   </Application.Resources>
 
   <TrayIcon.Icons>

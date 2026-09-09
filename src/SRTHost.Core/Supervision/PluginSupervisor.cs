@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
+using SRTHost.Core.Configuration;
 using SRTHost.Core.Discovery;
 using SRTHost.Core.Routing;
 using SRTHost.Ipc;
@@ -207,6 +208,75 @@ public sealed class PluginSupervisor : IAsyncDisposable
     /// </remarks>
     public DiscoveredPlugin? Find(string pluginId)
         => supervised.TryGetValue(pluginId, out Supervised? entry) ? entry.Plugin : null;
+
+    /// <summary>
+    /// What a plugin declared when it loaded - its channel or subscriptions, and its settings schema.
+    /// </summary>
+    /// <remarks>
+    /// Null while the plugin is not running, because this is the runner's answer and there is no
+    /// runner. The settings page copes: it keeps the last description it saw, and falls back to the
+    /// raw JSON editor over the stored file when it has never seen one, so a stopped plugin is still
+    /// configurable. That is deliberate - reconfiguring something that is misbehaving is the main
+    /// reason to stop it.
+    /// </remarks>
+    public ReadyMessage? Describe(string pluginId)
+        => supervised.TryGetValue(pluginId, out Supervised? entry) ? entry.Runner?.Ready : null;
+
+    /// <summary>
+    /// Reads a plugin's settings straight from disk, for a plugin that is not running.
+    /// </summary>
+    public static string? ReadStoredConfiguration(string pluginId) => PluginSettingsStore.Read(pluginId);
+
+    /// <summary>
+    /// Applies a settings document to a plugin and, if it accepts them, saves it.
+    /// </summary>
+    /// <remarks>
+    /// The order is the point. The runner deserialises the document into the plugin's own type and
+    /// runs its <c>DataAnnotations</c>, and only settings it accepted are written to disk - so a
+    /// document that would stop the plugin from loading next time cannot be saved by pressing Save.
+    /// A plugin that is not running has nobody to ask, so the document is written as given and
+    /// validated at its next start, where a bad one surfaces as
+    /// <see cref="PluginSubStatus.ConfigurationInvalid"/> rather than as silence.
+    /// </remarks>
+    /// <returns>Null when the settings were applied and saved, or the reason they were refused.</returns>
+    public async Task<string?> ApplyConfigurationAsync(
+        string pluginId,
+        string configurationJson,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
+        ArgumentNullException.ThrowIfNull(configurationJson);
+
+        if (supervised.TryGetValue(pluginId, out Supervised? entry) && entry.Runner is { } runner)
+        {
+            try
+            {
+                await runner.ApplyConfigurationAsync(configurationJson, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is IpcRequestException or IpcProtocolException or TimeoutException
+                or ObjectDisposedException or InvalidOperationException)
+            {
+                logger.LogWarning(ex, "{PluginId} refused the settings.", pluginId);
+                return ex.Message;
+            }
+        }
+
+        try
+        {
+            PluginSettingsStore.Write(pluginId, configurationJson);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(ex, "Could not save settings for {PluginId}.", pluginId);
+
+            // The plugin has them, so they are in force until it restarts - and saying so is more
+            // useful than a bare failure, since the difference is what happens after a restart.
+            return $"The plugin accepted the settings, but they could not be saved: {ex.Message}";
+        }
+
+        logger.LogInformation("Saved settings for {PluginId}.", pluginId);
+        return null;
+    }
 
     private async Task<bool> LaunchAsync(Supervised entry, CancellationToken cancellationToken)
     {
@@ -515,17 +585,12 @@ public sealed class PluginSupervisor : IAsyncDisposable
     /// </remarks>
     private string? ReadConfiguration(string pluginId)
     {
-        string path = HostPaths.ConfigFile(pluginId);
+        string? configuration = PluginSettingsStore.Read(pluginId);
 
-        try
-        {
-            return File.Exists(path) ? File.ReadAllText(path) : null;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            logger.LogWarning(ex, "Could not read settings for {PluginId}; starting with defaults.", pluginId);
-            return null;
-        }
+        if (configuration is null && File.Exists(HostPaths.ConfigFile(pluginId)))
+            logger.LogWarning("Could not read settings for {PluginId}; starting with defaults.", pluginId);
+
+        return configuration;
     }
 
     private void Update(Supervised entry, Func<PluginState, PluginState> change, bool raise = true)

@@ -82,20 +82,6 @@ internal sealed class LoadedPlugin : IAsyncDisposable
 internal static class PluginLoader
 {
     /// <summary>
-    /// Options for reading a plugin's stored configuration.
-    /// </summary>
-    /// <remarks>
-    /// Case-insensitive because the file may have been written by the plugin's own source-generated
-    /// context - which follows whatever naming policy its author chose - or hand-edited by a user,
-    /// which the whole JSON-fallback design explicitly invites. Refusing a settings file over the
-    /// case of a property name would be indefensible.
-    /// </remarks>
-    private static readonly JsonSerializerOptions ConfigurationOptions = new(JsonSerializerDefaults.General)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
-    /// <summary>
     /// Loads, constructs and initialises the plugin described by <paramref name="request"/>.
     /// </summary>
     /// <exception cref="PluginLoadException">
@@ -244,7 +230,12 @@ internal static class PluginLoader
                 async token => await instance.InitializeAsync(context, token).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
 
-            if (request.ConfigurationJson is not null)
+            // Skipped when the plugin already holds exactly these settings, which at startup it
+            // usually does: the configurable base classes read the same file during Initialize that
+            // the host read to fill this field. Applying anyway is harmless but not free - a plugin
+            // reacts in OnConfigurationChangedAsync, and an overlay that rebuilds a render target
+            // there would do it twice on every launch, once against settings it already had.
+            if (request.ConfigurationJson is not null && !HasConfiguration(loaded, request.ConfigurationJson))
                 await ApplyConfigurationAsync(loaded, request.ConfigurationJson, cancellationToken).ConfigureAwait(false);
         }
         catch (PluginLoadException)
@@ -296,13 +287,19 @@ internal static class PluginLoader
 
         try
         {
-            configuration = JsonSerializer.Deserialize(configurationJson, configurable.ConfigurationType, ConfigurationOptions);
+            // Through the plugin's own JsonTypeInfo, not a JsonSerializerOptions of the runner's
+            // choosing. The document being read is the one the host generated from a schema that was
+            // itself extracted from this same metadata, so reading it any other way would let the two
+            // halves of the round trip disagree about naming policies, converters and enum
+            // representation - the failure being a saved setting that quietly does nothing.
+            configuration = JsonSerializer.Deserialize(configurationJson, configurable.ConfigurationTypeInfo);
         }
         catch (JsonException ex)
         {
             throw new PluginLoadException(
                 PluginSubStatus.ConfigurationInvalid,
-                $"Settings for '{plugin.Id}' are not valid JSON for {configurable.ConfigurationType.Name}: {ex.Message}",
+                $"Settings for '{plugin.Id}' are not valid JSON for "
+                + $"{configurable.ConfigurationTypeInfo.Type.Name}: {ex.Message}",
                 ex);
         }
 
@@ -327,6 +324,44 @@ internal static class PluginLoader
                 PluginSubStatus.ConfigurationInvalid,
                 $"'{plugin.Id}' rejected the settings: {ex.Message}",
                 ex);
+        }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="plugin"/> already holds the settings in
+    /// <paramref name="configurationJson"/>.
+    /// </summary>
+    /// <remarks>
+    /// Compared as documents rather than as text, by round-tripping the candidate through the
+    /// plugin's own serialiser and comparing what comes out with what the plugin currently
+    /// serialises to. Comparing the raw strings would answer "different" for a file that merely
+    /// omitted a defaulted property or indented differently, which is most of them.
+    /// <para>
+    /// Any failure answers false, so the worst case is applying settings that were already in force.
+    /// </para>
+    /// </remarks>
+    private static bool HasConfiguration(LoadedPlugin plugin, string configurationJson)
+    {
+        if (plugin.Configurable is not { } configurable)
+            return false;
+
+        try
+        {
+            object? candidate = JsonSerializer.Deserialize(configurationJson, configurable.ConfigurationTypeInfo);
+
+            if (candidate is null)
+                return false;
+
+            return string.Equals(
+                JsonSerializer.Serialize(candidate, configurable.ConfigurationTypeInfo),
+                JsonSerializer.Serialize(configurable.Configuration, configurable.ConfigurationTypeInfo),
+                StringComparison.Ordinal);
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
+        {
+            // A document that does not parse is not "already applied" - it is a document
+            // ApplyConfigurationAsync has to reject with a message naming the problem.
+            return false;
         }
     }
 

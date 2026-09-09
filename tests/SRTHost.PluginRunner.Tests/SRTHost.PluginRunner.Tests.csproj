@@ -16,8 +16,14 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
 
+  <!--
+    Ipc for the protocol these tests speak, and Core for SchemaReader - the settings tests read the
+    runner's schema back through the exact type the settings page uses, which is what makes them a
+    test of the round trip rather than of one end of it.
+  -->
   <ItemGroup>
     <ProjectReference Include="..\..\src\SRTHost.Ipc\SRTHost.Ipc.csproj" />
+    <ProjectReference Include="..\..\src\SRTHost.Core\SRTHost.Core.csproj" />
   </ItemGroup>
 
   <!--

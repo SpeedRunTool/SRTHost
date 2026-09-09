@@ -1,0 +1,276 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SRTHost.ViewModels"
+             xmlns:config="clr-namespace:SRTHost.Core.Configuration;assembly=SRTHost.Core"
+             x:Class="SRTHost.Views.PluginSettingsView"
+             x:DataType="vm:PluginSettingsViewModel">
+
+  <UserControl.Resources>
+
+    <!--
+      The row a setting is drawn in: its label, whatever control its own type maps to, and its error.
+      A resource rather than an inline template because a nested group renders its children with the
+      same one - that recursion is what makes an object setting an expander of ordinary rows instead
+      of a second, subtly different layout.
+    -->
+    <DataTemplate x:Key="SettingRow" x:DataType="vm:SettingNodeViewModel">
+      <StackPanel Spacing="3" Margin="0,0,0,10" IsVisible="{Binding IsVisible}">
+
+        <!-- A group carries its label on the expander header instead. -->
+        <StackPanel Spacing="1" IsVisible="{Binding !IsGroup}">
+          <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Help}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"
+                     IsVisible="{Binding Help, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+
+        <!-- The control, chosen by the node's own type through the templates below. -->
+        <ContentControl Content="{Binding}" />
+
+        <TextBlock Text="{Binding Error}" TextWrapping="Wrap" FontSize="11"
+                   Foreground="{DynamicResource SeverityError}"
+                   IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+      </StackPanel>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <UserControl.DataTemplates>
+
+    <!--
+      One template per editor, keyed on the view model type. The form is then an ItemsControl over a
+      list of nodes and nothing switches on an editor enum anywhere: adding an editor is a class and
+      a template, and forgetting the template shows up as an empty row rather than as a control that
+      is quietly the wrong one.
+    -->
+
+    <DataTemplate DataType="vm:BooleanSettingViewModel">
+      <ToggleSwitch IsChecked="{Binding Value}" IsEnabled="{Binding IsEnabled}"
+                    OnContent="" OffContent="" HorizontalAlignment="Left" />
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:EnumSettingViewModel">
+      <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
+                IsEnabled="{Binding IsEnabled}" HorizontalAlignment="Stretch">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="config:SettingOption">
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:FlagsSettingViewModel">
+      <ItemsControl ItemsSource="{Binding Flags}" IsEnabled="{Binding IsEnabled}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:FlagOptionViewModel">
+            <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:NumberSettingViewModel">
+      <StackPanel Spacing="2" IsEnabled="{Binding IsEnabled}">
+        <NumericUpDown Value="{Binding Value}"
+                       Minimum="{Binding Minimum}"
+                       Maximum="{Binding Maximum}"
+                       Increment="{Binding Step}"
+                       FormatString="{Binding FormatString}"
+                       HorizontalAlignment="Stretch" />
+        <!-- Only a setting with a declared range gets a slider; without one there is nothing to drag along. -->
+        <Slider Value="{Binding SliderValue}"
+                Minimum="{Binding SliderMinimum}"
+                Maximum="{Binding SliderMaximum}"
+                TickFrequency="{Binding SliderStep}"
+                IsSnapToTickEnabled="True"
+                IsVisible="{Binding ShowSlider}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:TextSettingViewModel">
+      <DockPanel LastChildFill="True" IsEnabled="{Binding IsEnabled}">
+        <Button DockPanel.Dock="Right" Content="Browse…" Margin="6,0,0,0"
+                Click="OnBrowse" IsVisible="{Binding CanBrowse}" />
+        <TextBox Text="{Binding Value}"
+                 TextWrapping="Wrap"
+                 AcceptsReturn="{Binding Multiline}"
+                 MinHeight="{Binding EditorMinHeight}" />
+      </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:ColorSettingViewModel">
+      <DockPanel LastChildFill="True" IsEnabled="{Binding IsEnabled}">
+        <!--
+          A swatch beside the hex rather than a full ColorPicker, which lives in a package this
+          project does not otherwise reference. The preview is what makes a hex box usable at all -
+          it turns "did I get that right" into something you can see - and the picker is a template
+          change away if it is ever worth the dependency.
+        -->
+        <Border DockPanel.Dock="Right" Width="28" Margin="6,0,0,0" CornerRadius="3"
+                BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                Background="{Binding Value, Converter={StaticResource ColorSwatch}}" />
+        <TextBox Text="{Binding Value}" Watermark="#FF20C020" />
+      </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:FontSettingViewModel">
+      <ComboBox ItemsSource="{Binding Fonts}"
+                SelectedItem="{Binding SelectedFont}"
+                IsEnabled="{Binding IsEnabled}"
+                PlaceholderText="{Binding Value}"
+                HorizontalAlignment="Stretch" />
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:HotkeySettingViewModel">
+      <DockPanel LastChildFill="True" IsEnabled="{Binding IsEnabled}">
+        <Button DockPanel.Dock="Right" Content="Clear" Margin="6,0,0,0" Command="{Binding ClearCommand}" />
+        <!--
+          The button reads its own key presses, because recording a shortcut means reading the next
+          combination and only the focused control can do that.
+        -->
+        <ToggleButton IsChecked="{Binding Capturing}"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Left"
+                      KeyDown="OnHotkeyKeyDown">
+          <TextBlock Text="{Binding Prompt}" />
+        </ToggleButton>
+      </DockPanel>
+    </DataTemplate>
+
+    <!--
+      A Grid of star columns rather than three fixed-width spinners in a StackPanel. Three spinners
+      wide enough to read do not fit the detail pane side by side, and a StackPanel resolves that by
+      squeezing each one until only its up and down buttons are left - a duration editor showing no
+      digits. Sharing whatever width there is keeps them readable at any pane width.
+    -->
+    <DataTemplate DataType="vm:DurationSettingViewModel">
+      <Grid ColumnDefinitions="*,Auto,*,Auto,*,Auto" IsEnabled="{Binding IsEnabled}">
+        <NumericUpDown Grid.Column="0" Value="{Binding Hours}" Minimum="0" Maximum="999"
+                       FormatString="F0" ShowButtonSpinner="False" />
+        <TextBlock Grid.Column="1" Text="h" VerticalAlignment="Center" Opacity="0.6" Margin="4,0,8,0" />
+        <NumericUpDown Grid.Column="2" Value="{Binding Minutes}" Minimum="0" Maximum="59"
+                       FormatString="F0" ShowButtonSpinner="False" />
+        <TextBlock Grid.Column="3" Text="m" VerticalAlignment="Center" Opacity="0.6" Margin="4,0,8,0" />
+        <NumericUpDown Grid.Column="4" Value="{Binding Seconds}" Minimum="0" Maximum="59"
+                       FormatString="F0" ShowButtonSpinner="False" />
+        <TextBlock Grid.Column="5" Text="s" VerticalAlignment="Center" Opacity="0.6" Margin="4,0,0,0" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:ListSettingViewModel">
+      <StackPanel Spacing="4" IsEnabled="{Binding IsEnabled}">
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ListItemViewModel">
+              <DockPanel LastChildFill="True" Margin="0,0,0,4">
+                <Button DockPanel.Dock="Right" Content="✕" Margin="6,0,0,0" Command="{Binding RemoveCommand}" />
+                <TextBox Text="{Binding Text}" />
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Content="Add" Command="{Binding AddCommand}" HorizontalAlignment="Left" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:ObjectSettingViewModel">
+      <Expander Header="{Binding Label}" IsExpanded="True" HorizontalAlignment="Stretch">
+        <ItemsControl ItemsSource="{Binding Children}" ItemTemplate="{StaticResource SettingRow}" />
+      </Expander>
+    </DataTemplate>
+
+    <!--
+      The per-property half of the fallback: a type nothing here understands still gets an editable
+      row, and every setting around it still gets a proper control.
+    -->
+    <DataTemplate DataType="vm:JsonSettingViewModel">
+      <TextBox Text="{Binding Value}" AcceptsReturn="True" MinHeight="72"
+               FontFamily="Consolas,Menlo,monospace" IsEnabled="{Binding IsEnabled}" />
+    </DataTemplate>
+
+  </UserControl.DataTemplates>
+
+  <Grid RowDefinitions="*,Auto">
+
+    <TextBlock Grid.Row="0"
+               Text="This plugin has no settings."
+               Opacity="0.6" TextWrapping="Wrap" Margin="0,6,0,0"
+               VerticalAlignment="Top"
+               IsVisible="{Binding !IsConfigurable}" />
+
+    <TabControl Grid.Row="0" Padding="0,6,0,0" IsVisible="{Binding IsConfigurable}">
+
+      <TabItem Header="Form">
+        <Grid RowDefinitions="Auto,*">
+
+          <CheckBox Grid.Row="0" Content="Show advanced settings"
+                    IsChecked="{Binding ShowAdvanced}"
+                    IsVisible="{Binding HasAdvanced}" Margin="0,4,0,4" />
+
+          <TextBlock Grid.Row="1"
+                     Text="These settings could not be described as a form. The JSON tab edits the same document."
+                     Opacity="0.6" TextWrapping="Wrap" Margin="0,4,0,0"
+                     VerticalAlignment="Top"
+                     IsVisible="{Binding !HasForm}" />
+
+          <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasForm}">
+            <ItemsControl ItemsSource="{Binding Groups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SettingGroupViewModel">
+                  <StackPanel Spacing="6" Margin="0,4,0,10">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                               IsVisible="{Binding HasName}" Margin="0,4,0,0" />
+                    <ItemsControl ItemsSource="{Binding Settings}" ItemTemplate="{StaticResource SettingRow}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="JSON">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Row="0" Opacity="0.6" TextWrapping="Wrap" Margin="0,4,0,6"
+                     Text="The same settings the form edits, exactly as they are sent to the plugin and written to disk." />
+          <TextBox Grid.Row="1"
+                   Text="{Binding JsonText}"
+                   AcceptsReturn="True"
+                   AcceptsTab="True"
+                   FontFamily="Consolas,Menlo,monospace"
+                   TextWrapping="NoWrap"
+                   HorizontalAlignment="Stretch"
+                   VerticalAlignment="Stretch" />
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+            <Button Content="Format" Command="{Binding FormatJsonCommand}" />
+            <TextBlock Text="{Binding JsonError}" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Foreground="{DynamicResource SeverityError}"
+                       IsVisible="{Binding JsonError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+        </Grid>
+      </TabItem>
+
+    </TabControl>
+
+    <StackPanel Grid.Row="1" Spacing="6" Margin="0,8,0,0" IsVisible="{Binding IsConfigurable}">
+
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Button Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding IsDirty}" />
+        <Button Content="Revert" Command="{Binding RevertCommand}" IsEnabled="{Binding IsDirty}" />
+        <Button Content="Defaults" Command="{Binding ResetAllCommand}" IsVisible="{Binding HasForm}" />
+        <ProgressBar IsIndeterminate="True" Width="60" VerticalAlignment="Center" IsVisible="{Binding Busy}" />
+      </StackPanel>
+
+      <TextBlock Text="{Binding Status}" TextWrapping="Wrap"
+                 IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 Foreground="{Binding StatusIsError, Converter={StaticResource StatusBrush}}" />
+
+      <SelectableTextBlock Text="{Binding FilePath}" TextWrapping="Wrap" Opacity="0.5" FontSize="11" />
+
+    </StackPanel>
+
+  </Grid>
+
+</UserControl>

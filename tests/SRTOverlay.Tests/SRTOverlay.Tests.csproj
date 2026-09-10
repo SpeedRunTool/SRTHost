@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Platforms>AnyCPU</Platforms>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit.v3" Version="3.1.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <!--
+    Covers the two halves of the overlay that a test can reach: the PE reader and the startup blob on
+    the injector's side, and the shim's refusal logic on the other - which is ordinary managed code
+    and runs here exactly as it does inside a game.
+
+    What it deliberately does not cover is injection itself. Whether a NativeAOT DLL survives being
+    loaded into a live game, and whether the game is unharmed afterwards, are not propositions a test
+    runner can assert; that is what SRTOverlay.Spike and a person watching the game are for.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SRTOverlay.Core\SRTOverlay.Core.csproj" />
+    <ProjectReference Include="..\..\src\SRTOverlay.Injection\SRTOverlay.Injection.csproj" />
+    <ProjectReference Include="..\..\src\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Overlay Protocol</Product>
+    <Description>Shared vocabulary between the injected overlay shim and the plugin that drives it.</Description>
+    <!--
+      Linked into a NativeAOT binary that runs inside a game process, so every trim and AOT
+      diagnostic has to be visible here rather than at publish time in SRTOverlay.Native. It is also
+      referenced by ordinary managed code on the plugin side, which is why it stays a plain library
+      rather than inheriting anything AOT-specific.
+    -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!--
+    No package references, deliberately. This assembly is the one thing both sides of the boundary
+    link, and the shim's side of that boundary is a NativeAOT DLL loaded into a third-party process:
+    anything pulled in here becomes code injected into someone's game. System.Text.Json is in the
+    shared framework and is used source-generated, so it costs no dependency and no reflection.
+  -->
+
+</Project>

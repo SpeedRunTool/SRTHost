@@ -39,6 +39,14 @@
       <Platform Solution="*|x64" Project="AnyCPU" />
       <Platform Solution="*|x86" Project="AnyCPU" />
     </Project>
+    <!--
+      The overlay's testable half: the PE reader and startup blob on the injector's side, and the
+      shim's refusals on the other. Injection itself is not here - see SRTOverlay.Spike.
+    -->
+    <Project Path="../tests/SRTOverlay.Tests/SRTOverlay.Tests.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
   </Folder>
   <!-- UI + IPC router. AnyCPU: only the plugin runners need to match a game's bitness. -->
   <Project Path="SRTHost/SRTHost.csproj">
@@ -58,6 +66,36 @@
     <Platform Solution="*|x64" Project="AnyCPU" />
     <Platform Solution="*|x86" Project="AnyCPU" />
   </Project>
+  <!--
+    The injected overlay (P7a). SRTOverlay.Native is the NativeAOT publish target - the one signed
+    binary that ends up inside a game - and it is in the solution so that its code, and the AOT
+    analyzers over it, are part of an ordinary build. A plain build produces managed IL nothing
+    loads; only `dotnet publish` produces SRTOverlay64.dll.
+  -->
+  <Folder Name="/Overlay/">
+    <Project Path="SRTOverlay.Protocol/SRTOverlay.Protocol.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
+    <Project Path="SRTOverlay.Core/SRTOverlay.Core.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
+    <Project Path="SRTOverlay.Native/SRTOverlay.Native.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <!-- Runs outside the game: loads the shim, verifies it, and starts it. -->
+    <Project Path="SRTOverlay.Injection/SRTOverlay.Injection.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
+    <!-- Hand driver for the spike gates; see section 11 of the plan. -->
+    <Project Path="SRTOverlay.Spike/SRTOverlay.Spike.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
   <!--
     In-repo smoke-test plugins. SpeedRunTool.Demo.Contracts holds only the payload DTOs; the consumer
     references it and never the producer, which is the decoupling the contracts split exists for.

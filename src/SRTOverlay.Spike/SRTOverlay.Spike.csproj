@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Platforms>x64;x86</Platforms>
+    <Product>SRT Overlay Spike</Product>
+    <Description>Hand driver for the overlay spike gates: injects the shim and reports what happened.</Description>
+  </PropertyGroup>
+
+  <!--
+    A driver, not a deliverable. Every gate in section 11's spike order has to be exercised against a
+    live game by a person watching the game, and the alternative to this project is a scratch script
+    that gets rewritten from memory at each step. It stays in the repository for as long as the spike
+    steps do, and its exit codes are meant to be read from a shell.
+
+    Built for both architectures because CreateRemoteThread does not cross the WOW64 boundary: a
+    32-bit game needs a 32-bit injector, exactly as it needs SRTHost.PluginRunner32.exe.
+  -->
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <AssemblyName>SRTOverlay.Spike64</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x86'">
+    <AssemblyName>SRTOverlay.Spike32</AssemblyName>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SRTOverlay.Injection\SRTOverlay.Injection.csproj" />
+    <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+  </ItemGroup>
+
+</Project>

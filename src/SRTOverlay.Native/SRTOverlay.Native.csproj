@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>x64;x86</Platforms>
+    <Product>SRT Overlay Shim</Product>
+    <Description>The injected overlay shim. One signed native DLL per architecture, shared by every overlay plugin.</Description>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!--
+    One project, built twice, into the two file names section 11 fixes as part of the shim's
+    reputation: SRTOverlay64.dll and SRTOverlay32.dll. Those names and the exported entry points are
+    expected to be stable across releases, because reputation attaches to a file that persists.
+
+    Note the assembly name is set outright rather than suffixed. The runner projects append to
+    $(AssemblyName) because their base name is the project name; here the project is
+    SRTOverlay.Native - the publish target - and the shipped binary is not called that.
+  -->
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <AssemblyName>SRTOverlay64</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x86'">
+    <AssemblyName>SRTOverlay32</AssemblyName>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <!--
+    NativeAOT, as a shared library. This is the enabling technology for the whole phase and the thing
+    spike step 1 exists to prove: a plain native PE with no CLR and no JIT, which is what makes the
+    "never allocates an executable page in the game's process" property reachable at all.
+
+    PublishAot only takes effect on `dotnet publish`. A plain `dotnet build` of this project produces
+    ordinary managed IL that nothing loads - deliberately, so that compile errors and the AOT
+    analyzers are part of the normal solution build rather than only appearing after an ILCompiler
+    run, which is the slowest feedback loop in the repository.
+  -->
+  <PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <NativeLib>Shared</NativeLib>
+    <!--
+      Overrides Directory.Build.props, which turns SelfContained off for everything else - the host
+      and its runners are framework-dependent by decision, and this is the one project that cannot
+      be. A NativeAOT binary IS the runtime; leaving the repository-wide setting in place fails the
+      publish with NETSDK1102 from the trimmer, which is a confusing way to be told that.
+    -->
+    <SelfContained>true</SelfContained>
+    <!--
+      Diagnostics over size. The shim is a few hundred kilobytes either way, it is injected into
+      other people's processes, and section 11 commits to publishing symbols and never packing or
+      obfuscating: a stack trace that names a method is worth more here than any trimming would be.
+    -->
+    <StackTraceSupport>true</StackTraceSupport>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <!--
+      Invariant globalization is inherited from Directory.Build.props and matters more here: it is
+      what keeps icu*.dll out of the game's process. The shim formats numbers for a log file and
+      nothing else.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SRTOverlay.Core\SRTOverlay.Core.csproj" />
+    <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+  </ItemGroup>
+
+</Project>

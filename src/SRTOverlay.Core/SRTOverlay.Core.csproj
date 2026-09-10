@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Overlay Core</Product>
+    <Description>Backend-agnostic half of the injected overlay shim: entry point, logging, lifetime.</Description>
+    <!--
+      Everything here is linked into SRTOverlay.Native and ends up running inside a game process, so
+      AOT and trim diagnostics must be errors at build time. Finding them at publish time instead
+      means finding them after the ILCompiler run, which is the slowest feedback loop in the repo.
+    -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!--
+    No logging abstractions, no DI, no hosting. This assembly's dependency closure is the set of code
+    injected into someone else's process; every package added here has to be defensible on that
+    basis, and Microsoft.Extensions.Logging is not - the shim writes one file and the plugin that
+    drives it does the real logging in its own process.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+  </ItemGroup>
+
+</Project>

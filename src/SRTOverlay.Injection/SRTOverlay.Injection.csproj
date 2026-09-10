@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Overlay Injection</Product>
+    <Description>Loads the signed overlay shim into a game process and starts it.</Description>
+  </PropertyGroup>
+
+  <!--
+    Runs OUTSIDE the game, in the overlay plugin's own runner, so none of the shim's AOT constraints
+    apply and none of its dependency discipline does either. It is a separate assembly from
+    SRTOverlay.Core for exactly that reason: Core is code that ends up inside someone else's process,
+    this is code that puts it there.
+
+    It references SRTOverlay.Protocol so the startup blob is written by the same type the shim reads
+    it with. That is the whole point of the Protocol assembly - the two sides cannot disagree about
+    the one message that has no channel to negotiate over.
+  -->
+  <!--
+    SignedCms, for reading who signed the shim out of its embedded PKCS#7. It is not in the shared
+    framework - the type is forwarded there but the assembly is not referenced by default - and it is
+    the supported way to do this now that X509Certificate.CreateFromSignedFile is obsolete under
+    SYSLIB0057. Pinned to the SDK's band like every other package in the repository.
+  -->
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+  </ItemGroup>
+
+</Project>

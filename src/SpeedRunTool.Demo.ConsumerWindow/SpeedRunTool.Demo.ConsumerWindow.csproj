@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>Demo Window Consumer</Product>
+    <Description>Shows the demo producer's payload in its own Avalonia window.</Description>
+    <Authors>SpeedRunTool</Authors>
+    <SRTReferenceContracts>true</SRTReferenceContracts>
+    <SRTDeployAsPlugin>true</SRTDeployAsPlugin>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <!--
+    The plugin brings its own copy of Avalonia, and that is not an accident of packaging.
+
+    SRTHost.PluginRunner references no UI framework at all, so nothing in the runner process supplies
+    one: whatever this plugin draws with has to arrive in its own folder and load into its own
+    AssemblyLoadContext. That is also what keeps a plugin free to use a different Avalonia version -
+    or a different toolkit entirely - from the shell's.
+
+    Only Avalonia and the Fluent theme, deliberately. No Avalonia.Desktop: that package exists to
+    provide StartWithClassicDesktopLifetime and the platform back-ends for an application entry
+    point, and this plugin is not one - it drives the dispatcher itself (see AvaloniaUiThread) and
+    references Avalonia.Win32 for the back-end it actually needs.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Win32" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
+    <!-- Skia rasterises glyphs; it does not shape text. Without this, Setup() throws. -->
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+  </ItemGroup>
+
+  <!--
+    The payload contracts, and not the producer. Same rule as every other consumer: this one binds to
+    a channel id, so any producer publishing that channel will do.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\SpeedRunTool.Demo.Contracts\SpeedRunTool.Demo.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

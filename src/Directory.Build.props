@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
 	<PropertyGroup>
 		<TargetFramework Condition="'$(MSBuildProjectExtension)'=='.csproj'">net10.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
@@ -105,8 +105,24 @@ et10.0, silently
 		<SRTContractsPath>$(MSBuildThisFileDirectory)..\..\SRTPluginBase\src\</SRTContractsPath>
 	</PropertyGroup>
 
+	<!--
+	  Pinned to the SDK's own band (10.0.4xx), and it has to stay at a patched version.
+	
+	  CVE-2026-62900 / GHSA-23fw-v26w-5fgq is in the transitive Microsoft.Build.Tasks.Git and covers
+	  8.0.0, 10.0.102-10.0.110, 10.0.200-10.0.204 and 10.0.300-10.0.301; the fixes are 10.0.111 and
+	  10.0.303, and the 10.0.2xx band was never patched. NuGet audit reports it as NU1902, which is an
+	  error here because TreatWarningsAsErrors is on - so a build failing on this means the pin has
+	  fallen into an affected range, not that the package should be dropped.
+	
+	  The .NET SDK has carried SourceLink in-box since 8.0 and suppresses its own copy whenever a
+	  Microsoft.SourceLink.* package is referenced, which is why the package still ships and still
+	  gets 10.x releases per SDK band (and 11.x previews): the SDK ingests those packages, and a
+	  build that is not using the .NET SDK, or is on an SDK older than its repo needs, still
+	  references them directly. Keeping the reference means the version is stated here rather than
+	  inherited from whichever SDK happens to be installed.
+	-->
 	<ItemGroup Condition="'$(MSBuildProjectExtension)'!='.wixproj'">
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.401">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
 		</PackageReference>

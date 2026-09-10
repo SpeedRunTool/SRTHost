@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>Demo JSON Writer</Product>
+    <Description>Writes every channel's latest payload to disk without knowing any payload type.</Description>
+    <Authors>SpeedRunTool</Authors>
+    <SRTReferenceContracts>true</SRTReferenceContracts>
+    <SRTDeployAsPlugin>true</SRTDeployAsPlugin>
+  </PropertyGroup>
+
+  <!--
+    No ProjectReference at all, and that is the point of this example.
+
+    A schemaless consumer references neither a producer nor a payload-contract assembly: it
+    subscribes to "*", treats a payload as the opaque bytes the wire actually carries, and so works
+    against producers that did not exist when it was built. That is the shape the localhost JSON
+    feed and the browser overlays need, and it is why PayloadFrame hands out bytes rather than a
+    deserialised object.
+  -->
+
+</Project>

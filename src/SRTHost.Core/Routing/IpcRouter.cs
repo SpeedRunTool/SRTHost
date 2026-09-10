@@ -195,7 +195,22 @@ public sealed class IpcRouter : IAsyncDisposable
         }
 
         if (consumers.TryRemove(pluginId, out ConsumerRegistration? departing))
+        {
+            // Disconnected through each producer, not merely dropped.
+            //
+            // Every producer holds its own reference to this consumer's edge, and TryAddEdge refuses
+            // a second edge with the same consumer id. Forgetting the registration alone therefore
+            // leaves a stale edge behind on every producer, and the next RegisterConsumer for the
+            // same id is silently refused - so a consumer stopped and started again from the plugin
+            // list never receives another payload, with nothing in the log but a "subscribes to"
+            // line that is not followed by a "Wired" one.
+            //
+            // notifyClosed is false: the channel has not closed, the consumer has left.
+            foreach (ProducerRegistration remaining in producers.Values)
+                await departing.DisconnectAsync(remaining, notifyClosed: false).ConfigureAwait(false);
+
             await departing.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     /// <summary>

@@ -13,7 +13,7 @@
       <ComboBox ItemsSource="{Binding Levels}" SelectedItem="{Binding MinimumLevel}" Width="130" />
       <!-- Populated as sources appear, so a plugin that has not logged yet is not offered. -->
       <ComboBox ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" Width="220" />
-      <TextBox Text="{Binding SearchText}" Watermark="Filter…" Width="220" />
+      <TextBox Text="{Binding SearchText}" PlaceholderText="Filter…" Width="220" />
       <CheckBox Content="Follow" IsChecked="{Binding FollowTail}" VerticalAlignment="Center" />
       <Button Content="Copy" Command="{Binding CopyCommand}" />
       <Button Content="Clear" Command="{Binding ClearCommand}" />

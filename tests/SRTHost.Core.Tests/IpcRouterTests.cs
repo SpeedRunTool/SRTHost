@@ -185,6 +185,48 @@ public class IpcRouterTests
     }
 
     /// <summary>
+    /// Stopping a consumer and starting it again has to wire it back up.
+    /// </summary>
+    /// <remarks>
+    /// Found by stopping the windowed demo consumer from the plugin list and starting it again: it
+    /// came back Running with an empty window and no error anywhere. A producer keeps its own
+    /// reference to each consumer's edge and refuses a second edge for the same consumer id, so
+    /// unregistering a consumer without disconnecting it through every producer left a stale edge
+    /// that made every later re-registration a silent no-op. The log said "subscribes to" with no
+    /// "Wired" line after it, which is the only trace it left.
+    /// </remarks>
+    [Fact]
+    public async Task ReWiresAConsumerThatIsRemovedAndRegisteredAgain()
+    {
+        await using IpcRouter router = NewRouter();
+
+        FakeEndpoint producer = new("Demo.Producer");
+        FakeEndpoint consumer = new("Demo.Consumer");
+
+        router.RegisterProducer(producer, Channel(ChannelId, "1.0"));
+        router.RegisterConsumer(consumer, [Subscription(ChannelId, "1.0")]);
+
+        await router.UnregisterAsync(consumer.PluginId);
+
+        Assert.Empty(router.Edges);
+
+        // A restarted plugin is a new process and so a new endpoint, but the same plugin id.
+        FakeEndpoint restarted = new("Demo.Consumer");
+
+        router.RegisterConsumer(restarted, [Subscription(ChannelId, "1.0")]);
+
+        Assert.Single(router.Edges);
+
+        Publish(router, producer, "after-restart", sequence: 0);
+
+        Assert.Equal("after-restart", await restarted.NextPayloadAsync(Token));
+
+        // The consumer left; the channel did not close. Telling it otherwise would have an overlay
+        // blank itself on the way to being restarted.
+        Assert.Empty(consumer.ClosedChannels);
+    }
+
+    /// <summary>
     /// Latest-value-wins. A consumer that cannot keep up loses frames rather than stalling the
     /// producer, and the frames it loses are the stale ones.
     /// </summary>

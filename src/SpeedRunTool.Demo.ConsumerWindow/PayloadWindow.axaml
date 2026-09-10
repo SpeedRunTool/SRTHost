@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SpeedRunTool.Demo.ConsumerWindow"
+        x:Class="SpeedRunTool.Demo.ConsumerWindow.PayloadWindow"
+        x:DataType="local:PayloadViewModel"
+        Title="Demo payload"
+        Width="320" Height="220"
+        CanResize="True"
+        ShowInTaskbar="True">
+
+  <!--
+    Deliberately plain: a label grid, which is what the WinForms consumer windows this replaces
+    actually were. It is meant to be read as a template and copied, not admired.
+
+    Two columns - caption and value - one row per field, and a status line at the bottom. The values
+    are bound rather than assigned in code-behind, because that is the part a WinForms author has to
+    learn: there is no window.tickLabel.Text = ... here, the view model raises PropertyChanged and
+    the row updates itself.
+  -->
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto"
+        ColumnDefinitions="Auto,*"
+        Margin="12"
+        ShowGridLines="False">
+
+    <Grid.Styles>
+      <Style Selector="TextBlock">
+        <Setter Property="Margin" Value="0,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <!-- The values are numbers that change every frame; a proportional font makes them jitter. -->
+      <Style Selector="TextBlock.value">
+        <Setter Property="FontFamily" Value="Consolas,Menlo,monospace" />
+        <Setter Property="Margin" Value="12,3,0,3" />
+      </Style>
+    </Grid.Styles>
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Text="Tick" />
+    <TextBlock Grid.Row="0" Grid.Column="1" Classes="value" Text="{Binding Tick}" />
+
+    <TextBlock Grid.Row="1" Grid.Column="0" Text="Value" />
+    <TextBlock Grid.Row="1" Grid.Column="1" Classes="value" Text="{Binding Value}" />
+
+    <TextBlock Grid.Row="2" Grid.Column="0" Text="Ratio" />
+    <TextBlock Grid.Row="2" Grid.Column="1" Classes="value" Text="{Binding Ratio}" />
+
+    <TextBlock Grid.Row="3" Grid.Column="0" Text="Label" />
+    <TextBlock Grid.Row="3" Grid.Column="1" Classes="value" Text="{Binding Label}" />
+
+    <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Opacity="0.7">
+      <Run Text="{Binding Status}" />
+      <Run Text=" · " />
+      <Run Text="{Binding Frames}" />
+      <Run Text="payloads" />
+    </TextBlock>
+
+  </Grid>
+
+</Window>

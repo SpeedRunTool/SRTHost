@@ -148,7 +148,42 @@
 			<_SrtPluginPayload Include="$(TargetDir)srtplugin.json" />
 		</ItemGroup>
 
+		<!--
+		  Native assets keep their runtimes\<rid>
+ative\ layout, because that is the layout the
+		  plugin's own deps.json names and therefore the only one AssemblyDependencyResolver will
+		  find. A plugin drawing with Avalonia needs libSkiaSharp there or it loads, starts a UI
+		  thread and dies on a DllNotFoundException the moment it renders.
+
+		  Only win* RIDs are taken. A RID-less library build copies every platform SkiaSharp ships -
+		  Linux, macOS, Android, WASM, a good hundred megabytes - and no runner on any supported
+		  platform will ever load one of them: the host is Windows-only, and a plugin left RID-less
+		  (rather than pinned to win-x64) is so that it can run in EITHER the 64-bit or the 32-bit
+		  runner, not so that it can run on Linux.
+		-->
+		<ItemGroup>
+			<!--
+			  One include per RID, carrying the RID as metadata, because %(RecursiveDir) begins after
+			  the ** and a pattern of runtimes\win*\** would drop the win-x64 segment from the
+			  destination - putting two RIDs' copies of libSkiaSharp.dll in one folder, last one
+			  winning, and resolving for neither runner.
+			-->
+			<_SrtPluginNative Include="$(TargetDir)runtimes\win-x64\**\*">
+				<SrtRid>win-x64</SrtRid>
+			</_SrtPluginNative>
+			<_SrtPluginNative Include="$(TargetDir)runtimes\win-x86\**\*">
+				<SrtRid>win-x86</SrtRid>
+			</_SrtPluginNative>
+			<_SrtPluginNative Include="$(TargetDir)runtimes\win\**\*">
+				<SrtRid>win</SrtRid>
+			</_SrtPluginNative>
+		</ItemGroup>
+
 		<Copy SourceFiles="@(_SrtPluginPayload)" DestinationFolder="$(SrtHostPluginsDir)" SkipUnchangedFiles="true" />
+
+		<Copy SourceFiles="@(_SrtPluginNative)"
+		      DestinationFiles="@(_SrtPluginNative->'$(SrtHostPluginsDir)runtimes\%(SrtRid)\%(RecursiveDir)%(Filename)%(Extension)')"
+		      SkipUnchangedFiles="true" />
 
 		<Message Importance="normal" Text="Deployed $(AssemblyName) to $(SrtHostPluginsDir)" />
 	</Target>

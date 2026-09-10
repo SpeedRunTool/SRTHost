@@ -75,5 +75,15 @@
       <Platform Solution="*|x64" Project="AnyCPU" />
       <Platform Solution="*|x86" Project="AnyCPU" />
     </Project>
+    <!-- The WinForms-to-Avalonia migration reference: a consumer that owns a window of its own. -->
+    <Project Path="SpeedRunTool.Demo.ConsumerWindow/SpeedRunTool.Demo.ConsumerWindow.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
+    <!-- Schemaless: subscribes to "*" and references no payload type at all. -->
+    <Project Path="SpeedRunTool.Demo.ConsumerJson/SpeedRunTool.Demo.ConsumerJson.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
   </Folder>
 </Solution>

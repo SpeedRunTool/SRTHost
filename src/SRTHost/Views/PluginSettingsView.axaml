@@ -110,7 +110,7 @@
         <Border DockPanel.Dock="Right" Width="28" Margin="6,0,0,0" CornerRadius="3"
                 BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 Background="{Binding Value, Converter={StaticResource ColorSwatch}}" />
-        <TextBox Text="{Binding Value}" Watermark="#FF20C020" />
+        <TextBox Text="{Binding Value}" PlaceholderText="#FF20C020" />
       </DockPanel>
     </DataTemplate>
 

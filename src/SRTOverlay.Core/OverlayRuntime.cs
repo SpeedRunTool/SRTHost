@@ -26,6 +26,8 @@ public static class OverlayRuntime
 {
     private static int started;
     private static nint ownerHandle;
+    private static IOverlayBackend? backend;
+    private static ManualResetEventSlim? heartbeatStop;
 
     /// <summary>The options this shim started with, for the rest of the shim to read.</summary>
     public static OverlayStartupOptions? Options { get; private set; }
@@ -39,7 +41,7 @@ public static class OverlayRuntime
     /// <c>[UnmanagedCallersOnly]</c> boundary where an escaping exception is a <c>FailFast</c> - and
     /// a <c>FailFast</c> in this process kills someone's game.
     /// </remarks>
-    public static OverlayStartResult Start(string? json)
+    public static OverlayStartResult Start(string? json, IOverlayBackend? graphicsBackend = null)
     {
         if (Interlocked.CompareExchange(ref started, 1, 0) != 0)
             return OverlayStartResult.AlreadyRunning;
@@ -76,11 +78,12 @@ public static class OverlayRuntime
         Options = options;
         WriteIdentity(options);
         WatchOwner(options.OwnerProcessId);
+        StartBackend(graphicsBackend);
 
-        // Spike step 1 stops here: the gate is that managed code ran inside the game and the game is
-        // unharmed. Steps 2 onward - vtable resolution, the Present hook, the composite - hang off
-        // this point, on a thread this method will own rather than returning from.
-        OverlayLog.Write("Overlay started. Nothing is hooked yet; this build is the injection spike.");
+        OverlayLog.Write(backend is null
+            ? "Overlay started with no graphics backend; nothing is hooked."
+            : $"Overlay started on {backend.Name}.");
+
         return OverlayStartResult.Success;
     }
 
@@ -102,6 +105,23 @@ public static class OverlayRuntime
         nint owner = Interlocked.Exchange(ref ownerHandle, 0);
         if (owner != 0)
             NativeMethods.CloseHandle(owner);
+
+        heartbeatStop?.Set();
+
+        // Hooks come out before anything else, because everything else exists to serve them and the
+        // game may be calling through them right now.
+        try
+        {
+            backend?.Shutdown();
+        }
+        catch (Exception exception)
+        {
+            OverlayLog.WriteException("backend shutdown", exception);
+        }
+        finally
+        {
+            backend = null;
+        }
 
         OverlayLog.Write("Overlay detached. The module stays resident; NativeAOT cannot unload itself.");
         OverlayLog.Close();
@@ -177,6 +197,66 @@ public static class OverlayRuntime
 
         watchdog.Start();
         OverlayLog.Write($"  owner        pid {ownerProcessId}, watched");
+    }
+
+    /// <summary>
+    /// Bring a graphics backend up, and start the heartbeat that is the only way to observe it.
+    /// </summary>
+    /// <remarks>
+    /// A hook that draws nothing is invisible by construction, so the counters it keeps have to be
+    /// reported from somewhere. A background thread on a timer is that somewhere: it formats and
+    /// writes, both of which are banned on the render path, and it does so far away from it.
+    /// </remarks>
+    private static void StartBackend(IOverlayBackend? graphicsBackend)
+    {
+        if (graphicsBackend is null)
+            return;
+
+        bool ready;
+        try
+        {
+            ready = graphicsBackend.Initialize();
+        }
+        catch (Exception exception)
+        {
+            // Initialize is documented not to throw; if it does anyway, the overlay runs without a
+            // backend rather than taking the game down over it.
+            OverlayLog.WriteException($"{graphicsBackend.Name} initialisation", exception);
+            return;
+        }
+
+        if (!ready)
+        {
+            OverlayLog.Write($"{graphicsBackend.Name} is not usable in this process; continuing without it.");
+            return;
+        }
+
+        backend = graphicsBackend;
+        heartbeatStop = new ManualResetEventSlim(false);
+
+        Thread heartbeat = new(static () =>
+        {
+            ManualResetEventSlim? stop = heartbeatStop;
+            IOverlayBackend? active = backend;
+            if (stop is null || active is null)
+                return;
+
+            try
+            {
+                while (!stop.Wait(TimeSpan.FromSeconds(5)))
+                    OverlayLog.Write($"[{active.Name}] {active.DescribeActivity()}");
+            }
+            catch (Exception exception)
+            {
+                OverlayLog.WriteException("backend heartbeat", exception);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "SRT Overlay heartbeat",
+        };
+
+        heartbeat.Start();
     }
 
     /// <summary>Undo the start latch so a corrected injection can be retried without a restart.</summary>

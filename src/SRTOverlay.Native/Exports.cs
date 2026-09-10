@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using SRTOverlay.Core;
+using SRTOverlay.DirectX12;
 using SRTOverlay.Protocol;
 
 namespace SRTOverlay.Native;
@@ -43,7 +44,11 @@ public static class Exports
         try
         {
             string? json = startupBlob == 0 ? null : Marshal.PtrToStringUni(startupBlob);
-            return (int)OverlayRuntime.Start(json);
+
+            // Choosing the backend is this assembly's job precisely because it is the only one that
+            // references every backend. Direct3D 11 joins it here once it exists, selected at run
+            // time - section 11 puts both in the one shipped binary.
+            return (int)OverlayRuntime.Start(json, new D3D12Backend());
         }
         catch (Exception exception)
         {

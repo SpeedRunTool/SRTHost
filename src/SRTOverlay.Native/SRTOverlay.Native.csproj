@@ -63,6 +63,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SRTOverlay.Core\SRTOverlay.Core.csproj" />
+    <ProjectReference Include="..\SRTOverlay.DirectX12\SRTOverlay.DirectX12.csproj" />
     <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
   </ItemGroup>
 

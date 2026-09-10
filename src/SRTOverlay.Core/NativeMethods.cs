@@ -44,6 +44,21 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool CloseHandle(nint handle);
 
+    /// <summary>Page protection allowing reads and writes but not execution.</summary>
+    internal const uint PAGE_READWRITE = 0x04;
+
+    /// <summary>
+    /// Change page protection, used to make one COM vtable slot writable for a single pointer write.
+    /// </summary>
+    /// <remarks>
+    /// Note what this is applied to: a <i>data</i> page holding a vtable, never a code page. Nothing
+    /// in the shim ever marks a page executable, and nothing rewrites an instruction - which is the
+    /// property section 11 wants to be able to state plainly.
+    /// </remarks>
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool VirtualProtect(nint address, nuint size, uint newProtect, out uint oldProtect);
+
     /// <summary>Full path of the module containing <paramref name="address"/>, or empty.</summary>
     /// <remarks>
     /// Used to log where the shim actually landed. That single line is the difference between "the

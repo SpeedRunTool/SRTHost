@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Platforms>AnyCPU</Platforms>
+    <Product>SRT Overlay Direct3D 12</Product>
+    <Description>Direct3D 12 half of the injected overlay shim: vtable resolution and the Present hook.</Description>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!--
+    No Vortice.Windows, and that is a departure from what section 11 settled - so it is written down
+    rather than left to be discovered.
+
+    Vortice is the right answer on the plugin's side of the boundary, where an author renders in their
+    own process and ergonomics are worth a dependency. It is the wrong answer here: this assembly is
+    linked into the one binary that gets injected into other people's games, where the dependency
+    closure is a reputation question, and section 11 already commits the shim to being trivially
+    explicable to anyone who looks at it.
+
+    The saving is real rather than theoretical. What the shim needs from D3D12 is four exported
+    functions and a handful of vtable slots called by index - and it needs the raw vtable pointers
+    regardless, which is exactly what a typed wrapper hides. Hand-rolled interop is a few hundred
+    lines here versus a library that would have to be trimmed, AOT-verified and vouched for.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\SRTOverlay.Core\SRTOverlay.Core.csproj" />
+    <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+  </ItemGroup>
+
+</Project>

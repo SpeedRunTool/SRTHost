@@ -81,6 +81,11 @@
       <Platform Solution="*|x64" Project="AnyCPU" />
       <Platform Solution="*|x86" Project="AnyCPU" />
     </Project>
+    <!-- Direct3D 12: vtable resolution and the Present hook. Direct3D 11 joins it in the same binary. -->
+    <Project Path="SRTOverlay.DirectX12/SRTOverlay.DirectX12.csproj">
+      <Platform Solution="*|x64" Project="AnyCPU" />
+      <Platform Solution="*|x86" Project="AnyCPU" />
+    </Project>
     <Project Path="SRTOverlay.Native/SRTOverlay.Native.csproj">
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />

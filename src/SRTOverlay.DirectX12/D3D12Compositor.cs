@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.Versioning;
 using SRTOverlay.Core;
@@ -81,6 +82,18 @@ internal sealed unsafe class D3D12Compositor : IDisposable
     private long composited;
     private long skipped;
 
+    // Step 4 frame-cost accounting, written only on the render thread. The histogram buckets composite
+    // cost in 4 us steps up to ~2 ms; anything slower lands in the last bucket. costAllocBytes is the
+    // total the render thread allocated across all composites - it must stay zero.
+    private const int CostBuckets = 512;
+    private const int CostBucketUs = 4;
+    private readonly long ticksPerSecond = Stopwatch.Frequency;
+    private readonly long[] costHistogram = new long[CostBuckets];
+    private long costCount;
+    private long costSumUs;
+    private long costMaxUs;
+    private long costAllocBytes;
+
     internal D3D12Compositor(string session) => this.session = session;
 
     internal bool IsReady => Volatile.Read(ref ready);
@@ -88,10 +101,17 @@ internal sealed unsafe class D3D12Compositor : IDisposable
     /// <summary>How many frames have actually been composited, for the self-check's round-trip.</summary>
     internal long CompositedFrames => Interlocked.Read(ref composited);
 
-    /// <summary>Whether the surfaces are open, and how many frames have been composited or skipped.</summary>
+    /// <summary>Whether the surfaces are open, how many frames were composited/skipped, and the cost.</summary>
     internal string DescribeActivity()
-        => $"composited {Interlocked.Read(ref composited):N0}, skipped {Interlocked.Read(ref skipped):N0}, " +
-           $"surfaces {(surfacesOpened ? "open" : "waiting for producer")}";
+    {
+        string cost = costCount > 0
+            ? $", cost/frame avg {(costCount == 0 ? 0 : costSumUs / costCount)}us p50 {CostPercentileUs(0.50)}us " +
+              $"p99 {CostPercentileUs(0.99)}us max {costMaxUs}us, render-thread alloc {costAllocBytes} B"
+            : string.Empty;
+
+        return $"composited {Interlocked.Read(ref composited):N0}, skipped {Interlocked.Read(ref skipped):N0}, " +
+               $"surfaces {(surfacesOpened ? "open" : "waiting for producer")}{cost}";
+    }
 
     /// <summary>
     /// Build every device resource the composite needs, and publish the surface request. Called once,
@@ -516,6 +536,13 @@ internal sealed unsafe class D3D12Compositor : IDisposable
             return;
         }
 
+        // Step 4's measurement: the CPU cost this detour adds on the game's render thread, and the
+        // bytes it allocates there. Both are read allocation-free; GetTimestamp is QPC and
+        // GetAllocatedBytesForCurrentThread does not allocate. The budget is under 1 ms per frame and
+        // zero allocation - a gen-0 collection on this thread would be a visible hitch.
+        long startTicks = Stopwatch.GetTimestamp();
+        long startBytes = GC.GetAllocatedBytesForCurrentThread();
+
         uint frameIndex = Direct3D12.GetCurrentBackBufferIndex(swapChain);
 
         // Wait until the GPU has finished the last time we used this allocator, then reuse it.
@@ -592,7 +619,45 @@ internal sealed unsafe class D3D12Compositor : IDisposable
         Direct3D12.QueueSignal(queue, frameFence, signalled);
         frameFenceValues[frameIndex] = signalled;
 
+        RecordCost(Stopwatch.GetTimestamp() - startTicks, GC.GetAllocatedBytesForCurrentThread() - startBytes);
         Interlocked.Increment(ref composited);
+    }
+
+    /// <summary>
+    /// Record one composited frame's CPU cost and render-thread allocation. Called only from the render
+    /// thread, so the plain field updates are safe; the heartbeat reads them with a benign race.
+    /// </summary>
+    private void RecordCost(long elapsedTicks, long allocDelta)
+    {
+        long us = elapsedTicks * 1_000_000L / ticksPerSecond;
+        costCount++;
+        costSumUs += us;
+        if (us > costMaxUs)
+            costMaxUs = us;
+        costAllocBytes += allocDelta;
+
+        int bucket = (int)(us / CostBucketUs);
+        if (bucket >= CostBuckets)
+            bucket = CostBuckets - 1;
+        costHistogram[bucket]++;
+    }
+
+    /// <summary>The approximate percentile of composite cost, in microseconds, read off the histogram.</summary>
+    private long CostPercentileUs(double quantile)
+    {
+        long total = costCount;
+        if (total == 0)
+            return 0;
+
+        long threshold = (long)(total * quantile);
+        long cumulative = 0;
+        for (int i = 0; i < CostBuckets; i++)
+        {
+            cumulative += costHistogram[i];
+            if (cumulative >= threshold)
+                return (long)i * CostBucketUs;
+        }
+        return costMaxUs;
     }
 
     private bool TryOpenSurfaces()

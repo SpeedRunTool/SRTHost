@@ -23,6 +23,7 @@
   -->
   <ItemGroup>
     <ProjectReference Include="..\..\src\SRTOverlay.Core\SRTOverlay.Core.csproj" />
+    <ProjectReference Include="..\..\src\SRTOverlay.DirectX12\SRTOverlay.DirectX12.csproj" />
     <ProjectReference Include="..\..\src\SRTOverlay.Injection\SRTOverlay.Injection.csproj" />
     <ProjectReference Include="..\..\src\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
   </ItemGroup>

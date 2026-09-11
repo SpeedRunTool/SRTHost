@@ -29,4 +29,9 @@
     <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
   </ItemGroup>
 
+  <!-- The test project pins the generated shader bytecode against its source; it needs to see CompositeShaders. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="SRTOverlay.Tests" />
+  </ItemGroup>
+
 </Project>

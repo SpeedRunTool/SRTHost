@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using SRTOverlay.DirectX12;
 using SRTOverlay.Injection;
 using SRTOverlay.Protocol;
 
@@ -46,13 +47,28 @@ internal static class Program
         Dump = options.ContainsKey("dump-rwx");
         AnyExecutable = options.ContainsKey("any-exec");
 
+        // A GPU self-test of the risky interop, in this throwaway process rather than in a game.
+        if (options.ContainsKey("selfcheck"))
+            return OverlaySelfCheck.Run(Console.WriteLine) ? 0 : 1;
+
+        // Step 3's producer needs no game process of its own: it reads the shim's request block, which
+        // carries the adapter and the back buffer size, and creates the surface from that.
+        if (options.ContainsKey("produce-surface"))
+            return ProduceSurface(options);
+
         if (options.ContainsKey("help") || !options.TryGetValue("process", out string? target))
         {
             Console.Error.WriteLine(
                 "usage: SRTOverlay.Spike64 --process <name.exe|pid> [--shim <path>] [--log <path>] " +
                 "[--session <id>] [--pipe <name>] [--owner <pid>] [--unsigned] " +
                 "[--claim-process <name>] [--claim-version <n>] [--scan-rwx] [--scan-only [seconds]] " +
-                "[--dump-rwx] [--any-exec] [--read-region <hex>] [--probe-first] [--stop]");
+                "[--dump-rwx] [--any-exec] [--read-region <hex>] [--probe-first] [--stop] " +
+                "[--brightness <n>] [--pq]");
+            Console.Error.WriteLine(
+                "   or: SRTOverlay.Spike64 --produce-surface --session <id>   (step 3: create the " +
+                "shared surface the injected shim composites)");
+            Console.Error.WriteLine(
+                "   or: SRTOverlay.Spike64 --selfcheck   (exercise the D3D12 interop in-process, no game)");
             return 2;
         }
 
@@ -123,6 +139,10 @@ internal static class Program
                 // Defaults to nobody, because this driver exits as soon as it has injected and the
                 // shim would follow it straight back out. A real overlay runner passes its own pid.
                 OwnerProcessId = options.TryGetValue("owner", out string? owner) ? int.Parse(owner) : 0,
+
+                // Live HDR tuning: override the per-format brightness, and force PQ for an HDR10 buffer.
+                OverlayBrightness = options.TryGetValue("brightness", out string? b) ? float.Parse(b) : null,
+                OverlayForcePq = options.ContainsKey("pq") ? true : null,
             };
 
             Console.WriteLine($"Target      {startup.TargetProcess} (pid {game.Id})");
@@ -156,6 +176,40 @@ internal static class Program
             Console.Error.WriteLine($"{exception.GetType().Name}: {exception.Message}");
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Run the throwaway producer for step 3: create the shared surface the injected shim asked for
+    /// and animate a colour wash into it until Ctrl+C.
+    /// </summary>
+    /// <remarks>
+    /// The session must match the <c>--session</c> the shim was injected with, because that is what
+    /// names the request block, the publish block and the shared handles. There is no game process to
+    /// find here - the shim's request block names the adapter, and the surface is created on it.
+    /// </remarks>
+    private static int ProduceSurface(Dictionary<string, string> options)
+    {
+        if (!options.TryGetValue("session", out string? session) || string.IsNullOrEmpty(session))
+        {
+            Console.Error.WriteLine("--produce-surface needs --session <id>, matching the injected shim's session.");
+            return 2;
+        }
+
+        using CancellationTokenSource cancellation = new();
+        Console.CancelKeyPress += (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;      // let the loop drain the GPU and clear Alive rather than dying
+            cancellation.Cancel();
+        };
+
+        Console.WriteLine($"Producer for session '{session}'. Ctrl+C to stop.");
+        SharedSurfaceProducer producer = new(session, Console.WriteLine);
+        bool ok = producer.Run(cancellation.Token);
+
+        Console.WriteLine(ok
+            ? "Producer stopped. The gate is whether the wash appeared in the game - go and look."
+            : "Producer could not create the surface. See the messages above.");
+        return ok ? 0 : 1;
     }
 
     /// <summary>

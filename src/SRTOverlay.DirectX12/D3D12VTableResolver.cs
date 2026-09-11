@@ -272,4 +272,18 @@ internal static unsafe partial class Win32
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool UnregisterClassW(char* className, nint instance);
+
+    /// <summary>Wait forever, for the fence-completion event on the composite path's allocator reuse.</summary>
+    internal const uint INFINITE = 0xFFFFFFFF;
+
+    /// <summary>An auto-reset, initially-unsignalled event for waiting on a fence completion.</summary>
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial nint CreateEventW(nint attributes, int manualReset, int initialState, char* name);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial uint WaitForSingleObject(nint handle, uint milliseconds);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool CloseHandle(nint handle);
 }

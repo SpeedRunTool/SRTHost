@@ -29,6 +29,13 @@
   <ItemGroup>
     <ProjectReference Include="..\SRTOverlay.Injection\SRTOverlay.Injection.csproj" />
     <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+    <!--
+      Referenced for the step-3 produce-surface mode, which drives the shared-texture gate by
+      standing in for an overlay plugin's runner. The shim's own graphics code lives here too, but the
+      spike never injects this assembly - it injects SRTOverlay64.dll - so pulling it in only adds the
+      throwaway producer to the driver, not to anything that runs inside a game.
+    -->
+    <ProjectReference Include="..\SRTOverlay.DirectX12\SRTOverlay.DirectX12.csproj" />
   </ItemGroup>
 
 </Project>

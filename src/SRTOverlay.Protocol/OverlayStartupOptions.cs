@@ -82,6 +82,19 @@ public sealed record OverlayStartupOptions
     /// </remarks>
     public int OwnerProcessId { get; init; }
 
+    /// <summary>
+    /// Overrides the composite brightness the shim would pick for the back buffer's format. Null means
+    /// use the per-format default. For an HDR back buffer this scales the SDR overlay towards the
+    /// display's reference white, and it exists so that look can be tuned live rather than rebuilt.
+    /// </summary>
+    public float? OverlayBrightness { get; init; }
+
+    /// <summary>
+    /// Forces PQ (ST 2084) encoding of the composited overlay, for an HDR10 10-bit back buffer that a
+    /// format check cannot distinguish from a 10-bit SDR one. Null/false leaves the per-format default.
+    /// </summary>
+    public bool? OverlayForcePq { get; init; }
+
     /// <summary>Serialise for the wire. Never reflects; see <see cref="OverlayJsonContext"/>.</summary>
     public string ToJson() => JsonSerializer.Serialize(this, OverlayJsonContext.Default.OverlayStartupOptions);
 

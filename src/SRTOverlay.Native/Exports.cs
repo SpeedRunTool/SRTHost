@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using SRTOverlay.Core;
 using SRTOverlay.DirectX12;
 using SRTOverlay.Protocol;
@@ -38,6 +39,7 @@ public static class Exports
     /// allocation as soon as the thread has been waited on, and holding it past that point would be
     /// a use-after-free inside a game.
     /// </remarks>
+    [SupportedOSPlatform("windows")] // the shim only ever runs inside a Windows game
     [UnmanagedCallersOnly(EntryPoint = OverlayProtocol.StartExport)]
     public static int SrtOverlayStart(nint startupBlob)
     {

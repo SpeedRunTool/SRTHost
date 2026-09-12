@@ -35,23 +35,27 @@ public static class OverlayRuntime
     /// <summary>
     /// Start the overlay. Called from the shim's unmanaged start export and from tests.
     /// </summary>
-    /// <param name="json">The startup blob, as written into this process by the injector.</param>
+    /// <param name="blob">
+    /// The packed startup blob, as written into this process by the injector. Its layout is
+    /// <see cref="OverlayStartupOptions"/>, shared with the C++ shim's <c>OverlayProtocol.h</c>.
+    /// </param>
     /// <remarks>
     /// Returns rather than throws for every failure, because its caller is an
     /// <c>[UnmanagedCallersOnly]</c> boundary where an escaping exception is a <c>FailFast</c> - and
     /// a <c>FailFast</c> in this process kills someone's game.
     /// </remarks>
-    public static OverlayStartResult Start(string? json, IOverlayBackend? graphicsBackend = null)
+    public static OverlayStartResult Start(ReadOnlySpan<byte> blob, IOverlayBackend? graphicsBackend = null)
     {
         if (Interlocked.CompareExchange(ref started, 1, 0) != 0)
             return OverlayStartResult.AlreadyRunning;
 
-        if (string.IsNullOrEmpty(json))
-            return OverlayStartResult.BadArgument;
-
-        OverlayStartupOptions? options = OverlayStartupOptions.FromJson(json);
+        OverlayStartupOptions? options = OverlayStartupOptions.FromBlob(blob);
         if (options is null)
+        {
+            // A blob too small to be one. Undo the latch so a corrected injection can be retried.
+            Volatile.Write(ref started, 0);
             return OverlayStartResult.BadArgument;
+        }
 
         if (!string.IsNullOrEmpty(options.LogPath))
             OverlayLog.Open(options.LogPath);

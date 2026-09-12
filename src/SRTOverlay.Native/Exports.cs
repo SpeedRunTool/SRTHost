@@ -31,8 +31,8 @@ public static class Exports
     /// Start the overlay. The thread's exit code is an <see cref="OverlayStartResult"/>.
     /// </summary>
     /// <param name="startupBlob">
-    /// Pointer to a UTF-16, null-terminated JSON <see cref="OverlayStartupOptions"/> in this
-    /// process's memory, written there by the injector before the thread was created.
+    /// Pointer to a packed <see cref="OverlayStartupOptions"/> blob in this process's memory, written
+    /// there by the injector before the thread was created. Its layout is shared with the C++ shim.
     /// </param>
     /// <remarks>
     /// The pointer is read once, immediately, and never retained: the injector frees the remote
@@ -41,16 +41,19 @@ public static class Exports
     /// </remarks>
     [SupportedOSPlatform("windows")] // the shim only ever runs inside a Windows game
     [UnmanagedCallersOnly(EntryPoint = OverlayProtocol.StartExport)]
-    public static int SrtOverlayStart(nint startupBlob)
+    public static unsafe int SrtOverlayStart(nint startupBlob)
     {
         try
         {
-            string? json = startupBlob == 0 ? null : Marshal.PtrToStringUni(startupBlob);
+            if (startupBlob == 0)
+                return (int)OverlayStartResult.BadArgument;
+
+            ReadOnlySpan<byte> blob = new((void*)startupBlob, OverlayStartupOptions.BlobSize);
 
             // Choosing the backend is this assembly's job precisely because it is the only one that
             // references every backend. Direct3D 11 joins it here once it exists, selected at run
             // time - section 11 puts both in the one shipped binary.
-            return (int)OverlayRuntime.Start(json, new D3D12Backend());
+            return (int)OverlayRuntime.Start(blob, new D3D12Backend());
         }
         catch (Exception exception)
         {

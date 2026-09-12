@@ -277,7 +277,9 @@ public sealed class OverlayInjector
     /// <summary>Call the shim's start export on a second remote thread, with the startup blob.</summary>
     private OverlayStartResult StartRemote(nint process, nint moduleBase, uint startRva, OverlayStartupOptions options)
     {
-        byte[] blob = Encoding.Unicode.GetBytes(options.ToJson() + "\0");
+        // The packed struct the C++ shim reads, not JSON: a fixed-size blob with no terminator, whose
+        // layout OverlayStartupOptions and OverlayProtocol.h agree on byte for byte.
+        byte[] blob = options.ToBlob();
         RunRemote(process, moduleBase + (nint)startRva, blob, OverlayProtocol.StartExport, out uint exitCode);
 
         OverlayStartResult result = (OverlayStartResult)exitCode;

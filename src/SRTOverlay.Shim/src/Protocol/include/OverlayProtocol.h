@@ -122,6 +122,15 @@ typedef struct SrtOverlayStartupOptions
 } SrtOverlayStartupOptions;
 #pragma pack(pop)
 
+#ifdef __cplusplus
+// The one number the C++ shim and the C# mirror (OverlayStartupOptions.BlobSize) must agree on. If a
+// field is added or a buffer resized on one side and not the other, the wire breaks silently; this
+// stops the C++ side from building until they match again. wchar_t is 2 bytes on Windows, so the sum
+// is 16 (scalars) + 128 + 256 + 256 + 1040 (the four fixed buffers) = 1696.
+static_assert(sizeof(SrtOverlayStartupOptions) == 1696,
+              "SrtOverlayStartupOptions must stay 1696 bytes to match OverlayStartupOptions.BlobSize (C#).");
+#endif
+
 // ---- Shared-surface handshake (spike step 3 scaffolding) ----
 //
 // Two single-writer control blocks in shared memory plus named shared handles for the textures and

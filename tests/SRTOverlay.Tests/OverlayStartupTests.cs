@@ -12,7 +12,8 @@ namespace SRTOverlay.Tests;
 /// These run in the test process, which is exactly how they run in a game: the shim's start path is
 /// ordinary managed code, and only the thread it arrives on is unusual. So this covers the refusals
 /// that section 11 asks for - a mis-aimed injection stopping itself, and a substituted blob being
-/// rejected - without needing a game.
+/// rejected - without needing a game. The blob is the packed struct the C++ shim reads (via
+/// <see cref="OverlayStartupOptions.ToBlob"/>), so these also pin the C# side of that shared layout.
 /// </para>
 /// <para>
 /// <see cref="OverlayRuntime"/> is static and latches on start, so every test here stops it again.
@@ -37,9 +38,18 @@ public sealed class OverlayStartupTests : IDisposable
     };
 
     [Fact]
+    public void TheBlobIsTheContractSize()
+    {
+        // The one number the C# mirror and the C++ shim's packed struct must agree on. If a field is
+        // added or a buffer resized on one side and not the other, the wire breaks silently - this is
+        // the C# half of the guard (the C++ half is a static_assert on sizeof).
+        Assert.Equal(1696, OverlayStartupOptions.BlobSize);
+    }
+
+    [Fact]
     public void StartsWhenTheBlobNamesThisProcess()
     {
-        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToJson()));
+        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToBlob()));
         Assert.NotNull(OverlayRuntime.Options);
         Assert.Equal(ThisProcess, OverlayRuntime.Options!.TargetProcess);
     }
@@ -49,7 +59,7 @@ public sealed class OverlayStartupTests : IDisposable
     {
         OverlayStartupOptions elsewhere = Valid() with { TargetProcess = "some-other-game.exe" };
 
-        Assert.Equal(OverlayStartResult.WrongProcess, OverlayRuntime.Start(elsewhere.ToJson()));
+        Assert.Equal(OverlayStartResult.WrongProcess, OverlayRuntime.Start(elsewhere.ToBlob()));
         Assert.Null(OverlayRuntime.Options);
     }
 
@@ -58,41 +68,42 @@ public sealed class OverlayStartupTests : IDisposable
     {
         OverlayStartupOptions future = Valid() with { ProtocolVersion = OverlayProtocol.Version + 1 };
 
-        Assert.Equal(OverlayStartResult.ProtocolMismatch, OverlayRuntime.Start(future.ToJson()));
+        Assert.Equal(OverlayStartResult.ProtocolMismatch, OverlayRuntime.Start(future.ToBlob()));
         Assert.Null(OverlayRuntime.Options);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("not json at all")]
-    [InlineData("{\"protocolVersion\":1}")] // No targetProcess, which is required.
-    public void RefusesABlobItCannotRead(string? blob)
-        => Assert.Equal(OverlayStartResult.BadArgument, OverlayRuntime.Start(blob));
+    [Fact]
+    public void RefusesABlobTooSmallToBeOne()
+    {
+        // The struct is fixed-size, so "malformed" now means "too short to be the blob at all" - a
+        // truncated or empty remote write. Both undo the start latch, so a corrected retry still works.
+        Assert.Equal(OverlayStartResult.BadArgument, OverlayRuntime.Start(ReadOnlySpan<byte>.Empty));
+        Assert.Equal(OverlayStartResult.BadArgument, OverlayRuntime.Start(new byte[OverlayStartupOptions.BlobSize - 1]));
+    }
 
     [Fact]
     public void ARefusalDoesNotLatch()
     {
         // A shim that refused once has to accept a corrected injection, or a mis-aimed first attempt
         // would mean restarting the game.
-        Assert.Equal(OverlayStartResult.WrongProcess, OverlayRuntime.Start((Valid() with { TargetProcess = "nope.exe" }).ToJson()));
-        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToJson()));
+        Assert.Equal(OverlayStartResult.WrongProcess, OverlayRuntime.Start((Valid() with { TargetProcess = "nope.exe" }).ToBlob()));
+        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToBlob()));
     }
 
     [Fact]
     public void ASecondStartIsANoOp()
     {
-        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToJson()));
-        Assert.Equal(OverlayStartResult.AlreadyRunning, OverlayRuntime.Start(Valid().ToJson()));
+        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToBlob()));
+        Assert.Equal(OverlayStartResult.AlreadyRunning, OverlayRuntime.Start(Valid().ToBlob()));
     }
 
     [Fact]
     public void StopThenStartWorksAgain()
     {
-        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToJson()));
+        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToBlob()));
         OverlayRuntime.Stop();
         Assert.Null(OverlayRuntime.Options);
-        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToJson()));
+        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(Valid().ToBlob()));
     }
 
     [Fact]
@@ -103,7 +114,7 @@ public sealed class OverlayStartupTests : IDisposable
         // on. int.MaxValue is not a live pid.
         OverlayStartupOptions orphan = Valid() with { OwnerProcessId = int.MaxValue };
 
-        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(orphan.ToJson()));
+        Assert.Equal(OverlayStartResult.Success, OverlayRuntime.Start(orphan.ToBlob()));
     }
 
     [Fact]
@@ -123,7 +134,7 @@ public sealed class OverlayStartupTests : IDisposable
         {
             Assert.Equal(
                 OverlayStartResult.Success,
-                OverlayRuntime.Start((Valid() with { OwnerProcessId = owner.Id }).ToJson()));
+                OverlayRuntime.Start((Valid() with { OwnerProcessId = owner.Id }).ToBlob()));
 
             Assert.NotNull(OverlayRuntime.Options);
 
@@ -150,25 +161,32 @@ public sealed class OverlayStartupTests : IDisposable
     public void TheBlobRoundTrips()
     {
         OverlayStartupOptions original = Valid() with { PipeName = "SRTHost.abc.overlay", LogPath = @"C:\temp\o.log" };
-        OverlayStartupOptions? restored = OverlayStartupOptions.FromJson(original.ToJson());
+        OverlayStartupOptions? restored = OverlayStartupOptions.FromBlob(original.ToBlob());
 
         Assert.Equal(original, restored);
     }
 
     [Fact]
-    public void AnOmittedOptionalFieldReadsAsNullRatherThanItsInitialiser()
+    public void BrightnessAndForcePqRoundTrip()
     {
-        // Pins the reason PipeName, LogPath and SessionId are declared nullable. The source-generated
-        // serialiser does not run property initialisers, so a "= string.Empty" default on any of them
-        // would arrive here as null through a property the compiler had promised was non-null. Stating
-        // the nullability makes that visible instead of surprising; if System.Text.Json ever changes
-        // this, this test is where it will show up. See SrtJson in SRTHost.Core.
-        OverlayStartupOptions? minimal = OverlayStartupOptions.FromJson(
-            $$"""{"protocolVersion":{{OverlayProtocol.Version}},"targetProcess":"re9.exe"}""");
+        OverlayStartupOptions original = Valid() with { OverlayBrightness = 2.5f, OverlayForcePq = true };
+        OverlayStartupOptions? restored = OverlayStartupOptions.FromBlob(original.ToBlob());
 
-        Assert.NotNull(minimal);
-        Assert.Null(minimal!.PipeName);
-        Assert.Null(minimal.LogPath);
-        Assert.Null(minimal.SessionId);
+        Assert.NotNull(restored);
+        Assert.Equal(2.5f, restored!.OverlayBrightness);
+        Assert.True(restored.OverlayForcePq);
+    }
+
+    [Fact]
+    public void AbsentBrightnessAndForcePqReadBackAsNull()
+    {
+        // Pins the tri-state encoding: null (and, for brightness, a non-positive value) travels as the
+        // "use the per-format default" case and comes back null, not as 0 or false. The composite's
+        // ChooseColorAdjust depends on null meaning "leave the default".
+        OverlayStartupOptions? restored = OverlayStartupOptions.FromBlob(Valid().ToBlob());
+
+        Assert.NotNull(restored);
+        Assert.Null(restored!.OverlayBrightness);
+        Assert.Null(restored.OverlayForcePq);
     }
 }

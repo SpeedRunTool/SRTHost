@@ -127,26 +127,32 @@ public sealed class OverlayInjector
     }
 
     /// <summary>
-    /// Tell a shim already inside <paramref name="processId"/> to detach.
+    /// Tell a shim already inside <paramref name="processId"/> to detach, and (by default) unload it.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>This is a detach, not an unload, and the difference is not pedantry.</b> NativeAOT cannot
-    /// remove its runtime from a live process, so the shim releases its hooks and resources and stops
-    /// its threads while the DLL stays mapped until the game exits. Calling <c>FreeLibrary</c> on it
-    /// instead would unmap code that the game's own vtables may still point at, which is a crash with
-    /// this project's name on it.
+    /// Two remote calls. First <see cref="OverlayProtocol.StopExport"/> makes the shim release its
+    /// hooks, release its resources and stop its threads. Then, when <paramref name="unload"/> is set,
+    /// <c>FreeLibrary</c> on a remote thread unmaps the module. <b>The C++ shim can genuinely unload</b>
+    /// - it has no embedded runtime, unlike the NativeAOT shim it replaced, which could only ever
+    /// detach - and because Stop has already removed the hooks, no game vtable still points into the
+    /// module when it unmaps. This is what lets a rebuilt shim be reinjected without restarting the
+    /// game, which is reason 1 for the move to C++.
     /// </para>
     /// <para>
     /// A remote call rather than a message over the pipe, deliberately. This has to work when the
-    /// pipe is the thing that broke, and it is the same two-step machinery the injection already
-    /// uses - so there is no second mechanism to keep correct. When the pipe exists it should be
-    /// tried first, because an orderly shutdown lets the shim pick its moment; this is the fallback
-    /// that always works.
+    /// pipe is the thing that broke, and it is the same machinery the injection already uses - so
+    /// there is no second mechanism to keep correct. When the pipe exists it should be tried first,
+    /// because an orderly shutdown lets the shim pick its moment; this is the fallback that always
+    /// works.
     /// </para>
     /// </remarks>
+    /// <param name="unload">
+    /// Unmap the module with <c>FreeLibrary</c> after it detaches. The default, and what enables
+    /// reinject; pass <see langword="false"/> only to leave a detached shim resident on purpose.
+    /// </param>
     /// <returns><see langword="false"/> if the shim is not loaded in that process at all.</returns>
-    public bool Detach(int processId, string shimPath)
+    public bool Detach(int processId, string shimPath, bool unload = true)
     {
         shimPath = Path.GetFullPath(shimPath);
 
@@ -173,14 +179,68 @@ public sealed class OverlayInjector
             // RunRemote always allocates one. A single zero byte is the cheapest way to keep one code
             // path for both calls rather than a second, subtly different one.
             RunRemote(process, moduleBase + (nint)stopRva, [0], OverlayProtocol.StopExport, out uint exitCode);
-            log($"{OverlayProtocol.StopExport} returned {exitCode}. The module stays resident; " +
-                "NativeAOT cannot unload itself.");
+
+            if (!unload)
+            {
+                log($"{OverlayProtocol.StopExport} returned {exitCode}. The shim is detached; the module was left resident.");
+                return true;
+            }
+
+            bool unmapped = FreeRemoteLibrary(process, processId, moduleBase, Path.GetFileName(shimPath));
+            log($"{OverlayProtocol.StopExport} returned {exitCode}; module " +
+                (unmapped ? "unloaded. A rebuilt shim can now be reinjected." : "detached but still resident - the unload did not take (see above)."));
             return true;
         }
         finally
         {
             NativeMethods.CloseHandle(process);
         }
+    }
+
+    /// <summary>
+    /// Unmap the shim from the target with a remote <c>FreeLibrary</c>, and confirm it is gone.
+    /// </summary>
+    /// <remarks>
+    /// Not through <see cref="RunRemote"/>: <c>FreeLibrary</c> takes the <c>HMODULE</c> by value, which
+    /// is the module base, so it is passed as the thread's own parameter rather than as a pointer to a
+    /// written buffer. Safe only after the stop export has removed the hooks - which is why <see
+    /// cref="Detach"/> calls Stop first and this second.
+    /// </remarks>
+    /// <returns><see langword="true"/> if the module is no longer among the target's modules.</returns>
+    private bool FreeRemoteLibrary(nint process, int processId, nint moduleBase, string moduleName)
+    {
+        nint freeLibrary = NativeMethods.GetProcAddress(
+            NativeMethods.GetModuleHandleW("kernel32.dll"), "FreeLibrary");
+        if (freeLibrary == 0)
+        {
+            log("Could not resolve FreeLibrary; the shim is detached but the module was left resident.");
+            return false;
+        }
+
+        nint thread = NativeMethods.CreateRemoteThread(process, 0, 0, freeLibrary, moduleBase, 0, 0);
+        if (thread == 0)
+        {
+            log($"CreateRemoteThread(FreeLibrary) failed ({Marshal.GetLastWin32Error()}); module left resident.");
+            return false;
+        }
+
+        try
+        {
+            if (NativeMethods.WaitForSingleObject(thread, (uint)Timeout.TotalMilliseconds) != NativeMethods.WAIT_OBJECT_0)
+            {
+                log("FreeLibrary did not return in time; the module may still be resident.");
+                return false;
+            }
+        }
+        finally
+        {
+            NativeMethods.CloseHandle(thread);
+        }
+
+        // Confirm rather than trust: the module should no longer be among the process's modules. A
+        // still-present module means another reference is held (a second injection that never
+        // unloaded), which is worth knowing rather than assuming away.
+        return FindRemoteModule(processId, moduleName) == 0;
     }
 
     /// <summary>

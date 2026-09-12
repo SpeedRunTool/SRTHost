@@ -1,0 +1,130 @@
+{
+    "version": 10,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 31,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base-windows",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/bin/${presetName}",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "generator": "Visual Studio 18 2026",
+            "toolset": "v145,host=x64",
+            "debug": {
+                "find": false
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                    "clangTidyChecks": "-*,bugprone-*,clang-analyzer-*,concurrency-*,cppcoreguidelines-*,misc-*,modernize-*,performance-*,portability-*,readability-*,-cppcoreguidelines-avoid-non-const-global-variables,-modernize-use-trailing-return-type",
+                    "enableMicrosoftCodeAnalysis": true,
+                    "enableClangTidyCodeAnalysis": true
+                }
+            }
+        },
+        {
+            "name": "base-windows-x64",
+            "hidden": true,
+            "inherits": [ "base-windows" ],
+            "architecture": "x64,version=10.0",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "VCPKG_LIBRARY_LINKAGE": "static",
+                "VCPKG_CRT_LINKAGE": "static"
+            }
+        },
+        {
+            "name": "base-windows-x86",
+            "hidden": true,
+            "inherits": [ "base-windows" ],
+            "architecture": "Win32,version=10.0",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x86-windows-static",
+                "VCPKG_LIBRARY_LINKAGE": "static",
+                "VCPKG_CRT_LINKAGE": "static"
+            }
+        },
+        {
+            "name": "Debug/Win/x64/MSVC",
+            "displayName": "Debug (Windows x64 - MSVC)",
+            "inherits": [ "base-windows-x64" ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDebug"
+            }
+        },
+        {
+            "name": "Release/Win/x64/MSVC",
+            "displayName": "Release (Windows x64 - MSVC)",
+            "inherits": [ "base-windows-x64" ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded"
+            }
+        },
+        {
+            "name": "Debug/Win/x86/MSVC",
+            "displayName": "Debug (Windows x86 - MSVC)",
+            "inherits": [ "base-windows-x86" ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDebug"
+            }
+        },
+        {
+            "name": "Release/Win/x86/MSVC",
+            "displayName": "Release (Windows x86 - MSVC)",
+            "inherits": [ "base-windows-x86" ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Debug/Win/x64/MSVC",
+            "displayName": "Debug (Windows x64 - MSVC)",
+            "configurePreset": "Debug/Win/x64/MSVC",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Release/Win/x64/MSVC",
+            "displayName": "Release (Windows x64 - MSVC)",
+            "configurePreset": "Release/Win/x64/MSVC",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "Debug/Win/x86/MSVC",
+            "displayName": "Debug (Windows x86 - MSVC)",
+            "configurePreset": "Debug/Win/x86/MSVC",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Release/Win/x86/MSVC",
+            "displayName": "Release (Windows x86 - MSVC)",
+            "configurePreset": "Release/Win/x86/MSVC",
+            "configuration": "RelWithDebInfo"
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name": "Release/Win/x64/MSVC",
+            "displayName": "Release (Windows x64 - MSVC)",
+            "steps": [
+                { "type": "configure", "name": "Release/Win/x64/MSVC" },
+                { "type": "build", "name": "Release/Win/x64/MSVC" }
+            ]
+        },
+        {
+            "name": "Release/Win/x86/MSVC",
+            "displayName": "Release (Windows x86 - MSVC)",
+            "steps": [
+                { "type": "configure", "name": "Release/Win/x86/MSVC" },
+                { "type": "build", "name": "Release/Win/x86/MSVC" }
+            ]
+        }
+    ]
+}

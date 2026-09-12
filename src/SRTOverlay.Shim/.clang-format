@@ -1,0 +1,15 @@
+# Ref: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+# Lifted verbatim from SpeedrunTooling/SRTPluginProviderRE9 so the two C++ trees read the same.
+BasedOnStyle: LLVM
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+LineEnding: LF
+BreakBeforeBraces: Allman
+BreakBeforeConceptDeclarations: Always
+AllowShortIfStatementsOnASingleLine: false
+IndentCaseLabels: true
+ColumnLimit: 0
+AccessModifierOffset: -4
+NamespaceIndentation: All
+FixNamespaceComments: false

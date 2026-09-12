@@ -1,0 +1,7 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "srtoverlay-shim",
+    "version-string": "5.0.0",
+    "description": "The injected SRT overlay shim: hooks Present and composites one shared-texture quad. No ImGui - the plugin draws in its own process - so the closure is deliberately near-empty.",
+    "dependencies": []
+}

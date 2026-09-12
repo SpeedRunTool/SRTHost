@@ -1,0 +1,7 @@
+; The shim's entire exported surface. Stable names across releases, because reputation attaches to a
+; thing that persists (section 11). The bodies live in Exports.cpp; this pins the names so the linker
+; exports exactly these three and nothing else.
+EXPORTS
+    SrtOverlayStart
+    SrtOverlayStop
+    SrtOverlayProbe

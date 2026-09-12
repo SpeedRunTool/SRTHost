@@ -419,7 +419,10 @@ public static unsafe class OverlaySelfCheck
             // and the format's colour-adjust path end to end.
             using CancellationTokenSource producerStop = new();
             SharedSurfaceProducer producer = new(session, _ => { });
-            Thread producerThread = new(() => producer.Run(producerStop.Token)) { IsBackground = true, Name = $"self-check producer {index}" };
+            // The C# compositor reads the surface over shared memory, so the self-check drives the
+            // producer with the shared-memory transport (the pipe transport is exercised in a live game).
+            using SharedMemoryTransport producerTransport = new(session, _ => { });
+            Thread producerThread = new(() => producer.Run(producerTransport, producerStop.Token)) { IsBackground = true, Name = $"self-check producer {index}" };
             producerThread.Start();
 
             try

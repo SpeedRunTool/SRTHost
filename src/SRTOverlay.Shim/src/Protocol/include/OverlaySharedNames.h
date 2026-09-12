@@ -1,9 +1,13 @@
-// The names the shared-surface handshake uses, built the same way on both sides so a shim and a
-// producer given the same session id agree without a second contract. Mirrors the C# spec's
+// The names the shared textures and fence are published under, built the same way on both sides so a
+// shim and a consumer given the same session id agree without a second contract. Mirrors the C#
 // OverlaySharedSurface.*Name(session). C++-only (std::wstring), so it sits beside the C protocol
 // header rather than in it.
 //
-// All names are prefixed Local\ so they live in the caller's session namespace: the producer and the
+// Since spike step 5 the surface request and publish cross over the pipe (SrtOverlaySurfaceRequest /
+// SrtOverlaySurfacePublish in OverlayProtocol.h); only the textures and the fence still cross by
+// name, because CreateSharedHandle taking a name needs no PROCESS_DUP_HANDLE on the game.
+//
+// All names are prefixed Local\ so they live in the caller's session namespace: the consumer and the
 // game run as the same user, and a Global\ name would need a privilege neither has reason to hold.
 
 #ifndef SRTOVERLAY_SHARED_NAMES_H
@@ -15,16 +19,6 @@
 
 namespace srtoverlay::protocol
 {
-    inline std::wstring RequestName(const std::wstring& session)
-    {
-        return L"Local\\SRTOverlayRequest-" + session;
-    }
-
-    inline std::wstring PublishName(const std::wstring& session)
-    {
-        return L"Local\\SRTOverlayPublish-" + session;
-    }
-
     inline std::wstring TextureName(const std::wstring& session, int index)
     {
         return L"Local\\SRTOverlayTex-" + session + L"-" + std::to_wstring(index);

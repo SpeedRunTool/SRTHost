@@ -65,8 +65,9 @@ internal static class Program
                 "[--dump-rwx] [--any-exec] [--read-region <hex>] [--probe-first] [--stop] " +
                 "[--brightness <n>] [--pq]");
             Console.Error.WriteLine(
-                "   or: SRTOverlay.Spike64 --produce-surface --session <id>   (step 3: create the " +
-                "shared surface the injected shim composites)");
+                "   or: SRTOverlay.Spike64 --produce-surface --session <id> [--pipe <name>]   (create " +
+                "the shared surface the injected shim composites; --pipe drives the step-5 C++ shim over " +
+                "the pipe, otherwise the step-3 shared-memory blocks)");
             Console.Error.WriteLine(
                 "   or: SRTOverlay.Spike64 --selfcheck   (exercise the D3D12 interop in-process, no game)");
             return 2;
@@ -202,9 +203,20 @@ internal static class Program
             cancellation.Cancel();
         };
 
-        Console.WriteLine($"Producer for session '{session}'. Ctrl+C to stop.");
+        // --pipe selects the step-5 transport (the C++ shim negotiates over the pipe); without it the
+        // producer falls back to the step-3 shared-memory blocks, which the superseded C# shim still
+        // reads. Either way the textures and fence cross by the session name.
+        bool usePipe = options.TryGetValue("pipe", out string? pipeName) && !string.IsNullOrEmpty(pipeName);
+        using ISurfaceTransport transport = usePipe
+            ? new OverlayPipeTransport(pipeName!, Console.WriteLine)
+            : new SharedMemoryTransport(session, Console.WriteLine);
+
+        Console.WriteLine(usePipe
+            ? $"Producer for session '{session}' over pipe '{pipeName}'. Ctrl+C to stop."
+            : $"Producer for session '{session}' over shared memory. Ctrl+C to stop.");
+
         SharedSurfaceProducer producer = new(session, Console.WriteLine);
-        bool ok = producer.Run(cancellation.Token);
+        bool ok = producer.Run(transport, cancellation.Token);
 
         Console.WriteLine(ok
             ? "Producer stopped. The gate is whether the wash appeared in the game - go and look."

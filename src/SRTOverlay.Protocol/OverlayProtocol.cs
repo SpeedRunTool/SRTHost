@@ -17,8 +17,13 @@ public static class OverlayProtocol
     /// The shim refuses a blob whose <see cref="OverlayStartupOptions.ProtocolVersion"/> it does not
     /// recognise. An overlay plugin and the shim it injects ship in the same install, so a mismatch
     /// means something was substituted and refusing is the right answer.
+    /// <para>
+    /// v2 (spike step 5) added the runner-to-shim pipe message set (<see cref="OverlayMessageKind"/>,
+    /// <see cref="SurfaceRequest"/>, <see cref="SurfacePublish"/>) and retired the step-3 shared-memory
+    /// control blocks. The startup blob layout is unchanged from v1.
+    /// </para>
     /// </remarks>
-    public const int Version = 1;
+    public const int Version = 2;
 
     /// <summary>
     /// The shim's start export, called on a remote thread once <c>LoadLibraryW</c> has returned.

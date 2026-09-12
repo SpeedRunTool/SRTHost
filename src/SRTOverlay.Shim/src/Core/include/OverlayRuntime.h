@@ -13,6 +13,8 @@
 
 namespace srtoverlay::core
 {
+    class OverlayPipeClient;
+
     namespace OverlayRuntime
     {
         // Start the overlay. `backend` is the graphics backend to drive (owned by the caller; it must
@@ -29,6 +31,11 @@ namespace srtoverlay::core
         // The options this shim started with, for a backend to read (session id, HDR overrides). Null
         // before Start or after Stop.
         const SrtOverlayStartupOptions* Options();
+
+        // The pipe back to the overlay consumer, for a backend to send its surface request and read
+        // publishes. Null before Start, after Stop, or when the startup blob named no pipe (the
+        // notepad / injection-spike case, where the shim hooks but composites nothing).
+        OverlayPipeClient* Pipe();
     }
 }
 

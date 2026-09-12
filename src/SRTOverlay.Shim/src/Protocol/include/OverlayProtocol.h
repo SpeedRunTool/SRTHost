@@ -24,7 +24,11 @@ extern "C"
 // ---- Versioning ----
 
 // Version of the startup blob and of the runner-to-shim message set. Bump on any layout change.
-#define SRT_OVERLAY_PROTOCOL_VERSION 1
+//
+// v2 (2026-09-12, spike step 5) added the runner-to-shim pipe message set below and retired the
+// step-3 shared-memory control blocks. The startup blob layout is unchanged from v1; the bump marks
+// that this protocol carries the pipe messages, which the version comment has always said it covers.
+#define SRT_OVERLAY_PROTOCOL_VERSION 2
 
 // ---- Exports (stable across releases: reputation attaches to names that persist) ----
 
@@ -131,59 +135,76 @@ static_assert(sizeof(SrtOverlayStartupOptions) == 1696,
               "SrtOverlayStartupOptions must stay 1696 bytes to match OverlayStartupOptions.BlobSize (C#).");
 #endif
 
-// ---- Shared-surface handshake (spike step 3 scaffolding) ----
+// ---- Runner-to-shim pipe messages (spike step 5) ----
 //
-// Two single-writer control blocks in shared memory plus named shared handles for the textures and
-// the fence. This stands in for the two runner-to-shim pipe messages step 5 will use; it is not on
-// the wire SRT_OVERLAY_PROTOCOL_VERSION guarantees, but it is versioned separately below so the shim
-// and the producer cannot disagree about the block layout.
+// The shim and the overlay plugin's runner talk over a dedicated named pipe - the plugin creates the
+// server, the shim connects as the client, and the pipe name is the startup blob's `pipeName`. The
+// framing is SRTHost.Ipc's 16-byte FrameHeader reused byte for byte (see SRTHost.Ipc/FrameHeader.cs
+// and the C++ mirror in SRTOverlay.Core's IpcFrame.h): each message is one frame with
+// channel = Control, codec = Blittable, and the message kind below carried in the header's
+// messageKind field. This is a separate pipe and a separate protocol from the router-to-runner one -
+// it only borrows the framing, so these kinds are independent of SRTHost.Ipc's ControlMessageKind.
 //
-// The shim owns SrtOverlayRequestBlock and writes it once; the producer owns SrtOverlayPublishBlock
-// and updates it every completed frame. Neither writes the other's block, which is the only lock-free
-// arrangement that is obviously correct.
+// These two messages replace the step-3 shared-memory control blocks: the shim sends a
+// SrtOverlaySurfaceRequest, and the consumer replies with a SrtOverlaySurfacePublish every completed
+// frame. The textures and the fence themselves still cross by name (SRT_OVERLAY_SURFACE_COUNT shared
+// textures plus one shared fence, opened with OpenSharedHandleByName - see OverlaySharedNames.h),
+// because CreateSharedHandle taking a name needs no PROCESS_DUP_HANDLE on the game.
 
-#define SRT_OVERLAY_SURFACE_MAGIC 0x53525453u // "SRTS"
-#define SRT_OVERLAY_SURFACE_VERSION 1u
-#define SRT_OVERLAY_SURFACE_COUNT 2 // two textures the producer alternates between
+#define SRT_OVERLAY_SURFACE_COUNT 2 // two textures the consumer alternates between
 
-// How far the shim has got in setting a surface up. Written by the shim, read by the producer.
-typedef enum SrtOverlayRequestState
+// Overlay pipe message kinds, carried in the reused FrameHeader.messageKind. A separate vocabulary
+// from the router's ControlMessageKind on purpose: this is a different pipe and a different protocol.
+typedef enum SrtOverlayMessageKind
 {
-    SrtOverlayRequestState_None = 0,      // no request published yet (the zero value of a fresh mapping)
-    SrtOverlayRequestState_Requested = 1, // back buffer and adapter known; waiting for a producer
-} SrtOverlayRequestState;
+    SrtOverlayMessage_None = 0,
+
+    // shim -> consumer: the surface the shim wants, and the adapter it must be created on. Sent once
+    // after the compositor initialises, and again after each ResizeBuffers renegotiation.
+    SrtOverlayMessage_SurfaceRequest = 1,
+
+    // consumer -> shim: which shared texture holds the newest complete frame, and the fence value that
+    // guards it. Sent every frame the consumer completes.
+    SrtOverlayMessage_SurfacePublish = 2,
+
+    // Reserved for spike step 6 (input and lifetime); not yet on the wire:
+    //   SrtOverlayMessage_InputBatch = 16,   // shim -> consumer: batched mouse/keyboard while interactive
+    //   SrtOverlayMessage_OverlayState = 17, // shim -> consumer: visible/interactive state changes
+} SrtOverlayMessageKind;
 
 #pragma pack(push, 1)
 
-// What the shim publishes for the producer: the surface it wants, and the adapter it must be on.
-// The adapter LUID is split into two 32-bit fields so the layout is unambiguous across the boundary;
-// adapter matching is mandatory because a shared handle will not open across adapters.
-typedef struct SrtOverlayRequestBlock
+// shim -> consumer. The surface the shim wants, and the adapter it must be on. The adapter LUID is
+// split into two 32-bit fields so the layout is unambiguous across the boundary; adapter matching is
+// mandatory because a shared handle will not open across adapters.
+typedef struct SrtOverlaySurfaceRequest
 {
-    uint32_t magic;          // SRT_OVERLAY_SURFACE_MAGIC once valid
-    uint32_t version;        // SRT_OVERLAY_SURFACE_VERSION
-    uint32_t state;          // an SrtOverlayRequestState
     uint32_t width;          // back buffer width, pixels
     uint32_t height;         // back buffer height, pixels
     int32_t format;          // the DXGI_FORMAT the surface should use
     uint32_t adapterLuidLow; // low 32 bits of the game device's adapter LUID
     int32_t adapterLuidHigh; // high 32 bits
-} SrtOverlayRequestBlock;
+    uint32_t surfaceCount;   // textures the consumer must create; equals SRT_OVERLAY_SURFACE_COUNT
+} SrtOverlaySurfaceRequest;
 
-// What the producer publishes back: which texture holds the newest frame, and the fence value its
-// queue will signal when that texture is done. The shim issues a queue-side Wait on that value before
-// its own list samples the texture, so the GPU orders the two processes without the CPU blocking.
-typedef struct SrtOverlayPublishBlock
+// consumer -> shim. Which texture holds the newest frame, and the fence value its queue will signal
+// when that texture is done. The shim issues a queue-side Wait on that value before its own list
+// samples the texture, so the GPU orders the two processes' work without the render thread blocking.
+typedef struct SrtOverlaySurfacePublish
 {
-    uint32_t magic;       // SRT_OVERLAY_SURFACE_MAGIC once valid
-    uint32_t version;     // SRT_OVERLAY_SURFACE_VERSION
     uint32_t latestIndex; // index of the newest complete texture
-    uint32_t reserved;    // keeps fenceValue eight-byte aligned
-    uint64_t fenceValue;  // signalled when latestIndex is finished rendering
-    uint32_t alive;       // non-zero while the producer is still running
-} SrtOverlayPublishBlock;
+    uint32_t alive;       // non-zero while the consumer is still producing
+    uint64_t fenceValue;  // signalled on the shared fence when latestIndex is finished rendering
+} SrtOverlaySurfacePublish;
 
 #pragma pack(pop)
+
+#ifdef __cplusplus
+static_assert(sizeof(SrtOverlaySurfaceRequest) == 24,
+              "SrtOverlaySurfaceRequest must stay 24 bytes to match SurfaceRequest (C#).");
+static_assert(sizeof(SrtOverlaySurfacePublish) == 16,
+              "SrtOverlaySurfacePublish must stay 16 bytes to match SurfacePublish (C#).");
+#endif
 
 #ifdef __cplusplus
 } // extern "C"

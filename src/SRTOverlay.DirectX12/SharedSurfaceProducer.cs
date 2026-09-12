@@ -1,28 +1,29 @@
-using System.IO.MemoryMappedFiles;
 using System.Runtime.Versioning;
 using SRTOverlay.Protocol;
 
 namespace SRTOverlay.DirectX12;
 
 /// <summary>
-/// The throwaway "another process" for overlay spike step 3: it reads the shim's surface request,
-/// creates the shared textures and fence on the game's adapter, and animates a wash into them so the
-/// compositing can be judged by eye.
+/// The throwaway "another process" for the overlay spike: it takes the shim's surface request off a
+/// transport, creates the shared textures and fence on the game's adapter, and animates a wash into
+/// them so the compositing can be judged by eye.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This is not a plugin and not part of the shipped shim - it stands in for the overlay plugin's
-/// runner, which in the real design (section 11, spike step 5) renders ImGui into the same shared
-/// textures and drives the same fence. What it proves is exactly step 3's gate: that a texture a
-/// <i>second process</i> wrote, on the adapter the shim named, appears in the game's frame. It draws
-/// nothing recognisable as a HUD on purpose - a cycling colour wash over the whole surface is the most
-/// unmistakable possible "this is live and it is ours", and it needs no shader, font atlas or layout.
+/// runner, which in the real design (section 11) renders ImGui into the same shared textures and drives
+/// the same fence. What it proves is that a texture a <i>second process</i> wrote, on the adapter the
+/// shim named, appears in the game's frame. It draws nothing recognisable as a HUD on purpose - a
+/// cycling colour wash over the whole surface is the most unmistakable possible "this is live and it is
+/// ours", and it needs no shader, font atlas or layout.
 /// </para>
 /// <para>
-/// It lives in <c>SRTOverlay.DirectX12</c> so it can share the raw interop and the shared-surface
-/// layout with the compositor, but nothing in the shim's call graph reaches it, so the NativeAOT
-/// publish trims it out of the injected binary entirely. It runs under ordinary CoreCLR in the spike
-/// driver, where a GPU device and a 30 Hz render loop are unremarkable.
+/// The negotiation - how it learns the request and how it publishes each frame - is an
+/// <see cref="ISurfaceTransport"/>, so the same graphics loop drives both the step-3 shared-memory
+/// blocks (for the superseded C# shim) and the step-5 runner-to-shim pipe (for the C++ shim). It lives
+/// in <c>SRTOverlay.DirectX12</c> so it can share the raw interop with the compositor, but nothing in
+/// the shim's call graph reaches it, so the NativeAOT publish trims it out of the injected binary
+/// entirely.
 /// </para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
@@ -41,15 +42,16 @@ public sealed unsafe class SharedSurfaceProducer
     }
 
     /// <summary>
-    /// Wait for the shim's request, create the surface, and animate it until cancelled.
+    /// Wait for the shim's request over <paramref name="transport"/>, create the surface, and animate
+    /// it until cancelled, publishing each completed frame back over the same transport.
     /// </summary>
     /// <returns><see langword="false"/> if the surface could never be created.</returns>
-    public bool Run(CancellationToken cancellation)
+    public bool Run(ISurfaceTransport transport, CancellationToken cancellation)
     {
-        if (!TryReadRequest(cancellation, out OverlaySharedSurface.RequestBlock request))
+        if (!transport.TryGetRequest(cancellation, out SurfaceRequest request))
             return false;
 
-        long luid = ((long)request.AdapterLuidHigh << 32) | request.AdapterLuidLow;
+        long luid = request.AdapterLuid;
         log($"Producer: request is {request.Width}x{request.Height}, format {request.Format}, adapter LUID 0x{luid:X}.");
 
         nint factory = 0, adapter = 0, device = 0, queue = 0, allocator = 0, list = 0, fence = 0, sharedFence = 0, rtvHeap = 0;
@@ -60,9 +62,7 @@ public sealed unsafe class SharedSurfaceProducer
         // registers stops resolving through OpenSharedHandleByName the moment the last created handle
         // to it closes, so closing them early would make the shim unable to open the surface.
         List<nint> sharedHandles = [];
-        MemoryMappedFile? publishMap = null;
-        MemoryMappedViewAccessor? publishView = null;
-        byte* publishPtr = null;
+        bool alive = false;
 
         try
         {
@@ -132,29 +132,18 @@ public sealed unsafe class SharedSurfaceProducer
             if (eventHandle == 0)
                 return Fail("CreateEventW");
 
-            // Publish block: producer-owned. CreateOrOpen so a stale mapping from a previous run is reused.
-            publishMap = MemoryMappedFile.CreateOrOpen(OverlaySharedSurface.PublishName(session), sizeof(OverlaySharedSurface.PublishBlock));
-            publishView = publishMap.CreateViewAccessor();
-            publishView.SafeMemoryMappedViewHandle.AcquirePointer(ref publishPtr);
-            OverlaySharedSurface.PublishBlock* publish = (OverlaySharedSurface.PublishBlock*)publishPtr;
-            *publish = default;
-            publish->Version = OverlaySharedSurface.SurfaceVersion;
-            publish->Alive = 1;
-            publish->Magic = OverlaySharedSurface.Magic;
+            // The surface now exists; announce it so the shim starts compositing, then animate.
+            transport.SetAlive(true);
+            alive = true;
 
             log("Producer: surface created and published; animating. Press Ctrl+C or cancel to stop.");
-            AnimateUntilCancelled(device, queue, allocator, list, fence, sharedFence, eventHandle, rtvHeap, rtvIncrement, textures, publish, cancellation);
+            AnimateUntilCancelled(device, queue, allocator, list, fence, sharedFence, eventHandle, rtvHeap, rtvIncrement, textures, transport, cancellation);
             return true;
         }
         finally
         {
-            if (publishPtr is not null)
-            {
-                ((OverlaySharedSurface.PublishBlock*)publishPtr)->Alive = 0;
-                publishView!.SafeMemoryMappedViewHandle.ReleasePointer();
-            }
-            publishView?.Dispose();
-            publishMap?.Dispose();
+            if (alive)
+                transport.SetAlive(false);
 
             if (eventHandle != 0)
                 Win32.CloseHandle(eventHandle);
@@ -176,49 +165,9 @@ public sealed unsafe class SharedSurfaceProducer
         }
     }
 
-    private bool TryReadRequest(CancellationToken cancellation, out OverlaySharedSurface.RequestBlock request)
-    {
-        request = default;
-        log("Producer: waiting for the shim to publish a surface request...");
-
-        while (!cancellation.IsCancellationRequested)
-        {
-            try
-            {
-                using MemoryMappedFile map = MemoryMappedFile.OpenExisting(OverlaySharedSurface.RequestName(session));
-                using MemoryMappedViewAccessor view = map.CreateViewAccessor();
-                byte* pointer = null;
-                view.SafeMemoryMappedViewHandle.AcquirePointer(ref pointer);
-                try
-                {
-                    OverlaySharedSurface.RequestBlock* block = (OverlaySharedSurface.RequestBlock*)pointer;
-                    if (block->Magic == OverlaySharedSurface.Magic &&
-                        block->State == (uint)OverlaySharedSurface.RequestState.Requested)
-                    {
-                        request = *block;
-                        return true;
-                    }
-                }
-                finally
-                {
-                    view.SafeMemoryMappedViewHandle.ReleasePointer();
-                }
-            }
-            catch (FileNotFoundException)
-            {
-                // The shim has not created the request block yet.
-            }
-
-            Thread.Sleep(100);
-        }
-
-        log("Producer: cancelled before a request appeared.");
-        return false;
-    }
-
     private void AnimateUntilCancelled(
         nint device, nint queue, nint allocator, nint list, nint fence, nint sharedFence, nint eventHandle,
-        nint rtvHeap, uint rtvIncrement, nint[] textures, OverlaySharedSurface.PublishBlock* publish,
+        nint rtvHeap, uint rtvIncrement, nint[] textures, ISurfaceTransport transport,
         CancellationToken cancellation)
     {
         nuint rtvBase = Direct3D12.GetCpuDescriptorHandleForHeapStart(rtvHeap);
@@ -270,11 +219,9 @@ public sealed unsafe class SharedSurfaceProducer
             sharedValue++;
             Direct3D12.QueueSignal(queue, sharedFence, sharedValue);
 
-            // Publish which index is newest and when it will be done. Write the payload before the
-            // index, with a barrier, so the shim never reads a new index against a stale fence value.
-            publish->FenceValue = sharedValue;
-            Thread.MemoryBarrier();
-            publish->LatestIndex = (uint)index;
+            // Publish which index is newest and when it will be done, over whichever transport is in
+            // use. The transport is responsible for ordering the fence value ahead of the index.
+            transport.Publish((uint)index, sharedValue);
 
             // Throttle to the producer's own tick rate, and reclaim the allocator for the next clear.
             fenceValue++;

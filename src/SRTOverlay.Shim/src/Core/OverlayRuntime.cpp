@@ -5,10 +5,12 @@
 #include <atomic>
 #include <cstdio>
 #include <cwchar>
+#include <memory>
 #include <string>
-#include <thread>
 
+#include "CrashHandler.h"
 #include "OverlayLog.h"
+#include "OverlayPipeClient.h"
 #include "ShimModule.h"
 #include "Text.h"
 
@@ -26,9 +28,17 @@ namespace srtoverlay::core
 
         HANDLE g_ownerHandle = nullptr;
         HANDLE g_stopEvent = nullptr; // signalled by Stop to wake the watchdog and heartbeat
-        std::thread g_watchdog;
-        std::thread g_heartbeat;
+        // Every shim thread is a raw CreateThread (never std::thread): the shim is injected into a
+        // foreign process, and FreeLibraryAndExitThread from a CRT-wrapped std::thread does not drop the
+        // module refcount (see WatchdogProc). One thread model, no CRT thread wrapper, no surprises.
+        HANDLE g_watchdogThread = nullptr;
+        HANDLE g_heartbeatThread = nullptr;
         DWORD g_watchdogThreadId = 0;
+
+        // The pipe back to the overlay consumer. Created only when the startup blob named a pipe; the
+        // backend reads it through OverlayRuntime::Pipe(). A unique_ptr because its worker thread must be
+        // started and joined across Start/Stop rather than living for the module's whole lifetime.
+        std::unique_ptr<OverlayPipeClient> g_pipe;
 
         std::wstring OwnProcessFileName()
         {
@@ -62,6 +72,35 @@ namespace srtoverlay::core
             OverlayLog::Write(std::string("  pipe         ") + (options.pipeName[0] ? Narrow(options.pipeName) : "<none>"));
         }
 
+        // The owner-watchdog thread body. Deliberately a RAW thread (CreateThread), NOT a std::thread,
+        // and it is this thread that calls FreeLibraryAndExitThread to self-unload.
+        //
+        // This is load-bearing: FreeLibraryAndExitThread called from a CRT-wrapped std::thread
+        // (_beginthreadex) does NOT drop the module's reference count - the shim stays mapped after the
+        // "unload", so a rebuilt shim cannot be reinjected over it (LoadLibraryW returns the stale
+        // resident module). From a raw OS thread the same call unmaps cleanly. This matches the RE9
+        // reference, whose FreeLibraryAndExitThread runs on its raw injected thread. Measured on
+        // 2026-09-12: std::thread left the module resident; a raw thread takes it to zero.
+        DWORD WINAPI WatchdogProc(LPVOID)
+        {
+            g_watchdogThreadId = GetCurrentThreadId();
+            HANDLE waits[2] = {g_stopEvent, g_ownerHandle};
+            const DWORD result = WaitForMultipleObjects(2, waits, FALSE, INFINITE);
+
+            if (result == WAIT_OBJECT_0)
+                return 0; // Stop() signalled us; a normal detach, nothing to do.
+
+            // The owner exited. Tear down and unload ourselves - there is nobody left to ask.
+            OverlayLog::Write("Owner process exited; detaching and unloading.");
+            OverlayRuntime::Stop();
+
+            HMODULE self = GetShimModule();
+            if (self != nullptr)
+                FreeLibraryAndExitThread(self, 0); // never returns; unmaps the shim cleanly
+
+            return 0;
+        }
+
         // Detach automatically if the process that injected this shim goes away. Once Present is hooked
         // an orphaned shim is a detour in someone's game with nothing alive that could remove it -
         // strictly worse than never having injected - so this is a safety net, not a nicety. On the
@@ -83,25 +122,47 @@ namespace srtoverlay::core
                 return;
             }
 
-            g_watchdog = std::thread([]
+            g_watchdogThread = CreateThread(nullptr, 0, &WatchdogProc, nullptr, 0, nullptr);
+            if (g_watchdogThread == nullptr)
             {
-                g_watchdogThreadId = GetCurrentThreadId();
-                HANDLE waits[2] = {g_stopEvent, g_ownerHandle};
-                const DWORD result = WaitForMultipleObjects(2, waits, FALSE, INFINITE);
-
-                if (result == WAIT_OBJECT_0)
-                    return; // Stop() signalled us; a normal detach, nothing to do.
-
-                // The owner exited. Tear down and unload ourselves - there is nobody left to ask.
-                OverlayLog::Write("Owner process exited; detaching and unloading.");
-                OverlayRuntime::Stop();
-
-                HMODULE self = GetShimModule();
-                if (self != nullptr)
-                    FreeLibraryAndExitThread(self, 0); // never returns; unmaps the shim cleanly
-            });
+                OverlayLog::Write("Could not create the owner-watchdog thread; the overlay will only detach when told to.");
+                CloseHandle(g_ownerHandle);
+                g_ownerHandle = nullptr;
+                return;
+            }
 
             OverlayLog::Write("  owner        pid " + std::to_string(ownerProcessId) + ", watched");
+        }
+
+        // Connect the pipe back to the overlay consumer, if the startup blob named one. Started before
+        // the backend installs its hooks, so the compositor's first Present-driven initialise already
+        // has a pipe to send its surface request down. An empty pipe name is the notepad / injection-
+        // spike case: hooks go in, but there is no consumer and nothing is composited.
+        void StartPipe(const SrtOverlayStartupOptions& options)
+        {
+            if (options.pipeName[0] == L'\0')
+            {
+                OverlayLog::Write("No pipe name in the startup options; the overlay will hook but composite nothing.");
+                return;
+            }
+
+            g_pipe = std::make_unique<OverlayPipeClient>();
+            g_pipe->Start(options.pipeName);
+        }
+
+        // The heartbeat thread body (raw thread, like every shim thread). It is the only way to observe
+        // a hook that draws nothing: it formats and writes on a timer, far from the render path. Wakes
+        // and exits when Stop() signals g_stopEvent.
+        DWORD WINAPI HeartbeatProc(LPVOID)
+        {
+            IOverlayBackend* active = g_backend;
+            if (active == nullptr)
+                return 0;
+
+            while (WaitForSingleObject(g_stopEvent, 5000) == WAIT_TIMEOUT)
+                OverlayLog::Write("[" + std::string(active->Name()) + "] " + active->DescribeActivity());
+
+            return 0;
         }
 
         // Bring a backend up, and start the heartbeat that is the only way to observe a hook that draws
@@ -130,15 +191,7 @@ namespace srtoverlay::core
 
             g_backend = backend;
 
-            g_heartbeat = std::thread([]
-            {
-                IOverlayBackend* active = g_backend;
-                if (active == nullptr)
-                    return;
-
-                while (WaitForSingleObject(g_stopEvent, 5000) == WAIT_TIMEOUT)
-                    OverlayLog::Write("[" + std::string(active->Name()) + "] " + active->DescribeActivity());
-            });
+            g_heartbeatThread = CreateThread(nullptr, 0, &HeartbeatProc, nullptr, 0, nullptr);
         }
 
         SrtOverlayStartResult Refuse(SrtOverlayStartResult result)
@@ -190,8 +243,22 @@ namespace srtoverlay::core
                 return Refuse(SrtOverlayStartResult_Failed);
 
             WriteIdentity(opt);
-            WatchOwner(opt.ownerProcessId);
+
+            // Install the crash handler before any hook goes in, so a fault on the very first hooked
+            // Present still leaves a minidump. It writes beside the shim log and appends a note to it.
+            CrashHandler::Install(GetShimModule(), opt.logPath);
+
+            StartPipe(opt);
             StartBackend(backend);
+
+            // The owner watchdog starts LAST, after the hooks are installed. If it started earlier and
+            // the owner died mid-startup, its Stop() would run concurrently with StartBackend still
+            // installing hooks: the unhook would find nothing, then the hooks would be installed and
+            // never removed, and FreeLibraryAndExitThread would unmap the shim with the game's vtable
+            // still pointing into it - which then crashes a same-base re-injection (VTableHook::Install
+            // sees its own stale detour and refuses). Starting it here means an owner already gone is
+            // caught immediately, but only once the hooks are in and can be cleanly removed.
+            WatchOwner(opt.ownerProcessId);
 
             OverlayLog::Write(g_backend == nullptr
                                   ? "Overlay started with no graphics backend; nothing is hooked."
@@ -209,17 +276,23 @@ namespace srtoverlay::core
             if (g_stopEvent != nullptr)
                 SetEvent(g_stopEvent);
 
-            // Join the heartbeat (never runs Stop itself). Join the watchdog unless we ARE it - the
-            // owner-death path calls Stop from inside the watchdog thread, where a join would deadlock.
-            if (g_heartbeat.joinable())
-                g_heartbeat.join();
-
-            if (g_watchdog.joinable())
+            // Join the heartbeat (never runs Stop itself). Wait on the watchdog unless we ARE it - the
+            // owner-death path calls Stop from inside the watchdog thread, where waiting on ourselves
+            // would deadlock; there we just drop the handle and let the proc go on to
+            // FreeLibraryAndExitThread.
+            if (g_heartbeatThread != nullptr)
             {
-                if (GetCurrentThreadId() == g_watchdogThreadId)
-                    g_watchdog.detach();
-                else
-                    g_watchdog.join();
+                WaitForSingleObject(g_heartbeatThread, INFINITE);
+                CloseHandle(g_heartbeatThread);
+                g_heartbeatThread = nullptr;
+            }
+
+            if (g_watchdogThread != nullptr)
+            {
+                if (GetCurrentThreadId() != g_watchdogThreadId)
+                    WaitForSingleObject(g_watchdogThread, INFINITE);
+                CloseHandle(g_watchdogThread);
+                g_watchdogThread = nullptr;
             }
 
             // Hooks come out before anything else, because everything else exists to serve them and the
@@ -237,6 +310,18 @@ namespace srtoverlay::core
                     OverlayLog::Write("Backend shutdown threw.");
                 }
             }
+
+            // The backend's hooks are out, so no render-thread reader can touch the pipe any more; stop
+            // its worker and close the pipe.
+            if (g_pipe)
+            {
+                g_pipe->Stop();
+                g_pipe.reset();
+            }
+
+            // Restore the previous exception filter and stop the crash worker before the module can be
+            // FreeLibrary'd - otherwise the game would be left calling into our unmapped code.
+            CrashHandler::Uninstall();
 
             if (g_ownerHandle != nullptr)
             {
@@ -257,6 +342,11 @@ namespace srtoverlay::core
         const SrtOverlayStartupOptions* Options()
         {
             return g_haveOptions.load() ? &g_options : nullptr;
+        }
+
+        OverlayPipeClient* Pipe()
+        {
+            return g_pipe.get();
         }
     }
 }

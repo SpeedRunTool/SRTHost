@@ -67,22 +67,38 @@ The C# shim read a UTF-16 **JSON** blob. This shim reads a **packed `SrtOverlayS
 struct** (`OverlayProtocol.h`) — one authoritative layout both languages agree on, no serializer to
 drift, and no JSON dependency inside the injected binary. `SRT_OVERLAY_PROTOCOL_VERSION` guards it.
 
+## The runner-to-shim pipe (spike step 5)
+
+The surface handshake no longer uses shared memory. The overlay plugin's runner creates a named pipe
+server and injects the shim with the pipe's name (`pipeName` in the startup blob); the shim connects as
+the client (`OverlayPipeClient` in Core). Two messages cross it, both in `OverlayProtocol.h`: the shim
+sends a `SrtOverlaySurfaceRequest` (size, format, adapter LUID), and the consumer replies with a
+`SrtOverlaySurfacePublish` (newest texture index, fence value, alive) every completed frame. The
+textures and the fence themselves still cross by name — only the negotiation moved onto the pipe.
+
+The framing is SRTHost.Ipc's 16-byte frame header reused byte for byte (`IpcFrame.h` mirrors
+`SRTHost.Ipc/FrameHeader.cs`), each message a Control/Blittable frame with the overlay kind in the
+header's `messageKind`. All pipe I/O is on `OverlayPipeClient`'s own worker thread; the render thread
+only ever calls `TryGetLatestPublish`, a bounded-spin seqlock read that never blocks — the compositor
+must not stall the game's `Present` on a hung consumer.
+
 ## Not done here — the explicit next steps
 
-This unit is the compiling C++ tree. It is **not yet wired to the C# side**, and the C# projects are
-left untouched so the solution still builds and its tests still pass. In order:
-
-1. **Switch `SRTOverlay.Injection` to write the packed struct** instead of JSON, mirroring
-   `OverlayProtocol.h` field for field (a small change on the injector side). Until then the C#
-   injector and this shim disagree on the wire and cannot interoperate.
-2. **Point the spike/injector at this DLL** and re-run the RE2/RE8/RE9 `--produce-surface` gate on the
-   C++ shim (the C# self-check no longer applies; its bug class is gone).
-3. **Steps 5–7 in C++**: the real consumer over the `SRTHost.Ipc` pipe, input, and signing/refusal.
-4. **CI**: a parallel `build-cpp` job in `main`'s `AutomatedRelease.yml` on `windows-*-vs2026`
+1. ~~Switch `SRTOverlay.Injection` to write the packed struct~~ — **done** (protocol v1→v2 blob).
+2. ~~Point the spike/injector at this DLL and re-run the RE2/RE8/RE9 gate~~ — **done, human-confirmed.**
+3. **Step 5 shim side is built and unit-tested; the live gate is pending.** Both `SRTOverlay{64,32}.dll`
+   build clean, the C# contract round-trips in `SRTOverlay.Tests`, and the spike's `--produce-surface
+   --pipe <name>` drives the surface over the pipe. Still to run in a live game: inject the C++ shim
+   with a `--pipe` name, run the pipe producer on the same name, and confirm the wash composites and
+   detaches cleanly on RE9/RE8/RE2 — exactly the step-3 gate, now negotiated over the pipe.
+4. **Steps 6–7 in C++**: input capture/forwarding and lifetime, then signing/refusal against the real
+   Trusted Signing profile.
+5. **CI**: a parallel `build-cpp` job in `main`'s `AutomatedRelease.yml` on `windows-*-vs2026`
    (bootstrap vcpkg → `cmake --preset` → `cmake --build`), merged into `package` and signed with the
    same `AS-TJGutjahr` / `AS-CP-TJGutjahr` Trusted Signing profile.
-5. **Remove the superseded C# `SRTOverlay.Native` / `.Core` / `.DirectX12`** once this reaches parity.
-   They remain the reference spec until then.
+6. **Remove the superseded C# `SRTOverlay.Native` / `.Core` / `.DirectX12`** once this reaches parity.
+   They remain the reference spec until then (the shared-memory transport in `SharedSurfaceProducer` /
+   `SharedMemoryTransport` still drives the C# shim; the pipe transport lives in the spike).
 
 `CompositeShaders.h` is generated from the C# shim's `Shaders/CompositeShaders.g.cs` (itself from
 `Shaders/Composite.hlsl` via `Compile-Shaders.ps1`). When the HLSL changes, rerun that PowerShell

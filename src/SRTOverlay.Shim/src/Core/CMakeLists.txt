@@ -7,6 +7,8 @@ add_library(SRTOverlay_Core STATIC
     OverlayLog.cpp
     VTableHook.cpp
     OverlayRuntime.cpp
+    OverlayPipeClient.cpp
+    CrashHandler.cpp
     ShimModule.cpp
 )
 add_library(SRTOverlay::Core ALIAS SRTOverlay_Core)
@@ -19,4 +21,5 @@ target_include_directories(SRTOverlay_Core
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(SRTOverlay_Core PUBLIC SRTOverlay_Protocol)
+# dbghelp for MiniDumpWriteDump, psapi for EnumProcessModules - both used by the crash handler.
+target_link_libraries(SRTOverlay_Core PUBLIC SRTOverlay_Protocol PRIVATE dbghelp psapi)

@@ -4,6 +4,7 @@
 
 #include "CompositeShaders.h"
 #include "OverlayLog.h"
+#include "OverlayPipeClient.h"
 #include "OverlayRuntime.h"
 #include "OverlaySharedNames.h"
 
@@ -70,6 +71,15 @@ namespace srtoverlay::directx12
     {
         queue_ = commandQueue;
 
+        pipe_ = core::OverlayRuntime::Pipe();
+        if (pipe_ == nullptr)
+        {
+            // A session id but no pipe: there is no consumer to negotiate a surface with, so there is
+            // nothing to composite. The hooks stay installed and pass through.
+            OverlayLog::Write("Compositor: no overlay consumer pipe; not compositing.");
+            return false;
+        }
+
         HRESULT hr = swapChain->GetDevice(IID_PPV_ARGS(&device_));
         if (FAILED(hr) || !device_)
         {
@@ -112,14 +122,14 @@ namespace srtoverlay::directx12
         }
 
         if (!CreatePipeline() || !CreateHeaps() || !CreateRenderTargets(swapChain) ||
-            !CreateFrameResources() || !PublishRequest())
+            !CreateFrameResources() || !SendSurfaceRequest())
         {
             Shutdown();
             return false;
         }
 
         ready_.store(true);
-        OverlayLog::Write("Compositor: initialised; waiting for a producer to create the surface.");
+        OverlayLog::Write("Compositor: initialised; waiting for the consumer to create the surface.");
         return true;
     }
 
@@ -322,40 +332,28 @@ namespace srtoverlay::directx12
         return true;
     }
 
-    bool D3D12Compositor::PublishRequest()
+    bool D3D12Compositor::SendSurfaceRequest()
     {
+        if (pipe_ == nullptr)
+            return false;
+
         const LUID luid = device_->GetAdapterLuid();
 
-        const std::wstring requestName = names::RequestName(session_);
-        requestMap_ = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0,
-                                         sizeof(SrtOverlayRequestBlock), requestName.c_str());
-        if (requestMap_ == nullptr)
-        {
-            OverlayLog::Write("Compositor: CreateFileMapping (request) failed.");
-            return false;
-        }
+        SrtOverlaySurfaceRequest request{};
+        request.width = width_;
+        request.height = height_;
+        request.format = format_;
+        request.adapterLuidLow = static_cast<uint32_t>(luid.LowPart);
+        request.adapterLuidHigh = static_cast<int32_t>(luid.HighPart);
+        request.surfaceCount = SRT_OVERLAY_SURFACE_COUNT;
 
-        request_ = static_cast<SrtOverlayRequestBlock*>(
-            MapViewOfFile(requestMap_, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, sizeof(SrtOverlayRequestBlock)));
-        if (request_ == nullptr)
-        {
-            OverlayLog::Write("Compositor: MapViewOfFile (request) failed.");
-            return false;
-        }
-
-        request_->width = width_;
-        request_->height = height_;
-        request_->format = format_;
-        request_->adapterLuidLow = static_cast<uint32_t>(luid.LowPart);
-        request_->adapterLuidHigh = static_cast<int32_t>(luid.HighPart);
-        request_->version = SRT_OVERLAY_SURFACE_VERSION;
-        // Publish state last, with a barrier, so a producer that sees Requested sees the rest too.
-        std::atomic_thread_fence(std::memory_order_seq_cst);
-        request_->state = SrtOverlayRequestState_Requested;
-        request_->magic = SRT_OVERLAY_SURFACE_MAGIC;
+        // Hand the request to the pipe client, which sends it (and resends it on reconnect) off the
+        // render thread. It is safe to call from here on the render thread even on the resize path: the
+        // client only serialises a tiny write, which the consumer is waiting to read.
+        pipe_->SetSurfaceRequest(request);
 
         char line[96];
-        std::snprintf(line, sizeof(line), "Compositor: published surface request on adapter LUID 0x%08X%08X.",
+        std::snprintf(line, sizeof(line), "Compositor: requested surface on adapter LUID 0x%08X%08X via the pipe.",
                       static_cast<unsigned>(luid.HighPart), static_cast<unsigned>(luid.LowPart));
         OverlayLog::Write(line);
         return true;
@@ -363,8 +361,17 @@ namespace srtoverlay::directx12
 
     void D3D12Compositor::Composite(IDXGISwapChain3* swapChain)
     {
-        if (!ready_.load())
+        if (!ready_.load() || pipe_ == nullptr)
             return;
+
+        // The newest publish the pipe worker has read. Returns false until the consumer has published a
+        // live frame, so nothing is composited before there is something to composite.
+        SrtOverlaySurfacePublish publish{};
+        if (!pipe_->TryGetLatestPublish(publish))
+        {
+            skipped_.fetch_add(1);
+            return;
+        }
 
         if (!surfacesOpened_ && !TryOpenSurfaces())
         {
@@ -372,14 +379,8 @@ namespace srtoverlay::directx12
             return;
         }
 
-        if (publish_->magic != SRT_OVERLAY_SURFACE_MAGIC || publish_->alive == 0)
-        {
-            skipped_.fetch_add(1);
-            return;
-        }
-
-        const UINT latest = publish_->latestIndex;
-        const UINT64 waitValue = publish_->fenceValue;
+        const UINT latest = publish.latestIndex;
+        const UINT64 waitValue = publish.fenceValue;
         if (latest >= SRT_OVERLAY_SURFACE_COUNT || !sharedTextures_[latest])
         {
             skipped_.fetch_add(1);
@@ -508,26 +509,9 @@ namespace srtoverlay::directx12
 
     bool D3D12Compositor::TryOpenSurfaces()
     {
-        if (publishMap_ == nullptr)
-        {
-            const std::wstring publishName = names::PublishName(session_);
-            publishMap_ = OpenFileMappingW(FILE_MAP_READ, FALSE, publishName.c_str());
-            if (publishMap_ == nullptr)
-                return false; // No producer yet; try again next frame.
-
-            publish_ = static_cast<const SrtOverlayPublishBlock*>(
-                MapViewOfFile(publishMap_, FILE_MAP_READ, 0, 0, sizeof(SrtOverlayPublishBlock)));
-            if (publish_ == nullptr)
-            {
-                CloseHandle(publishMap_);
-                publishMap_ = nullptr;
-                return false;
-            }
-        }
-
-        if (publish_->magic != SRT_OVERLAY_SURFACE_MAGIC || publish_->alive == 0)
-            return false;
-
+        // Called only after the pipe has delivered a live publish, so the consumer has created the
+        // textures and the fence and their names now resolve. They still cross by name; only the
+        // request/publish negotiation moved onto the pipe.
         for (int i = 0; i < SRT_OVERLAY_SURFACE_COUNT; ++i)
         {
             if (!OpenSharedTexture(i))
@@ -538,7 +522,7 @@ namespace srtoverlay::directx12
             return false;
 
         surfacesOpened_ = true;
-        OverlayLog::Write("Compositor: opened the producer's shared textures and fence; compositing.");
+        OverlayLog::Write("Compositor: opened the consumer's shared textures and fence; compositing.");
         return true;
     }
 
@@ -631,6 +615,10 @@ namespace srtoverlay::directx12
             texture.Reset();
         sharedFence_.Reset();
 
+        // Renegotiate: the back buffer's size or format may have changed, so the consumer must create a
+        // new surface. Resend the request; the consumer replies with fresh publishes for the new size.
+        SendSurfaceRequest();
+
         ready_.store(true);
         char line[96];
         std::snprintf(line, sizeof(line), "Compositor: rebuilt for %ux%u, format %d.", width_, height_, format_);
@@ -683,26 +671,9 @@ namespace srtoverlay::directx12
             fenceEvent_ = nullptr;
         }
 
-        if (request_ != nullptr)
-        {
-            UnmapViewOfFile(request_);
-            request_ = nullptr;
-        }
-        if (requestMap_ != nullptr)
-        {
-            CloseHandle(requestMap_);
-            requestMap_ = nullptr;
-        }
-        if (publish_ != nullptr)
-        {
-            UnmapViewOfFile(publish_);
-            publish_ = nullptr;
-        }
-        if (publishMap_ != nullptr)
-        {
-            CloseHandle(publishMap_);
-            publishMap_ = nullptr;
-        }
+        // The pipe is owned by OverlayRuntime (it outlives the compositor and is stopped there); we only
+        // borrowed the pointer, so drop it without touching the pipe itself.
+        pipe_ = nullptr;
 
         // The device and queue are the game's; we only ever borrowed them, so they are not released
         // here beyond dropping our reference to the device.
@@ -717,13 +688,13 @@ namespace srtoverlay::directx12
         {
             std::snprintf(buffer, sizeof(buffer),
                           "composited %ld, skipped %ld, surfaces %s, cost/frame avg %ldus p50 %ldus p99 %ldus max %ldus",
-                          composited_.load(), skipped_.load(), surfacesOpened_ ? "open" : "waiting for producer",
+                          composited_.load(), skipped_.load(), surfacesOpened_ ? "open" : "waiting for consumer",
                           costSumUs_ / costCount_, CostPercentileUs(0.50), CostPercentileUs(0.99), costMaxUs_);
         }
         else
         {
             std::snprintf(buffer, sizeof(buffer), "composited %ld, skipped %ld, surfaces %s",
-                          composited_.load(), skipped_.load(), surfacesOpened_ ? "open" : "waiting for producer");
+                          composited_.load(), skipped_.load(), surfacesOpened_ ? "open" : "waiting for consumer");
         }
         return buffer;
     }

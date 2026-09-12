@@ -9,10 +9,12 @@
 #include <cstdio>
 #include <memory>
 
+#include "CrashHandler.h"
 #include "D3D12Compositor.h"
 #include "D3D12Slots.h"
 #include "D3D12VTableResolver.h"
 #include "OverlayLog.h"
+#include "OverlayPipeClient.h"
 #include "OverlayRuntime.h"
 #include "VTableHook.h"
 
@@ -243,6 +245,18 @@ namespace srtoverlay::directx12
         if (execute)
             g_originalExecuteCommandLists = reinterpret_cast<ExecuteCommandListsFn>(g_executeCommandListsHook.Original());
 
+        // Record the hook inventory for the crash report: the original address resolves to the module
+        // that owned the function (dxgi/d3d12, or another injector's trampoline), and FAILED marks a
+        // slot the write did not take - exactly what a render-path crash report needs to explain itself.
+        using core::CrashHandler::MarkHookInstalled;
+        using core::CrashHandler::RecordHook;
+        RecordHook("Present", g_presentHook.Original());
+        MarkHookInstalled("Present", present);
+        RecordHook("ResizeBuffers", g_resizeBuffersHook.Original());
+        MarkHookInstalled("ResizeBuffers", resize);
+        RecordHook("ExecuteCommandLists", g_executeCommandListsHook.Original());
+        MarkHookInstalled("ExecuteCommandLists", execute);
+
         {
             char line[128];
             std::snprintf(line, sizeof(line), "D3D12 hooks installed: Present=%d, ResizeBuffers=%d, ExecuteCommandLists=%d.",
@@ -288,13 +302,16 @@ namespace srtoverlay::directx12
         const char* stateText = state == 1 ? "ready" : (state == 2 ? "failed" : "pending");
         const std::string composite = g_compositor ? g_compositor->DescribeActivity() : std::string("no compositor");
 
-        char buffer[512];
+        core::OverlayPipeClient* pipe = core::OverlayRuntime::Pipe();
+        const std::string pipeState = pipe != nullptr ? pipe->DescribeActivity() : std::string("no pipe");
+
+        char buffer[640];
         std::snprintf(buffer, sizeof(buffer),
                       "Present %ld (swapchain 0x%p), ResizeBuffers %ld, ExecuteCommandLists %ld (queue 0x%p), "
-                      "compositor %s [%s], Present hook still installed: %d",
+                      "compositor %s [%s], %s, Present hook still installed: %d",
                       g_presentCount.load(), g_lastSwapChain.load(), g_resizeBuffersCount.load(),
                       g_executeCommandListsCount.load(), g_lastCommandQueue.load(),
-                      stateText, composite.c_str(), g_presentHook.IsInstalled() ? 1 : 0);
+                      stateText, composite.c_str(), pipeState.c_str(), g_presentHook.IsInstalled() ? 1 : 0);
         return buffer;
     }
 }

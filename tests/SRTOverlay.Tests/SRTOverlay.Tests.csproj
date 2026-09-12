@@ -26,6 +26,8 @@
     <ProjectReference Include="..\..\src\SRTOverlay.DirectX12\SRTOverlay.DirectX12.csproj" />
     <ProjectReference Include="..\..\src\SRTOverlay.Injection\SRTOverlay.Injection.csproj" />
     <ProjectReference Include="..\..\src\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+    <!-- The overlay pipe frames with SRTHost.Ipc's header; the pipe-message tests round-trip through it. -->
+    <ProjectReference Include="..\..\src\SRTHost.Ipc\SRTHost.Ipc.csproj" />
   </ItemGroup>
 
 </Project>

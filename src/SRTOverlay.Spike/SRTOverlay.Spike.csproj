@@ -29,6 +29,8 @@
   <ItemGroup>
     <ProjectReference Include="..\SRTOverlay.Injection\SRTOverlay.Injection.csproj" />
     <ProjectReference Include="..\SRTOverlay.Protocol\SRTOverlay.Protocol.csproj" />
+    <!-- The 16-byte frame codec the overlay pipe reuses; the step-5 pipe transport frames with it. -->
+    <ProjectReference Include="..\SRTHost.Ipc\SRTHost.Ipc.csproj" />
     <!--
       Referenced for the step-3 produce-surface mode, which drives the shared-texture gate by
       standing in for an overlay plugin's runner. The shim's own graphics code lives here too, but the

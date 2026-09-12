@@ -28,6 +28,11 @@
 
 #include "OverlayProtocol.h"
 
+namespace srtoverlay::core
+{
+    class OverlayPipeClient;
+}
+
 namespace srtoverlay::directx12
 {
     class D3D12Compositor
@@ -62,7 +67,7 @@ namespace srtoverlay::directx12
         bool CreateHeaps();
         bool CreateRenderTargets(IDXGISwapChain3* swapChain);
         bool CreateFrameResources();
-        bool PublishRequest();
+        bool SendSurfaceRequest();
         bool TryOpenSurfaces();
         bool OpenSharedTexture(int index);
         bool OpenSharedFence();
@@ -103,11 +108,12 @@ namespace srtoverlay::directx12
 
         std::atomic<bool> ready_{false};
 
-        // The producer's side, opened lazily once it shows up.
-        HANDLE requestMap_ = nullptr;
-        SrtOverlayRequestBlock* request_ = nullptr;
-        HANDLE publishMap_ = nullptr;
-        const SrtOverlayPublishBlock* publish_ = nullptr;
+        // The pipe back to the overlay consumer, owned by OverlayRuntime and cached here for the render
+        // path. The surface request goes out over it; publishes come back over it. Null means no
+        // consumer, so nothing is composited.
+        core::OverlayPipeClient* pipe_ = nullptr;
+
+        // The consumer's shared textures and fence, opened by name once the first publish arrives.
         Microsoft::WRL::ComPtr<ID3D12Resource> sharedTextures_[SRT_OVERLAY_SURFACE_COUNT];
         Microsoft::WRL::ComPtr<ID3D12Fence> sharedFence_;
         bool surfacesOpened_ = false;

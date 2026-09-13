@@ -18,12 +18,22 @@ public static class OverlayProtocol
     /// recognise. An overlay plugin and the shim it injects ship in the same install, so a mismatch
     /// means something was substituted and refusing is the right answer.
     /// <para>
-    /// v2 (spike step 5) added the runner-to-shim pipe message set (<see cref="OverlayMessageKind"/>,
-    /// <see cref="SurfaceRequest"/>, <see cref="SurfacePublish"/>) and retired the step-3 shared-memory
-    /// control blocks. The startup blob layout is unchanged from v1.
+    /// Held at <c>1</c> through the pre-release spike. The wire shape has changed repeatedly as the spike
+    /// progressed - the pipe message set, then the input/state messages and the two hotkey bytes - but
+    /// nothing has shipped, and the shim and every overlay plugin are built together from this repo, so
+    /// there is no released peer to stay compatible with and bumping would be churn. Increment this only
+    /// once the shim has been released and an out-of-tree plugin could inject a stale blob.
     /// </para>
     /// </remarks>
-    public const int Version = 2;
+    public const int Version = 1;
+
+    /// <summary>Virtual-key code that toggles visibility when the startup blob names none: <c>VK_F7</c>.</summary>
+    /// <remarks>Matches the RE9 reference's toggle-UI key, and <c>SRT_OVERLAY_DEFAULT_VISIBLE_HOTKEY</c> in the C++ shim.</remarks>
+    public const byte DefaultVisibleHotkey = 0x76;
+
+    /// <summary>Virtual-key code that toggles interactive mode when the startup blob names none: <c>VK_F8</c>.</summary>
+    /// <remarks>Mirrors <c>SRT_OVERLAY_DEFAULT_INTERACTIVE_HOTKEY</c> in the C++ shim.</remarks>
+    public const byte DefaultInteractiveHotkey = 0x77;
 
     /// <summary>
     /// The shim's start export, called on a remote thread once <c>LoadLibraryW</c> has returned.

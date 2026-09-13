@@ -178,6 +178,36 @@ public sealed class OverlayStartupTests : IDisposable
     }
 
     [Fact]
+    public void HotkeysRoundTrip()
+    {
+        // The two hotkey bytes reuse what were reserved padding bytes through protocol v2 (offsets 10 and
+        // 11), so this also guards that the blob's later offsets did not shift.
+        OverlayStartupOptions original = Valid() with
+        {
+            VisibleHotkey = 0x77,     // VK_F8
+            InteractiveHotkey = 0x78, // VK_F9
+        };
+        OverlayStartupOptions? restored = OverlayStartupOptions.FromBlob(original.ToBlob());
+
+        Assert.NotNull(restored);
+        Assert.Equal(0x77, restored!.VisibleHotkey);
+        Assert.Equal(0x78, restored.InteractiveHotkey);
+        // The float after them still round-trips, which it would not if the bytes had shifted.
+        Assert.Equal(1696, OverlayStartupOptions.BlobSize);
+    }
+
+    [Fact]
+    public void AbsentHotkeysReadBackAsZeroMeaningDefault()
+    {
+        // Zero means "let the shim pick its default hotkey"; the injector need not know the VK codes.
+        OverlayStartupOptions? restored = OverlayStartupOptions.FromBlob(Valid().ToBlob());
+
+        Assert.NotNull(restored);
+        Assert.Equal(0, restored!.VisibleHotkey);
+        Assert.Equal(0, restored.InteractiveHotkey);
+    }
+
+    [Fact]
     public void AbsentBrightnessAndForcePqReadBackAsNull()
     {
         // Pins the tri-state encoding: null (and, for brightness, a non-positive value) travels as the

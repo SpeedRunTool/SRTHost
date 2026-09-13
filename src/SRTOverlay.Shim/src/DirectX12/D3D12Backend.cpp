@@ -13,6 +13,7 @@
 #include "D3D12Compositor.h"
 #include "D3D12Slots.h"
 #include "D3D12VTableResolver.h"
+#include "OverlayInput.h"
 #include "OverlayLog.h"
 #include "OverlayPipeClient.h"
 #include "OverlayRuntime.h"
@@ -110,7 +111,17 @@ namespace srtoverlay::directx12
                 if (queue == nullptr)
                     return;
 
-                g_compositorState.store(compositor->Initialize(swapChain, queue) ? 1 : 2);
+                const bool initialised = compositor->Initialize(swapChain, queue);
+                g_compositorState.store(initialised ? 1 : 2);
+
+                // Now that the swapchain is in hand, hook the game window for input. Idempotent, so the
+                // resize path (which returns to state 0 and re-initialises) does not re-hook.
+                if (initialised)
+                {
+                    DXGI_SWAP_CHAIN_DESC desc{};
+                    if (SUCCEEDED(swapChain->GetDesc(&desc)) && desc.OutputWindow != nullptr)
+                        core::OverlayInput::AttachWindow(desc.OutputWindow);
+                }
 
                 // Skip compositing on the very frame we initialised on: the swapchain is mid-Present.
                 return;
@@ -118,6 +129,11 @@ namespace srtoverlay::directx12
 
             if ((flags & DXGI_PRESENT_TEST) != 0)
                 return; // a test present validates the swapchain without showing anything
+
+            // The visible hotkey gates compositing: while hidden the hooks stay in and the game presents
+            // untouched, but the shim draws nothing.
+            if (!core::OverlayInput::IsVisible())
+                return;
 
             compositor->Composite(swapChain);
         }
@@ -304,14 +320,16 @@ namespace srtoverlay::directx12
 
         core::OverlayPipeClient* pipe = core::OverlayRuntime::Pipe();
         const std::string pipeState = pipe != nullptr ? pipe->DescribeActivity() : std::string("no pipe");
+        const std::string inputState = core::OverlayInput::DescribeActivity();
 
-        char buffer[640];
+        char buffer[768];
         std::snprintf(buffer, sizeof(buffer),
                       "Present %ld (swapchain 0x%p), ResizeBuffers %ld, ExecuteCommandLists %ld (queue 0x%p), "
-                      "compositor %s [%s], %s, Present hook still installed: %d",
+                      "compositor %s [%s], %s, input {%s}, Present hook still installed: %d",
                       g_presentCount.load(), g_lastSwapChain.load(), g_resizeBuffersCount.load(),
                       g_executeCommandListsCount.load(), g_lastCommandQueue.load(),
-                      stateText, composite.c_str(), pipeState.c_str(), g_presentHook.IsInstalled() ? 1 : 0);
+                      stateText, composite.c_str(), pipeState.c_str(), inputState.c_str(),
+                      g_presentHook.IsInstalled() ? 1 : 0);
         return buffer;
     }
 }

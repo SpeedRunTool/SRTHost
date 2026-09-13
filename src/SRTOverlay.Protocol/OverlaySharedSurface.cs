@@ -47,6 +47,12 @@ public static class OverlaySharedSurface
     /// <summary>The two textures the producer alternates between, so it never writes the one being read.</summary>
     public const int SurfaceCount = 2;
 
+    /// <summary>
+    /// Most <see cref="InputEvent"/> records one <see cref="OverlayMessageKind.InputBatch"/> frame
+    /// carries; mirrors <c>SRT_OVERLAY_MAX_INPUT_BATCH</c>. The shim sends more frames if more are queued.
+    /// </summary>
+    public const int MaxInputBatch = 64;
+
     /// <summary>Access mask for opening a shared handle: everything, since both sides are the same user.</summary>
     public const uint GenericAll = 0x10000000;
 

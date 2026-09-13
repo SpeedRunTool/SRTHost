@@ -8,6 +8,7 @@ add_library(SRTOverlay_Core STATIC
     VTableHook.cpp
     OverlayRuntime.cpp
     OverlayPipeClient.cpp
+    OverlayInput.cpp
     CrashHandler.cpp
     ShimModule.cpp
 )
@@ -22,4 +23,7 @@ target_include_directories(SRTOverlay_Core
 )
 
 # dbghelp for MiniDumpWriteDump, psapi for EnumProcessModules - both used by the crash handler.
-target_link_libraries(SRTOverlay_Core PUBLIC SRTOverlay_Protocol PRIVATE dbghelp psapi)
+# dxguid supplies IID_IDirectInput8W / GUID_SysKeyboard for the DirectInput8 input hook; DirectInput8Create
+# itself is resolved at run time from dinput8.dll, so nothing links dinput8 (a game without it still loads
+# the shim, which then relies on raw input alone). All Windows SDK libraries - no vcpkg dependency.
+target_link_libraries(SRTOverlay_Core PUBLIC SRTOverlay_Protocol PRIVATE dbghelp psapi dxguid)

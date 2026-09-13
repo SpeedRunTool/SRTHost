@@ -32,9 +32,86 @@ public enum OverlayMessageKind : ushort
     /// </summary>
     SurfacePublish = 2,
 
-    // Reserved for spike step 6 (input and lifetime), not yet on the wire:
-    //   InputBatch = 16,   // shim → consumer: batched mouse/keyboard while interactive
-    //   OverlayState = 17, // shim → consumer: visible/interactive state changes
+    /// <summary>
+    /// Shim → consumer: an <see cref="InputBatchHeader"/> followed by <c>count</c>
+    /// <see cref="InputEvent"/> records. Only sent while interactive.
+    /// </summary>
+    InputBatch = 16,
+
+    /// <summary>
+    /// Shim → consumer: an <see cref="OverlayState"/>. Sent once per connection after the surface
+    /// request, and again whenever the visible, interactive or focus state changes.
+    /// </summary>
+    OverlayState = 17,
+}
+
+/// <summary>
+/// What one <see cref="InputEvent"/> describes, and so what its generic fields mean. Mirrors
+/// <c>SrtOverlayInputType</c> in the C++ shim's <c>OverlayProtocol.h</c>.
+/// </summary>
+public enum OverlayInputType : ushort
+{
+    /// <summary>Not an input event.</summary>
+    None = 0,
+
+    /// <summary><c>X</c>, <c>Y</c>: pointer position in surface pixels.</summary>
+    MouseMove = 1,
+
+    /// <summary><c>Code</c>: <see cref="OverlayMouseButton"/>; <c>Value</c>: 1 down, 0 up; <c>X</c>, <c>Y</c>: position.</summary>
+    MouseButton = 2,
+
+    /// <summary><c>Code</c>: 0 vertical, 1 horizontal; <c>Value</c>: delta (120 per notch); <c>X</c>, <c>Y</c>: position.</summary>
+    MouseWheel = 3,
+
+    /// <summary><c>Code</c>: virtual-key code; <c>Value</c>: 1 down, 0 up; <c>X</c>: scan code; <c>Flags</c>: REPEAT, EXTENDED.</summary>
+    Key = 4,
+
+    /// <summary><c>Code</c>: one UTF-16 code unit, as <c>WM_CHAR</c> delivers it.</summary>
+    Char = 5,
+
+    /// <summary><c>X</c>, <c>Y</c>: motion (deltas unless ABSOLUTE); <c>Code</c>: raw button flags; <c>Value</c>: raw button data.</summary>
+    RawMouse = 6,
+
+    /// <summary><c>Code</c>: virtual-key code; <c>Value</c>: 1 down, 0 up; <c>X</c>: make code; <c>Flags</c>: EXTENDED.</summary>
+    RawKey = 7,
+
+    /// <summary><c>Value</c>: 1 the game window gained focus, 0 it lost it (release held keys).</summary>
+    Focus = 8,
+}
+
+/// <summary>A mouse button, in an <see cref="InputEvent"/> of type <see cref="OverlayInputType.MouseButton"/>.</summary>
+public enum OverlayMouseButton : uint
+{
+    Left = 0,
+    Right = 1,
+    Middle = 2,
+    X1 = 3,
+    X2 = 4,
+}
+
+/// <summary>Bit flags on an <see cref="InputEvent.Flags"/>, mirroring <c>SRT_OVERLAY_INPUT_FLAG_*</c>.</summary>
+[Flags]
+public enum OverlayInputFlags : ushort
+{
+    None = 0,
+
+    /// <summary>Shift was down when the event was captured.</summary>
+    Shift = 0x0001,
+
+    /// <summary>Control was down when the event was captured.</summary>
+    Control = 0x0002,
+
+    /// <summary>Alt was down when the event was captured.</summary>
+    Alt = 0x0004,
+
+    /// <summary>A key auto-repeat, not a fresh press.</summary>
+    Repeat = 0x0008,
+
+    /// <summary>An extended key: right Ctrl/Alt, the arrows, numpad Enter.</summary>
+    Extended = 0x0010,
+
+    /// <summary><see cref="OverlayInputType.RawMouse"/> X/Y are absolute, not deltas.</summary>
+    Absolute = 0x0020,
 }
 
 /// <summary>
@@ -111,6 +188,116 @@ public struct SurfacePublish
 
     /// <summary>Read a message from <paramref name="source"/>, or <see langword="null"/> if it is too short.</summary>
     public static SurfacePublish? TryRead(ReadOnlySpan<byte> source) => OverlayPipeMessage.Read<SurfacePublish>(source, Size);
+}
+
+/// <summary>
+/// Shim → consumer. One captured input event, forwarded only while interactive.
+/// </summary>
+/// <remarks>
+/// Generic fields whose meaning depends on <see cref="Type"/> (see <see cref="OverlayInputType"/>) keep
+/// every event one fixed size, so a batch is a plain array. Sequential and packed to one byte to match
+/// the C++ shim's <c>SrtOverlayInputEvent</c>, which reads it straight off the pipe.
+/// </remarks>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct InputEvent
+{
+    /// <summary>Encoded size in bytes; must equal <c>sizeof(SrtOverlayInputEvent)</c>.</summary>
+    public const int Size = 24;
+
+    /// <summary>What this event describes.</summary>
+    public OverlayInputType Type;
+
+    /// <summary>Modifier and detail flags in force when the event was captured.</summary>
+    public OverlayInputFlags Flags;
+
+    /// <summary>Per <see cref="Type"/>: a virtual-key, mouse button, wheel axis, UTF-16 unit, or raw button flags.</summary>
+    public uint Code;
+
+    /// <summary>Per <see cref="Type"/>: surface-pixel X, a raw delta X, or a scan/make code.</summary>
+    public int X;
+
+    /// <summary>Per <see cref="Type"/>: surface-pixel Y, or a raw delta Y.</summary>
+    public int Y;
+
+    /// <summary>Per <see cref="Type"/>: 1 down / 0 up, a wheel delta, or a focus flag.</summary>
+    public int Value;
+
+    /// <summary><c>GetMessageTime()</c> of the window message that carried the event.</summary>
+    public uint TimeMs;
+
+    /// <summary>Write this event's bytes into <paramref name="destination"/> (at least <see cref="Size"/> bytes).</summary>
+    public readonly void WriteTo(Span<byte> destination) => OverlayPipeMessage.Write(this, destination);
+
+    /// <summary>Read an event from <paramref name="source"/>, or <see langword="null"/> if it is too short.</summary>
+    public static InputEvent? TryRead(ReadOnlySpan<byte> source) => OverlayPipeMessage.Read<InputEvent>(source, Size);
+}
+
+/// <summary>
+/// Shim → consumer. Leads every <see cref="OverlayMessageKind.InputBatch"/> payload; <see cref="Count"/>
+/// <see cref="InputEvent"/> records follow it in the same frame.
+/// </summary>
+/// <remarks>
+/// <see cref="Dropped"/> is non-zero when the shim's bounded capture queue overflowed since the previous
+/// batch: the consumer should then treat all held keys and buttons as released and resync, because a key
+/// it saw go down may never get its matching up. Packed to match <c>SrtOverlayInputBatchHeader</c>.
+/// </remarks>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct InputBatchHeader
+{
+    /// <summary>Encoded size in bytes; must equal <c>sizeof(SrtOverlayInputBatchHeader)</c>.</summary>
+    public const int Size = 8;
+
+    /// <summary>Events that follow this header, at most <see cref="OverlaySharedSurface.MaxInputBatch"/>.</summary>
+    public uint Count;
+
+    /// <summary>Events lost to a full queue since the previous batch; non-zero means resync held keys.</summary>
+    public uint Dropped;
+
+    /// <summary>Write this header's bytes into <paramref name="destination"/> (at least <see cref="Size"/> bytes).</summary>
+    public readonly void WriteTo(Span<byte> destination) => OverlayPipeMessage.Write(this, destination);
+
+    /// <summary>Read a header from <paramref name="source"/>, or <see langword="null"/> if it is too short.</summary>
+    public static InputBatchHeader? TryRead(ReadOnlySpan<byte> source) => OverlayPipeMessage.Read<InputBatchHeader>(source, Size);
+}
+
+/// <summary>
+/// Shim → consumer. The shim-owned overlay state: the shim owns the visible/interactive modes and the
+/// hotkeys that change them, and tells the consumer so it can draw (or not) and pump input (or not).
+/// </summary>
+/// <remarks>
+/// Sent once per connection after the surface request, and again on every change to visibility,
+/// interactivity or the game window's keyboard focus. The cursor position seats the consumer's software
+/// cursor when interactive mode begins. Packed to match <c>SrtOverlayState</c>.
+/// </remarks>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct OverlayState
+{
+    /// <summary>Encoded size in bytes; must equal <c>sizeof(SrtOverlayState)</c>.</summary>
+    public const int Size = 12;
+
+    /// <summary>Non-zero while the quad is composited.</summary>
+    public byte Visible;
+
+    /// <summary>Non-zero while the game's input is swallowed and forwarded; implies <see cref="Visible"/>.</summary>
+    public byte Interactive;
+
+    /// <summary>Non-zero while the game window has keyboard focus.</summary>
+    public byte WindowFocused;
+
+    /// <summary>Reserved, always zero.</summary>
+    public byte Reserved;
+
+    /// <summary>The OS cursor's surface-pixel X when the state changed, to seat a software cursor.</summary>
+    public int CursorX;
+
+    /// <summary>The OS cursor's surface-pixel Y when the state changed.</summary>
+    public int CursorY;
+
+    /// <summary>Write this state's bytes into <paramref name="destination"/> (at least <see cref="Size"/> bytes).</summary>
+    public readonly void WriteTo(Span<byte> destination) => OverlayPipeMessage.Write(this, destination);
+
+    /// <summary>Read a state from <paramref name="source"/>, or <see langword="null"/> if it is too short.</summary>
+    public static OverlayState? TryRead(ReadOnlySpan<byte> source) => OverlayPipeMessage.Read<OverlayState>(source, Size);
 }
 
 /// <summary>Blittable read/write for the overlay pipe messages, matching the C++ shim's raw-struct reads.</summary>

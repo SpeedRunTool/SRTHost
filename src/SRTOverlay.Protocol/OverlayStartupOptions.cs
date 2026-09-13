@@ -36,7 +36,8 @@ public sealed record OverlayStartupOptions
     private const int OffsetOwnerProcessId = 4;     // int32
     private const int OffsetHasBrightness = 8;      // uint8
     private const int OffsetForcePq = 9;            // uint8
-    // bytes 10, 11 are reserved padding to keep the float four-byte aligned, matching the C++ struct.
+    private const int OffsetVisibleHotkey = 10;     // uint8 (was reserved padding through v2)
+    private const int OffsetInteractiveHotkey = 11; // uint8 (was reserved padding through v2)
     private const int OffsetOverlayBrightness = 12; // float32
     private const int OffsetTargetProcess = 16;                                  // 64 wchar
     private const int OffsetSessionId = OffsetTargetProcess + MaxProcessChars * 2; // 144, 128 wchar
@@ -87,6 +88,18 @@ public sealed record OverlayStartupOptions
     /// </summary>
     public bool? OverlayForcePq { get; init; }
 
+    /// <summary>
+    /// Virtual-key code that toggles the overlay's visible state. <c>0</c> lets the shim pick its
+    /// default (<see cref="OverlayProtocol.DefaultVisibleHotkey"/>).
+    /// </summary>
+    public byte VisibleHotkey { get; init; }
+
+    /// <summary>
+    /// Virtual-key code that toggles interactive mode (which implies visible, and swallows the game's
+    /// input). <c>0</c> lets the shim pick its default (<see cref="OverlayProtocol.DefaultInteractiveHotkey"/>).
+    /// </summary>
+    public byte InteractiveHotkey { get; init; }
+
     /// <summary>Marshal into the packed blob the injector writes into the target and the shim reads.</summary>
     public byte[] ToBlob()
     {
@@ -99,6 +112,8 @@ public sealed record OverlayStartupOptions
         bool hasBrightness = OverlayBrightness is > 0f;
         span[OffsetHasBrightness] = (byte)(hasBrightness ? 1 : 0);
         span[OffsetForcePq] = (byte)(OverlayForcePq == true ? 1 : 0);
+        span[OffsetVisibleHotkey] = VisibleHotkey;
+        span[OffsetInteractiveHotkey] = InteractiveHotkey;
         BinaryPrimitives.WriteSingleLittleEndian(span[OffsetOverlayBrightness..], hasBrightness ? OverlayBrightness!.Value : 0f);
 
         WriteWide(span.Slice(OffsetTargetProcess, MaxProcessChars * 2), TargetProcess);
@@ -130,6 +145,8 @@ public sealed record OverlayStartupOptions
                 ? BinaryPrimitives.ReadSingleLittleEndian(blob[OffsetOverlayBrightness..])
                 : null,
             OverlayForcePq = blob[OffsetForcePq] != 0 ? true : null,
+            VisibleHotkey = blob[OffsetVisibleHotkey],
+            InteractiveHotkey = blob[OffsetInteractiveHotkey],
         };
     }
 

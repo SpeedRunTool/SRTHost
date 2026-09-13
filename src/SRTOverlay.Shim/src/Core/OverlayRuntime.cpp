@@ -9,6 +9,7 @@
 #include <string>
 
 #include "CrashHandler.h"
+#include "OverlayInput.h"
 #include "OverlayLog.h"
 #include "OverlayPipeClient.h"
 #include "ShimModule.h"
@@ -249,6 +250,12 @@ namespace srtoverlay::core
             CrashHandler::Install(GetShimModule(), opt.logPath);
 
             StartPipe(opt);
+
+            // Input capture is backend-agnostic and forwards over the pipe, so it starts after the pipe
+            // and before the backend. It hooks DirectInput8 now; the game window is hooked later, once the
+            // backend has resolved it from the swapchain (OverlayInput::AttachWindow).
+            OverlayInput::Start(opt.visibleHotkey, opt.interactiveHotkey, g_pipe.get());
+
             StartBackend(backend);
 
             // The owner watchdog starts LAST, after the hooks are installed. If it started earlier and
@@ -310,6 +317,10 @@ namespace srtoverlay::core
                     OverlayLog::Write("Backend shutdown threw.");
                 }
             }
+
+            // Input hooks (WndProc + DirectInput) come out next, before the pipe they forward over is
+            // stopped. Like the backend's hooks, they must be removed while the module is still mapped.
+            OverlayInput::Stop();
 
             // The backend's hooks are out, so no render-thread reader can touch the pipe any more; stop
             // its worker and close the pipe.

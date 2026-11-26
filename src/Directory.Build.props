@@ -101,7 +101,6 @@ et10.0, silently
 	-->
 	<PropertyGroup>
 		<SRTUseLocalContracts Condition="'$(SRTUseLocalContracts)'==''">false</SRTUseLocalContracts>
-		<SRTContractsVersion>5.0.0-alpha.4</SRTContractsVersion>
 		<SRTContractsPath>$(MSBuildThisFileDirectory)..\..\SRTPluginBase\src\</SRTContractsPath>
 	</PropertyGroup>
 </Project>

@@ -48,7 +48,8 @@
 		</When>
 		<When Condition="'$(SRTReferenceContracts)'=='true'">
 			<ItemGroup>
-				<PackageReference Include="SRTPluginBase" Version="$(SRTContractsVersion)" />
+				<!-- Version comes from Directory.Packages.props (CPM); it tracks SRTContractsVersion there. -->
+				<PackageReference Include="SRTPluginBase" />
 			</ItemGroup>
 		</When>
 
@@ -73,7 +74,8 @@
 		</When>
 		<When Condition="'$(SRTReferenceAbstractions)'=='true'">
 			<ItemGroup>
-				<PackageReference Include="SRTPluginBase.Abstractions" Version="$(SRTContractsVersion)" />
+				<!-- Version comes from Directory.Packages.props (CPM); it tracks SRTContractsVersion there. -->
+				<PackageReference Include="SRTPluginBase.Abstractions" />
 			</ItemGroup>
 		</When>
 	</Choose>

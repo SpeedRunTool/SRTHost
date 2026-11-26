@@ -6,7 +6,7 @@
   <Folder Name="/Solution Items/">
     <File Path="../.github/workflows/AutomatedRelease.yml" />
     <File Path="../.gitignore" />
-    <File Path="../CLAUDE.md" />
+    <File Path="../AGENTS.md" />
     <File Path="../LICENSE" />
     <File Path="../README.md" />
     <File Path="../version.txt" />
@@ -14,6 +14,7 @@
     <File Path="../nuget.config" />
     <File Path="Directory.Build.targets" />
     <File Path="../tests/Directory.Build.props" />
+    <File Path="../Directory.Packages.props" />
     <File Path="SRTHostSetup/SRTHostBundle/Bundle.wxs" />
     <File Path="SRTHostSetup/SRTHostBundle/Prerequisites.wxs" />
     <File Path="SRTHostSetup/SRTHostBundle/SRTHostBundle.wixproj" />
@@ -22,50 +23,29 @@
     <File Path="SRTHostSetup/Version.props" />
   </Folder>
   <Folder Name="/Tests/">
-    <Project Path="../tests/SRTHost.Core.Tests/SRTHost.Core.Tests.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
-    <Project Path="../tests/SRTHost.Ipc.Tests/SRTHost.Ipc.Tests.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="../tests/SRTHost.Core.Tests/SRTHost.Core.Tests.csproj" />
+    <Project Path="../tests/SRTHost.Ipc.Tests/SRTHost.Ipc.Tests.csproj" />
     <!--
       Drives a real SRTHost.PluginRunner process over a real pipe. AnyCPU like its siblings: it
       starts the runner rather than linking it, and builds both architectures itself so there is
       always one to start.
     -->
-    <Project Path="../tests/SRTHost.PluginRunner.Tests/SRTHost.PluginRunner.Tests.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="../tests/SRTHost.PluginRunner.Tests/SRTHost.PluginRunner.Tests.csproj" />
     <!--
       The overlay's testable half: the PE reader and startup blob on the injector's side, and the
       shim's refusals on the other. Injection itself is not here - see SRTOverlay.Spike.
     -->
-    <Project Path="../tests/SRTOverlay.Tests/SRTOverlay.Tests.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="../tests/SRTOverlay.Tests/SRTOverlay.Tests.csproj" />
   </Folder>
   <!-- UI + IPC router. AnyCPU: only the plugin runners need to match a game's bitness. -->
-  <Project Path="SRTHost/SRTHost.csproj">
-    <Platform Solution="*|x64" Project="AnyCPU" />
-    <Platform Solution="*|x86" Project="AnyCPU" />
-  </Project>
+  <Project Path="SRTHost/SRTHost.csproj" />
   <!-- One project, built twice, into SRTHost.PluginRunner64.exe and SRTHost.PluginRunner32.exe. -->
   <Project Path="SRTHost.PluginRunner/SRTHost.PluginRunner.csproj">
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="SRTHost.Core/SRTHost.Core.csproj">
-    <Platform Solution="*|x64" Project="AnyCPU" />
-    <Platform Solution="*|x86" Project="AnyCPU" />
-  </Project>
-  <Project Path="SRTHost.Ipc/SRTHost.Ipc.csproj">
-    <Platform Solution="*|x64" Project="AnyCPU" />
-    <Platform Solution="*|x86" Project="AnyCPU" />
-  </Project>
+  <Project Path="SRTHost.Core/SRTHost.Core.csproj" />
+  <Project Path="SRTHost.Ipc/SRTHost.Ipc.csproj" />
   <!--
     The injected overlay (P7a). SRTOverlay.Native is the NativeAOT publish target - the one signed
     binary that ends up inside a game - and it is in the solution so that its code, and the AOT
@@ -73,28 +53,16 @@
     loads; only `dotnet publish` produces SRTOverlay64.dll.
   -->
   <Folder Name="/Overlay/">
-    <Project Path="SRTOverlay.Protocol/SRTOverlay.Protocol.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
-    <Project Path="SRTOverlay.Core/SRTOverlay.Core.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="SRTOverlay.Protocol/SRTOverlay.Protocol.csproj" />
+    <Project Path="SRTOverlay.Core/SRTOverlay.Core.csproj" />
     <!-- Direct3D 12: vtable resolution and the Present hook. Direct3D 11 joins it in the same binary. -->
-    <Project Path="SRTOverlay.DirectX12/SRTOverlay.DirectX12.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="SRTOverlay.DirectX12/SRTOverlay.DirectX12.csproj" />
     <Project Path="SRTOverlay.Native/SRTOverlay.Native.csproj">
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
     <!-- Runs outside the game: loads the shim, verifies it, and starts it. -->
-    <Project Path="SRTOverlay.Injection/SRTOverlay.Injection.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="SRTOverlay.Injection/SRTOverlay.Injection.csproj" />
     <!-- Hand driver for the spike gates; see section 11 of the plan. -->
     <Project Path="SRTOverlay.Spike/SRTOverlay.Spike.csproj">
       <Platform Solution="*|x64" Project="x64" />
@@ -106,27 +74,12 @@
     references it and never the producer, which is the decoupling the contracts split exists for.
   -->
   <Folder Name="/Demo Plugins/">
-    <Project Path="SpeedRunTool.Demo.Contracts/SpeedRunTool.Demo.Contracts.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
-    <Project Path="SpeedRunTool.Demo.Producer/SpeedRunTool.Demo.Producer.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
-    <Project Path="SpeedRunTool.Demo.Consumer/SpeedRunTool.Demo.Consumer.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="SpeedRunTool.Demo.Contracts/SpeedRunTool.Demo.Contracts.csproj" />
+    <Project Path="SpeedRunTool.Demo.Producer/SpeedRunTool.Demo.Producer.csproj" />
+    <Project Path="SpeedRunTool.Demo.Consumer/SpeedRunTool.Demo.Consumer.csproj" />
     <!-- The WinForms-to-Avalonia migration reference: a consumer that owns a window of its own. -->
-    <Project Path="SpeedRunTool.Demo.ConsumerWindow/SpeedRunTool.Demo.ConsumerWindow.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="SpeedRunTool.Demo.ConsumerWindow/SpeedRunTool.Demo.ConsumerWindow.csproj" />
     <!-- Schemaless: subscribes to "*" and references no payload type at all. -->
-    <Project Path="SpeedRunTool.Demo.ConsumerJson/SpeedRunTool.Demo.ConsumerJson.csproj">
-      <Platform Solution="*|x64" Project="AnyCPU" />
-      <Platform Solution="*|x86" Project="AnyCPU" />
-    </Project>
+    <Project Path="SpeedRunTool.Demo.ConsumerJson/SpeedRunTool.Demo.ConsumerJson.csproj" />
   </Folder>
 </Solution>

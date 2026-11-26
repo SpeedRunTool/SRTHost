@@ -1,11 +1,28 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      Directory.Packages.props is imported BEFORE Directory.Build.props, so the contracts version
+      has to be defaultable here for the PackageVersion items below to expand. src/Directory.Build.props
+      carries the same conditional default; whichever file evaluates second sees a non-empty value
+      and leaves it alone, and -p:SRTContractsVersion= overrides both.
+    -->
+    <SRTContractsVersion Condition="'$(SRTContractsVersion)'==''">5.0.0-alpha.4</SRTContractsVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      The contracts packages. Added by src/Directory.Build.targets through the SRTReferenceContracts /
+      SRTReferenceAbstractions opt-ins (deviation 4), so they never appear in a csproj; the targets
+      reference them without a Version and this file owns it. SRTUseLocalContracts=true swaps both for
+      ProjectReferences and bypasses these entries entirely.
+    -->
+    <PackageVersion Include="SRTPluginBase" Version="$(SRTContractsVersion)" />
+    <PackageVersion Include="SRTPluginBase.Abstractions" Version="$(SRTContractsVersion)" />
+
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
 
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />

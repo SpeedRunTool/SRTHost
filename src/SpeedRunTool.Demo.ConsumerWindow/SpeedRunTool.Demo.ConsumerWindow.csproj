@@ -25,12 +25,12 @@
     references Avalonia.Win32 for the back-end it actually needs.
   -->
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Win32" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Win32" />
+    <PackageReference Include="Avalonia.Skia" />
     <!-- Skia rasterises glyphs; it does not shape text. Without this, Setup() throws. -->
-    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageReference Include="Avalonia.HarfBuzz" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
   </ItemGroup>
 
   <!--

@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI gents when working with code in this repository.
 
 ## The single most important fact: two generations live in this repo
 
@@ -25,7 +25,7 @@ paths, framework, or API, and `main` contains commits `Issue/35` does not (and v
 | Deployment | WiX installer (`src/SRTHostSetup/`), framework-dependent | Inno Setup (`src/SRTHostSetup/`), framework-dependent |
 | Shared props | `src/Directory.Build.props` + `src/Directory.Build.targets` (both also apply to the wixprojs) | `src/Directory.Build.props` |
 
-The vendored `SRTPluginBase/` on `main` is *not* the same code as `S:\SpeedRunTool\SRTPluginBase`.
+The vendored `SRTPluginBase/` on `main` is *not* the same code as `SpeedRunTool\SRTPluginBase`.
 Never sync one to the other.
 
 ## Build
@@ -55,7 +55,7 @@ dotnet build src/SRTHost.slnx -c Debug -p:Platform=x64
 dotnet publish src/SRTHost.slnx -c Release -p:Platform=x64 -p:PublishProfile=win-x64
 ```
 
-**`Issue/35` Debug builds require the sibling repo `S:\SpeedRunTool\SRTPluginBase` to be cloned and
+**`Issue/35` Debug builds require the sibling repo `SpeedRunTool\SRTPluginBase` to be cloned and
 on a matching branch.** `src/SRTHost/SRTHost.csproj` has a `<Choose>`: Debug takes a
 `ProjectReference` to `..\..\..\SRTPluginBase\src\SRTPluginBase\SRTPluginBase.csproj`, Release takes
 the `SRTPluginBase 5.0.0-*` prerelease NuGet package. A Debug build therefore compiles against
@@ -75,7 +75,7 @@ local signing entirely. **Both generations sign in CI via Azure Trusted Signing*
 The host looks for `plugins\<Name>\<Name>.dll` — **the DLL filename must equal its directory name**,
 or the plugin is invisible. Everything else in that folder is treated as the plugin's private
 dependencies. Plugin repos (`SpeedrunTooling/SRTPlugin*`) build straight into
-`src\SRTHost\bin\<Config>\...\plugins` via relative paths that resolve through `S:\`, so building a
+`src\SRTHost\bin\<Config>\...\plugins` via relative paths, so building a
 plugin deploys it here.
 
 ## Assembly load contexts — the part that has caused the most bugs

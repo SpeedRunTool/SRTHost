@@ -24,7 +24,10 @@
     SYSLIB0057. Pinned to the SDK's band like every other package in the repository.
   -->
   <ItemGroup>
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.0" />
+    <!-- 10.0.13: patched band for CVE-2026-84008 (high) and CVE-2026-70162 (moderate), both
+         published 2026-10-13, which fail restore as NU1902/NU1903 under TreatWarningsAsErrors.
+         Same class of event as the SourceLink advisory (plan deviation 41). -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup>
